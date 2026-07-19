@@ -8,90 +8,126 @@ export const languages: { code: Lang; label: string; dir: 'ltr' | 'rtl' }[] = [
 
 export const copy = {
   en: {
-    nav: ['Services', 'Demo', 'Portal', 'Contact'],
-    heroKicker: 'Managed AI-agent workflows for real businesses',
-    heroTitle: 'Turn messy business work into repeatable growth systems.',
-    heroBody: 'FlowKave designs and operates AI-assisted workflows for content, lead tracking, customer follow-up, and weekly reporting — starting with a coffee-shop equipment sales demo built for a real Iranian business.',
-    primaryCta: 'View coffee equipment demo',
-    secondaryCta: 'Request a free workflow audit',
-    proof: ['No-code friendly client interface', 'FlowKave-controlled backend', 'Human QA before delivery'],
-    servicesTitle: 'What FlowKave builds',
+    nav: ['Offer', 'Demo', 'Process', 'Pricing', 'Contact'],
+    heroKicker: 'Productized AI automation for small B2B teams',
+    heroTitle: 'We turn your lead, quote, and follow-up chaos into a managed growth system.',
+    heroBody: 'FlowKave builds practical AI-assisted workflows for businesses that lose money in spreadsheets, slow replies, messy quotes, and forgotten follow-ups. Start with a focused 7-day implementation, then keep improving with monthly managed operations.',
+    primaryCta: 'Book a free workflow audit',
+    secondaryCta: 'See the coffee equipment demo',
+    auditHref: 'mailto:flowkave@gmail.com?subject=Free%20FlowKave%20workflow%20audit&body=Hi%20FlowKave%2C%0A%0AI%20want%20a%20free%20workflow%20audit.%0AWebsite%3A%20%0ABusiness%3A%20%0AThe%20repetitive%20process%20we%20want%20to%20systemize%3A%20',
+    proof: ['7-day implementation sprint', 'Human QA before anything goes live', 'Built around your real sales workflow'],
+    statCards: [
+      ['7 days', 'to a working client-ready prototype'],
+      ['2–4 pilots', 'can validate the first $2k/month goal'],
+      ['1 dashboard', 'for leads, quotes, follow-ups, and reports']
+    ],
+    servicesTitle: 'A clear offer clients can understand in 30 seconds',
+    servicesSubtitle: 'We do not sell generic AI tools. We install and run a repeatable business workflow.',
     services: [
-      ['Content engine', 'Weekly posts, captions, reels scripts, product comparisons, and publishing calendars based on the client website and products.'],
-      ['Lead & follow-up workflow', 'Prospect lists, lead scoring, outreach drafts, follow-up status, and next-action reports.'],
-      ['Managed AI operations', 'A FlowKave-run backend using Hermes agents, QA gates, dashboards, and reports so clients get outcomes instead of raw tools.']
+      ['Lead pipeline system', 'Capture prospects, score opportunities, assign next actions, and stop losing deals because nobody followed up.'],
+      ['Quote & proposal workflow', 'Turn product/service needs into structured quotes, summaries, and approval-ready proposal drafts.'],
+      ['Follow-up operations', 'Weekly next-action lists, outreach drafts, reminders, and reports managed by FlowKave with QA gates.']
     ],
-    demoTitle: 'Demo case: coffee-shop equipment seller',
-    demoBody: 'A free first case study for a family business in Iran: turn their website/products into a content, lead, outreach, and reporting workflow.',
-    demoSteps: ['Website/product scan', 'Product knowledge base', 'Content calendar', 'Lead finder', 'Outreach drafts', 'Follow-up tracker', 'Weekly report'],
-    portalTitle: 'Client portal under flowkave.tech',
-    portalBody: 'The first version gives every client a simple dashboard: workflow status, deliverables, lead tracker links, approval queue, and reports. The agents stay managed by FlowKave until a workflow is stable enough to hand over.',
-    packagesTitle: 'Starter packages',
+    demoTitle: 'Demo: coffee equipment sales CRM',
+    demoBody: 'The first public case study shows a B2B coffee-shop equipment workflow: leads, qualification, quotes, projects, and follow-ups. This is the kind of system FlowKave can customize for a real client quickly.',
+    demoSteps: ['Lead board', 'Customer details', 'Quote builder', 'Project stages', 'Follow-up queue', 'Weekly report'],
+    demoCta: 'Open full demo case →',
+    processTitle: 'How we get to revenue fast',
+    process: [
+      ['1. Audit', 'We map one painful workflow and identify where money is leaking.'],
+      ['2. Build', 'We create a working dashboard/prototype using AI-assisted builders plus Hermes QA.'],
+      ['3. Operate', 'We run or improve the workflow weekly until it becomes a reliable system.']
+    ],
+    packagesTitle: 'Starter packages designed for fast cashflow',
     packages: [
-      ['Workflow Audit', '$0 first demo / then $100+', 'Find bottlenecks and propose a workflow map.'],
-      ['Managed Workflow Setup', '$500–$1,500', 'Build content + lead + follow-up workflow with dashboard.'],
-      ['Monthly Workflow Ops', '$300–$1,000/mo', 'Run weekly content, leads, follow-ups, and reporting.']
+      ['Free Workflow Audit', '$0', 'A short audit of your lead/quote/follow-up process and a concrete automation map.'],
+      ['7-Day Setup Sprint', '$750–$1,500', 'A working CRM/workflow prototype with dashboard, client review, and handoff.'],
+      ['Managed Workflow Ops', '$500–$2,000/mo', 'Monthly improvements, follow-up operations, reports, and new automations.']
     ],
-    contactTitle: 'Start with a free workflow audit',
-    contactBody: 'Email flowkave@gmail.com or use the future contact form. Tell us the website, product/service, and one repetitive task you want FlowKave to systemize.',
+    contactTitle: 'Want the first version of your workflow in 7 days?',
+    contactBody: 'Send your website, your product/service, and the repetitive sales or operations task you want FlowKave to systemize. We will reply with the first workflow audit questions.',
     email: 'flowkave@gmail.com'
   },
   fa: {
-    nav: ['خدمات', 'دمو', 'پنل', 'تماس'],
-    heroKicker: 'ورک‌فلوهای AI Agent مدیریت‌شده برای کسب‌وکار واقعی',
-    heroTitle: 'کارهای شلوغ و تکراری کسب‌وکار را به سیستم رشد قابل تکرار تبدیل می‌کنیم.',
-    heroBody: 'FlowKave برای تولید محتوا، ردیابی لید، پیگیری مشتری و گزارش هفتگی، ورک‌فلوهای AI-assisted طراحی و مدیریت می‌کند — شروع با دموی فروشنده تجهیزات کافی‌شاپ برای یک کسب‌وکار واقعی در ایران.',
-    primaryCta: 'دیدن دموی تجهیزات کافی‌شاپ',
-    secondaryCta: 'درخواست audit رایگان',
-    proof: ['رابط ساده برای مشتری', 'بک‌اند تحت کنترل FlowKave', 'کنترل انسانی کیفیت قبل از تحویل'],
-    servicesTitle: 'FlowKave چه می‌سازد؟',
+    nav: ['آفر', 'دمو', 'فرآیند', 'قیمت', 'تماس'],
+    heroKicker: 'اتوماسیون AI محصول‌سازی‌شده برای تیم‌های کوچک B2B',
+    heroTitle: 'لید، قیمت‌دهی و پیگیری‌های شلوغ شما را به سیستم رشد مدیریت‌شده تبدیل می‌کنیم.',
+    heroBody: 'FlowKave برای کسب‌وکارهایی ساخته شده که در اکسل، پاسخ دیر، quote نامنظم و follow-up فراموش‌شده پول از دست می‌دهند. با یک اجرای متمرکز ۷ روزه شروع می‌کنیم و بعد با عملیات ماهانه بهترش می‌کنیم.',
+    primaryCta: 'درخواست audit رایگان',
+    secondaryCta: 'دیدن دموی تجهیزات قهوه',
+    auditHref: 'mailto:flowkave@gmail.com?subject=Free%20FlowKave%20workflow%20audit&body=Hi%20FlowKave%2C%0A%0AI%20want%20a%20free%20workflow%20audit.%0AWebsite%3A%20%0ABusiness%3A%20%0AThe%20repetitive%20process%20we%20want%20to%20systemize%3A%20',
+    proof: ['اجرای ۷ روزه', 'QA انسانی قبل از تحویل', 'بر اساس فروش واقعی شما'],
+    statCards: [
+      ['۷ روز', 'تا یک نمونه قابل نمایش به مشتری'],
+      ['۲–۴ پایلوت', 'برای validate کردن هدف اول $2k/month'],
+      ['۱ داشبورد', 'برای لید، quote، پیگیری و گزارش']
+    ],
+    servicesTitle: 'آفری که مشتری در ۳۰ ثانیه می‌فهمد',
+    servicesSubtitle: 'ما ابزار AI خام نمی‌فروشیم؛ یک workflow واقعی نصب و مدیریت می‌کنیم.',
     services: [
-      ['موتور تولید محتوا', 'پست هفتگی، کپشن، اسکریپت ریلز، مقایسه محصول و تقویم انتشار بر اساس سایت و محصولات مشتری.'],
-      ['ورک‌فلو لید و پیگیری', 'لیست مشتریان احتمالی، امتیازدهی لید، پیام‌های outreach، وضعیت follow-up و گزارش اقدام بعدی.'],
-      ['عملیات AI مدیریت‌شده', 'بک‌اند FlowKave با Hermes agents، گیت‌های QA، داشبورد و گزارش؛ مشتری نتیجه می‌گیرد نه ابزار خام.']
+      ['سیستم لید و pipeline', 'لیدها، اولویت‌ها، اقدام بعدی و وضعیت dealها را یک‌جا می‌آوریم تا فرصت‌ها گم نشوند.'],
+      ['سیستم quote و proposal', 'نیاز مشتری را به quote ساختاریافته، خلاصه قابل ارسال و draft proposal تبدیل می‌کنیم.'],
+      ['عملیات follow-up', 'لیست اقدام هفتگی، draft پیام‌ها، reminderها و گزارش‌ها با QA FlowKave مدیریت می‌شود.']
     ],
-    demoTitle: 'نمونه‌کار: فروشنده تجهیزات راه‌اندازی کافی‌شاپ',
-    demoBody: 'اولین کیس‌استادی رایگان برای کسب‌وکار خانوادگی در ایران: تبدیل سایت و محصولات به سیستم محتوا، لید، پیام فروش و گزارش.',
-    demoSteps: ['اسکن سایت و محصولات', 'دانش‌نامه محصول', 'تقویم محتوا', 'پیدا کردن لید', 'پیش‌نویس پیام فروش', 'ردیابی پیگیری‌ها', 'گزارش هفتگی'],
-    portalTitle: 'پنل مشتری زیر دامنه flowkave.tech',
-    portalBody: 'نسخه اول برای هر مشتری یک داشبورد ساده دارد: وضعیت ورک‌فلو، خروجی‌ها، لینک lead tracker، صف تایید و گزارش‌ها. ایجنت‌ها تا وقتی workflow کاملاً پایدار نشده، تحت مدیریت FlowKave می‌مانند.',
-    packagesTitle: 'پکیج‌های شروع',
+    demoTitle: 'دمو: CRM فروش تجهیزات قهوه',
+    demoBody: 'اولین نمونه‌کار عمومی یک workflow فروش تجهیزات coffee-shop است: لید، qualification، quote، پروژه و follow-up. همین مدل را می‌شود سریع برای مشتری واقعی customize کرد.',
+    demoSteps: ['برد لیدها', 'جزئیات مشتری', 'Quote builder', 'مراحل پروژه', 'صف پیگیری', 'گزارش هفتگی'],
+    demoCta: 'باز کردن case demo کامل →',
+    processTitle: 'چطور سریع به درآمد می‌رسیم',
+    process: [
+      ['۱. Audit', 'یک workflow دردناک را map می‌کنیم و مشخص می‌کنیم پول کجا از دست می‌رود.'],
+      ['۲. Build', 'با AI builderها و QA هرمس یک داشبورد/prototype واقعی می‌سازیم.'],
+      ['۳. Operate', 'هر هفته workflow را اجرا/بهبود می‌دهیم تا تبدیل به سیستم قابل اعتماد شود.']
+    ],
+    packagesTitle: 'پکیج‌های شروع برای cashflow سریع',
     packages: [
-      ['Workflow Audit', 'دموی اول رایگان / بعداً $100+', 'پیدا کردن گلوگاه‌ها و پیشنهاد نقشه ورک‌فلو.'],
-      ['Managed Workflow Setup', '$500–$1,500', 'ساخت workflow محتوا + لید + follow-up با داشبورد.'],
-      ['Monthly Workflow Ops', '$300–$1,000 ماهانه', 'اجرای هفتگی محتوا، لید، پیگیری و گزارش.']
+      ['Workflow Audit رایگان', '$0', 'بررسی کوتاه فرآیند لید/quote/follow-up و نقشه اتوماسیون.'],
+      ['Setup Sprint هفت‌روزه', '$750–$1,500', 'CRM/workflow آماده با dashboard، review مشتری و handoff.'],
+      ['Managed Workflow Ops', '$500–$2,000/mo', 'بهبود ماهانه، عملیات follow-up، گزارش و اتوماسیون‌های جدید.']
     ],
-    contactTitle: 'با audit رایگان شروع کنیم',
-    contactBody: 'به flowkave@gmail.com ایمیل بزنید یا از فرم آینده استفاده کنید. سایت، محصول/خدمت و یک کار تکراری که می‌خواهید سیستم شود را بفرستید.',
+    contactTitle: 'می‌خواهی نسخه اول workflow تو ۷ روز آماده شود؟',
+    contactBody: 'سایت، محصول/خدمت و یک کار تکراری فروش یا عملیات را بفرست. FlowKave با سؤال‌های audit اولیه جواب می‌دهد.',
     email: 'flowkave@gmail.com'
   },
   sv: {
-    nav: ['Tjänster', 'Demo', 'Portal', 'Kontakt'],
-    heroKicker: 'Hanterade AI-agentflöden för riktiga företag',
-    heroTitle: 'Gör rörigt affärsarbete till repeterbara tillväxtsystem.',
-    heroBody: 'FlowKave designar och driver AI-stödda arbetsflöden för innehåll, leadspårning, kunduppföljning och veckorapporter — med en demo för kaffebarsutrustning som första case.',
-    primaryCta: 'Se demo för kaffebarsutrustning',
-    secondaryCta: 'Begär gratis workflow-audit',
-    proof: ['Enkel kundvy', 'FlowKave-kontrollerad backend', 'Mänsklig QA före leverans'],
-    servicesTitle: 'Vad FlowKave bygger',
+    nav: ['Erbjudande', 'Demo', 'Process', 'Pris', 'Kontakt'],
+    heroKicker: 'Produktiserad AI-automation för små B2B-team',
+    heroTitle: 'Vi gör röriga leads, offerter och uppföljningar till ett hanterat tillväxtsystem.',
+    heroBody: 'FlowKave bygger praktiska AI-stödda arbetsflöden för företag som tappar pengar i kalkylark, långsamma svar, röriga offerter och missade uppföljningar.',
+    primaryCta: 'Boka gratis workflow-audit',
+    secondaryCta: 'Se demo för kaffeutrustning',
+    auditHref: 'mailto:flowkave@gmail.com?subject=Free%20FlowKave%20workflow%20audit&body=Hi%20FlowKave%2C%0A%0AI%20want%20a%20free%20workflow%20audit.%0AWebsite%3A%20%0ABusiness%3A%20%0AThe%20repetitive%20process%20we%20want%20to%20systemize%3A%20',
+    proof: ['7-dagars implementation', 'Mänsklig QA före leverans', 'Byggt runt ert riktiga säljflöde'],
+    statCards: [
+      ['7 dagar', 'till en fungerande kunddemo'],
+      ['2–4 piloter', 'kan validera första $2k/mån'],
+      ['1 dashboard', 'för leads, offerter, uppföljning och rapporter']
+    ],
+    servicesTitle: 'Ett erbjudande kunder förstår på 30 sekunder',
+    servicesSubtitle: 'Vi säljer inte generiska AI-verktyg. Vi installerar och driver ett repeterbart arbetsflöde.',
     services: [
-      ['Innehållsmotor', 'Veckoinlägg, captions, reels-manus, produktjämförelser och publiceringskalendrar baserat på kundens webbplats.'],
-      ['Lead- och uppföljningsflöde', 'Prospektlistor, lead scoring, outreach-utkast, uppföljningsstatus och nästa steg.'],
-      ['Hanterad AI-drift', 'En FlowKave-driven backend med Hermes-agenter, QA-gates, dashboards och rapporter så kunden får resultat, inte råa verktyg.']
+      ['Lead pipeline-system', 'Samla prospects, prioritera möjligheter, tilldela nästa steg och sluta tappa affärer.'],
+      ['Offertflöde', 'Gör behov till strukturerade offerter, sammanfattningar och proposal-utkast.'],
+      ['Uppföljningsdrift', 'Veckolistor, outreach-utkast, påminnelser och rapporter med FlowKave QA.']
     ],
-    demoTitle: 'Demo: säljare av kaffebarsutrustning',
-    demoBody: 'Ett gratis första case för ett familjeföretag i Iran: gör deras webbplats och produkter till ett arbetsflöde för innehåll, leads, outreach och rapportering.',
-    demoSteps: ['Webbplats-/produktskanning', 'Produktkunskapsbas', 'Innehållskalender', 'Lead finder', 'Outreach-utkast', 'Uppföljning', 'Veckorapport'],
-    portalTitle: 'Kundportal under flowkave.tech',
-    portalBody: 'Första versionen ger varje kund en enkel dashboard: workflow-status, leveranser, lead tracker-länkar, godkännandekö och rapporter. Agenterna hanteras av FlowKave tills flödet är stabilt nog att lämnas över.',
-    packagesTitle: 'Startpaket',
+    demoTitle: 'Demo: CRM för kaffeutrustning',
+    demoBody: 'Första caset visar ett B2B-flöde för kaffeutrustning: leads, kvalificering, offerter, projekt och uppföljning.',
+    demoSteps: ['Lead board', 'Kunddetaljer', 'Offertbyggare', 'Projektsteg', 'Uppföljningskö', 'Veckorapport'],
+    demoCta: 'Öppna full demo →',
+    processTitle: 'Så når vi intäkter snabbt',
+    process: [
+      ['1. Audit', 'Vi kartlägger ett smärtsamt flöde och hittar var pengar läcker.'],
+      ['2. Build', 'Vi skapar en fungerande dashboard/prototyp med AI-byggare och Hermes QA.'],
+      ['3. Operate', 'Vi driver eller förbättrar flödet varje vecka tills det blir stabilt.']
+    ],
+    packagesTitle: 'Startpaket för snabb cashflow',
     packages: [
-      ['Workflow Audit', '$0 första demo / sedan $100+', 'Hitta flaskhalsar och föreslå en workflow-karta.'],
-      ['Managed Workflow Setup', '$500–$1,500', 'Bygg innehåll + leads + uppföljning med dashboard.'],
-      ['Monthly Workflow Ops', '$300–$1,000/mån', 'Driv veckovis innehåll, leads, uppföljning och rapportering.']
+      ['Gratis Workflow Audit', '$0', 'Kort analys och konkret automationskarta.'],
+      ['7-Day Setup Sprint', '$750–$1,500', 'Fungerande CRM/workflow-prototyp med dashboard och handoff.'],
+      ['Managed Workflow Ops', '$500–$2,000/mån', 'Månadsvis förbättring, uppföljning, rapporter och nya automationer.']
     ],
-    contactTitle: 'Börja med en gratis workflow-audit',
-    contactBody: 'Maila flowkave@gmail.com. Skicka webbplatsen, produkten/tjänsten och en repetitiv process ni vill systematisera.',
+    contactTitle: 'Vill du ha första versionen på 7 dagar?',
+    contactBody: 'Skicka webbplats, produkt/tjänst och den repetitiva process ni vill systematisera.',
     email: 'flowkave@gmail.com'
   }
 };
