@@ -59,6 +59,14 @@ alter table public.restaurants enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.sync_events enable row level security;
 
+-- Supabase still requires table privileges in addition to RLS policies.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update on public.tenants to authenticated;
+grant select, insert, update on public.tenant_members to authenticated;
+grant select, insert, update on public.restaurants to authenticated;
+grant select, insert, update on public.subscriptions to authenticated;
+grant select, insert, update on public.sync_events to authenticated;
+
 create or replace function public.is_tenant_member(target_tenant_id uuid)
 returns boolean
 language sql
