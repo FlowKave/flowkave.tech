@@ -51,7 +51,8 @@ export default function Home() {
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-9 text-slate-300 md:text-xl">{t.heroBody}</p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <a href={t.auditHref} className="rounded-2xl bg-cyan-200 px-6 py-4 text-center font-black text-[#05070d] shadow-[0_18px_60px_rgba(103,232,249,.22)] transition hover:-translate-y-1 hover:bg-white">{t.primaryCta}</a>
+            <a href="/signup" className="rounded-2xl bg-cyan-200 px-6 py-4 text-center font-black text-[#05070d] shadow-[0_18px_60px_rgba(103,232,249,.22)] transition hover:-translate-y-1 hover:bg-white">شروع تست واقعی SaaS</a>
+            <a href="/login" className="rounded-2xl border border-cyan-200/40 bg-cyan-200/10 px-6 py-4 text-center font-black text-cyan-100 transition hover:-translate-y-1 hover:bg-cyan-200 hover:text-[#05070d]">ورود app.flowkave.tech</a>
             <a href="#demo" className="rounded-2xl border border-white/15 bg-white/[.06] px-6 py-4 text-center font-black text-white transition hover:-translate-y-1 hover:border-cyan-200/50 hover:bg-white/[.1]">{t.secondaryCta}</a>
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
