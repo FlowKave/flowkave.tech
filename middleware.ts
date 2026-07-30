@@ -3,6 +3,12 @@ import { createServerClient } from '@supabase/ssr';
 import { getSupabaseEnv } from './lib/supabase/config';
 
 export async function middleware(request: NextRequest) {
+  const hostname = request.headers.get('host')?.split(':')[0].toLowerCase();
+
+  if (hostname === 'app.flowkave.tech' && request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
   const { url, publishableKey } = getSupabaseEnv();
 
   if (!url || !publishableKey) {
