@@ -21,9 +21,9 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=theme-harmony-1');
-mustContain(html, 'core.js?v=theme-harmony-1');
-mustContain(html, 'app.js?v=theme-harmony-1');
+mustContain(html, 'styles.css?v=pos-cat-fit-1');
+mustContain(html, 'core.js?v=pos-cat-fit-1');
+mustContain(html, 'app.js?v=pos-cat-fit-1');
 
 // Sales/Cashier page buttons should use the glossy pill shape from the user's reference image without changing sizes.
 mustContain(app, 'data-current-tab="${esc(currentTab)}"', 'Content root must expose current tab for scoped cashier styling.');
@@ -56,7 +56,8 @@ function testThemeHarmonyForCashierTablesAndPos() {
   const index = fs.readFileSync('./index.html', 'utf8');
   assert(styles.includes('Theme harmony fix: POS/table chooser') && styles.includes('--hall-open-bg') && styles.includes('.hall-table-card.open-order{background:var(--hall-open-bg)!important'), 'میز باز و وضعیت‌های میز باید از پالت تم ساخته شوند نه رنگ ثابت');
   assert(styles.includes('Theme harmony high-specificity overrides') && styles.includes('.app-shell .hall-order-category-panel .hall-category-tabs button.active') && styles.includes('.app-shell .hall-order-category-panel .hall-table-trigger'), 'قوانین هماهنگی تم باید با specificity بالاتر روی تب‌ها و دکمه میز اثر کند');
-  assert(index.includes('styles.css?v=theme-harmony-1') && index.includes('core.js?v=theme-harmony-1') && index.includes('app.js?v=theme-harmony-1'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
+  assert(styles.includes('POS lower category bar final fit') && styles.includes('flex:0 0 clamp(150px,18vw,190px)!important') && styles.includes('height:54px!important') && styles.includes('overflow-y:visible!important'), 'دسته‌بندی‌های پایین صندوق در نسخه آنلاین باید پهن، وسط‌چین و بدون کلیپ عمودی باشند');
+  assert(index.includes('styles.css?v=pos-cat-fit-1') && index.includes('core.js?v=pos-cat-fit-1') && index.includes('app.js?v=pos-cat-fit-1'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
