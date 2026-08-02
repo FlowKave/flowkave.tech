@@ -17,6 +17,7 @@ export default function SignupPage() {
         {state.message && <p className={`mt-5 rounded-2xl border p-4 text-sm font-bold ${state.ok ? 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100' : 'border-rose-300/25 bg-rose-300/10 text-rose-100'}`}>{state.message}</p>}
 
         <form action={formAction} className="mt-7 grid gap-4">
+          <label className="grid gap-2 text-sm font-bold text-slate-200">نام رستوران/کافه<input required name="businessName" className="rounded-2xl border border-white/10 bg-white/[.06] px-4 py-3 text-white outline-none focus:border-cyan-200" placeholder="مثلاً کافه بهار" /></label>
           <label className="grid gap-2 text-sm font-bold text-slate-200">نام مالک<input required name="fullName" className="rounded-2xl border border-white/10 bg-white/[.06] px-4 py-3 text-white outline-none focus:border-cyan-200" placeholder="کاوه" /></label>
           <label className="grid gap-2 text-sm font-bold text-slate-200">ایمیل<input required name="email" type="email" className="rounded-2xl border border-white/10 bg-white/[.06] px-4 py-3 text-left text-white outline-none focus:border-cyan-200" placeholder="owner@example.com" /></label>
           <label className="grid gap-2 text-sm font-bold text-slate-200">رمز عبور<input required minLength={8} name="password" type="password" className="rounded-2xl border border-white/10 bg-white/[.06] px-4 py-3 text-white outline-none focus:border-cyan-200" /></label>

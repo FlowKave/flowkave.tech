@@ -41,13 +41,14 @@ export async function signUpAction(_state: ActionState, formData: FormData): Pro
     const email = value(formData, 'email');
     const password = value(formData, 'password');
     const fullName = value(formData, 'fullName');
+    const businessName = value(formData, 'businessName');
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${getAppBaseUrl()}/auth/callback`,
-        data: { full_name: fullName }
+        data: { full_name: fullName, business_name: businessName, restaurant_name: businessName }
       }
     });
 
