@@ -696,3 +696,30 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
 .section-backup-actions{
   overflow:visible!important;
 }
+
+
+/* Print/detail modal placement: keep popup below the fixed date chip and fully visible */
+.print-modal-overlay{
+  z-index:320!important;
+  align-items:flex-start!important;
+  padding:clamp(96px,13vh,132px) 28px 40px!important;
+  overflow:auto!important;
+}
+.print-modal{
+  max-height:calc(100vh - clamp(136px,18vh,172px))!important;
+  overflow:auto!important;
+}
+.inventory-print-modal,
+.purchase-invoice-details-modal,
+.cheque-list-modal{
+  max-height:calc(100vh - clamp(136px,18vh,172px))!important;
+  overflow:auto!important;
+}
+@media(max-width:760px){
+  .print-modal-overlay{padding:88px 14px 28px!important}
+  .print-modal,.inventory-print-modal,.purchase-invoice-details-modal,.cheque-list-modal{max-height:calc(100vh - 116px)!important}
+}
+@media print{
+  .print-modal-overlay{z-index:auto!important;padding:0!important;overflow:visible!important}
+  .print-modal,.inventory-print-modal,.purchase-invoice-details-modal,.cheque-list-modal{max-height:none!important;overflow:visible!important}
+}
