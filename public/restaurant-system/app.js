@@ -3,7 +3,6 @@ const SESSION_KEY = 'restaurant_os_active_session_v1';
 const THEME_KEY = 'restaurant_os_visual_theme_v1';
 const KITCHEN_FILTER_KEY = 'restaurant_os_kitchen_filter_v1';
 const KITCHEN_SNOOZE_KEY = 'restaurant_os_kitchen_snooze_v1';
-const SHARED_STATE_API = `${window.location.origin}/api/state`;
 const SHARED_SYNC_INTERVAL_MS = 2500;
 let sharedSyncEnabled = false;
 let sharedSyncStarted = false;
@@ -12,17 +11,13 @@ let sharedStateRevision = 0;
 let sharedSaveTimer = null;
 let sharedLastSerialized = '';
 const app = document.querySelector('#app');
-let state = loadState();
-let session = loadLocalSession(state);
 const portalParams = new URLSearchParams(window.location.search);
 const portalMode = portalParams.get('portal') === '1';
-if (portalMode && !session) {
-  try {
-    session = RestaurantCore.login(state, 'demo@restaurant.test', '123456');
-    setActiveSession(session);
-    saveState(state);
-  } catch {}
-}
+const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : '/api/state'}`;
+const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
+let portalIdentity = null;
+let state = loadState();
+let session = loadLocalSession(state);
 let currentTab = portalParams.get('tab') || 'dashboard';
 let backupMessage = '';
 let accountingFilter = { type: '', range: 'all' };
@@ -77,7 +72,7 @@ const menuItemDetails = {
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) { const parsed = JSON.parse(raw); migrateDisplayState(parsed); saveState(parsed); return parsed; }
-  const fresh = RestaurantCore.createDemoSampleState ? RestaurantCore.createDemoSampleState() : RestaurantCore.createInitialState();
+  const fresh = portalMode ? RestaurantCore.createInitialState() : (RestaurantCore.createDemoSampleState ? RestaurantCore.createDemoSampleState() : RestaurantCore.createInitialState());
   saveState(fresh);
   return fresh;
 }
@@ -93,6 +88,41 @@ function setActiveSession(nextSession) {
   if (session?.id) localStorage.setItem(SESSION_KEY, session.id);
   else localStorage.removeItem(SESSION_KEY);
   return session;
+}
+function normalizePortalIdentity(input = {}) {
+  const meta = input || {};
+  const tenant = meta.tenant || {};
+  return {
+    tenantId: String(meta.tenantId || tenant.id || ''),
+    businessName: String(meta.businessName || tenant.name || 'رستوران جدید'),
+    ownerName: String(meta.ownerName || 'مالک پکیج'),
+    email: String(meta.ownerEmail || meta.email || `owner-${tenant.id || Date.now()}@flowkave.local`),
+    phone: String(meta.phone || ''),
+  };
+}
+function ensurePortalCustomerSession(identityInput = portalIdentity) {
+  if (!portalMode) return null;
+  portalIdentity = normalizePortalIdentity(identityInput || portalIdentity || {});
+  if (!Array.isArray(state.customers)) state.customers = [];
+  let customer = state.customers.find(c => c.portalTenantId && c.portalTenantId === portalIdentity.tenantId);
+  if (!customer) customer = state.customers.find(c => String(c.email || '').toLowerCase() === portalIdentity.email.toLowerCase());
+  if (!customer) {
+    customer = RestaurantCore.createCustomer(state, {
+      businessName: portalIdentity.businessName,
+      ownerName: portalIdentity.ownerName,
+      phone: portalIdentity.phone,
+      email: portalIdentity.email,
+      password: PORTAL_SESSION_PASSWORD,
+      packageName: 'Full OS',
+    });
+  }
+  customer.portalTenantId = portalIdentity.tenantId;
+  customer.businessName = portalIdentity.businessName || customer.businessName;
+  customer.ownerName = portalIdentity.ownerName || customer.ownerName;
+  if (!session || session.customerId !== customer.id || !RestaurantCore.validateSession(state, session.id)) {
+    setActiveSession(RestaurantCore.login(state, customer.email, PORTAL_SESSION_PASSWORD));
+  }
+  return customer;
 }
 function migrateDisplayState(next) {
   if (RestaurantCore.migrateAuthState) RestaurantCore.migrateAuthState(next);
@@ -153,6 +183,7 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ updatedAt, data: JSON.parse(serialized) }),
       cache: 'no-store',
+      credentials: 'same-origin',
     });
     if (!response.ok) throw new Error('SYNC_SAVE_FAILED');
     const result = await response.json();
@@ -165,7 +196,7 @@ function shouldDelayRemoteApply() {
   const active = document.activeElement;
   return !!active && active.matches?.('input, textarea, select');
 }
-function applyRemoteState(remoteState, updatedAt = 0) {
+function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   if (!remoteState || !Array.isArray(remoteState.customers)) return;
   const serialized = JSON.stringify(remoteState);
   if (serialized === sharedLastSerialized) {
@@ -175,6 +206,7 @@ function applyRemoteState(remoteState, updatedAt = 0) {
   sharedApplyingRemote = true;
   migrateDisplayState(remoteState);
   state = remoteState;
+  if (portalMode) ensurePortalCustomerSession(identity || portalIdentity);
   sharedLastSerialized = JSON.stringify(state);
   localStorage.setItem(STORAGE_KEY, sharedLastSerialized);
   session = loadLocalSession(state);
@@ -188,18 +220,26 @@ function shouldSeedSharedStateFromLocal() {
 async function pullSharedState({ initial = false } = {}) {
   if (!sharedSyncEnabled && !initial) return;
   try {
-    const response = await fetch(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store' });
+    const response = await fetch(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) throw new Error('SYNC_LOAD_FAILED');
     const result = await response.json();
+    if (portalMode) portalIdentity = normalizePortalIdentity(result);
     if (!result.exists) {
-      if (initial && shouldSeedSharedStateFromLocal()) await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+      if (portalMode && initial) {
+        state = RestaurantCore.createInitialState();
+        ensurePortalCustomerSession(portalIdentity);
+        saveState(state);
+        await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+        render();
+      } else if (initial && shouldSeedSharedStateFromLocal()) await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
       return;
     }
     const updatedAt = Number(result.updatedAt || 0);
     if (updatedAt && updatedAt <= sharedStateRevision) return;
     if (!initial && shouldDelayRemoteApply()) return;
-    applyRemoteState(result.data, updatedAt);
+    applyRemoteState(result.data, updatedAt, portalIdentity);
   } catch (error) {
+    if (portalMode && initial) { ensurePortalCustomerSession(portalIdentity); saveState(state); render(); }
     if (initial) console.warn('shared state unavailable; using browser-local data', error);
   }
 }

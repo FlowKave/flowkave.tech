@@ -1,5 +1,5 @@
 -- FlowKave SaaS test schema for Supabase
--- Run this once in Supabase SQL Editor for app.flowkave.tech testing.
+-- Run this in Supabase SQL Editor for app.flowkave.tech testing.
 
 create extension if not exists "pgcrypto";
 
@@ -43,6 +43,20 @@ create table if not exists public.subscriptions (
   created_at timestamptz not null default now()
 );
 
+-- Full operational state for the embedded restaurant system.
+-- This is the staging bridge that makes inventory, accounting, menus,
+-- orders, recipes, staff, cheques, expenses, etc. tenant-scoped and
+-- cross-device while we keep the mature static app UI intact.
+create table if not exists public.restaurant_states (
+  tenant_id uuid primary key references public.tenants(id) on delete cascade,
+  state jsonb not null default '{}'::jsonb,
+  version double precision not null default extract(epoch from now()),
+  updated_by uuid references auth.users(id) on delete set null,
+  device_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.sync_events (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete cascade,
@@ -57,6 +71,7 @@ alter table public.tenants enable row level security;
 alter table public.tenant_members enable row level security;
 alter table public.restaurants enable row level security;
 alter table public.subscriptions enable row level security;
+alter table public.restaurant_states enable row level security;
 alter table public.sync_events enable row level security;
 
 -- Supabase still requires table privileges in addition to RLS policies.
@@ -65,6 +80,7 @@ grant select, insert, update on public.tenants to authenticated;
 grant select, insert, update on public.tenant_members to authenticated;
 grant select, insert, update on public.restaurants to authenticated;
 grant select, insert, update on public.subscriptions to authenticated;
+grant select, insert, update on public.restaurant_states to authenticated;
 grant select, insert, update on public.sync_events to authenticated;
 
 create or replace function public.is_tenant_member(target_tenant_id uuid)
@@ -143,6 +159,25 @@ create policy "Members can read subscriptions"
 on public.subscriptions for select
 to authenticated
 using (public.is_tenant_member(tenant_id));
+
+drop policy if exists "Members can read restaurant state" on public.restaurant_states;
+create policy "Members can read restaurant state"
+on public.restaurant_states for select
+to authenticated
+using (public.is_tenant_member(tenant_id));
+
+drop policy if exists "Members can create restaurant state" on public.restaurant_states;
+create policy "Members can create restaurant state"
+on public.restaurant_states for insert
+to authenticated
+with check (public.is_tenant_member(tenant_id) and updated_by = auth.uid());
+
+drop policy if exists "Members can update restaurant state" on public.restaurant_states;
+create policy "Members can update restaurant state"
+on public.restaurant_states for update
+to authenticated
+using (public.is_tenant_member(tenant_id))
+with check (public.is_tenant_member(tenant_id) and updated_by = auth.uid());
 
 drop policy if exists "Members can create sync events" on public.sync_events;
 create policy "Members can create sync events"
