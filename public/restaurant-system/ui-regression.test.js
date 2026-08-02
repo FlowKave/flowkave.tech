@@ -21,9 +21,9 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=sales-glossy-state-cues-1');
-mustContain(html, 'core.js?v=sales-glossy-state-cues-1');
-mustContain(html, 'app.js?v=sales-glossy-state-cues-1');
+mustContain(html, 'styles.css?v=theme-harmony-1');
+mustContain(html, 'core.js?v=theme-harmony-1');
+mustContain(html, 'app.js?v=theme-harmony-1');
 
 // Sales/Cashier page buttons should use the glossy pill shape from the user's reference image without changing sizes.
 mustContain(app, 'data-current-tab="${esc(currentTab)}"', 'Content root must expose current tab for scoped cashier styling.');
@@ -41,9 +41,23 @@ mustContain(styles, '.content[data-current-tab="sales"] .hall-table-card.active'
 mustContain(styles, '.content[data-current-tab="sales"] button.hall-table-card.open-order', 'Tables with open orders must have a distinct warning state.');
 mustContain(styles, '.content[data-current-tab="sales"] button.hall-table-card.waiting-payment', 'Tables waiting for payment must have a distinct payment state.');
 mustContain(styles, 'outline:3px solid color-mix(in srgb,var(--accent) 34%,transparent)!important;', 'Active buttons need a visible outline/ring cue after glossy styling.');
-mustContain(styles, 'linear-gradient(180deg,#fbbf24 0%,#f97316 50%,#c2410c 100%)!important;', 'Open-order tables must not look like free tables.');
+mustContain(styles, '.hall-table-card.open-order{background:var(--hall-open-bg)!important', 'Open-order tables must not look like free tables and must follow the active theme palette.');
 mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close):active:not(:disabled)', 'Sales buttons need pressed state feedback.');
 mustContain(styles, '.app-shell.theme-midnight .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Glossy cashier buttons must stay theme-aware in night mode.');
 assert(!styles.includes('border-width:1.5px!important;'), 'Glossy form must not change button size through forced thicker borders.');
 
 console.log('ui-regression.test.js: ok');
+
+
+function testThemeHarmonyForCashierTablesAndPos() {
+  const assert = require('assert');
+  const fs = require('fs');
+  const styles = fs.readFileSync('./styles.css', 'utf8');
+  const index = fs.readFileSync('./index.html', 'utf8');
+  assert(styles.includes('Theme harmony fix: POS/table chooser') && styles.includes('--hall-open-bg') && styles.includes('.hall-table-card.open-order{background:var(--hall-open-bg)!important'), 'میز باز و وضعیت‌های میز باید از پالت تم ساخته شوند نه رنگ ثابت');
+  assert(styles.includes('Theme harmony high-specificity overrides') && styles.includes('.app-shell .hall-order-category-panel .hall-category-tabs button.active') && styles.includes('.app-shell .hall-order-category-panel .hall-table-trigger'), 'قوانین هماهنگی تم باید با specificity بالاتر روی تب‌ها و دکمه میز اثر کند');
+  assert(index.includes('styles.css?v=theme-harmony-1') && index.includes('core.js?v=theme-harmony-1') && index.includes('app.js?v=theme-harmony-1'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
+}
+
+testThemeHarmonyForCashierTablesAndPos();
+console.log('PASS testThemeHarmonyForCashierTablesAndPos');
