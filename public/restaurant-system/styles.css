@@ -723,3 +723,12 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
   .print-modal-overlay{z-index:auto!important;padding:0!important;overflow:visible!important}
   .print-modal,.inventory-print-modal,.purchase-invoice-details-modal,.cheque-list-modal{max-height:none!important;overflow:visible!important}
 }
+
+
+/* Inventory layout correction: remove the old standalone file-import box and share its width between stock and new-material panels. */
+.inventory-workspace{grid-template-columns:minmax(280px,1.12fr) minmax(0,2.9fr)!important;grid-template-areas:"create stock"!important;gap:16px!important;align-items:stretch!important}
+.inventory-import-panel{display:none!important}
+.inventory-create-panel{grid-area:create!important;width:100%!important;height:800px!important;min-height:800px!important;max-height:800px!important;overflow:visible!important}
+.inventory-edit-panel{grid-area:stock!important;width:100%!important;max-width:none!important;margin-inline:0!important;height:800px!important;min-height:800px!important;max-height:800px!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.inventory-edit-scroll{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}
+@media(max-width:1100px){.inventory-workspace{grid-template-columns:1fr!important;grid-template-areas:"create" "stock"!important}.inventory-create-panel,.inventory-edit-panel{height:auto!important;min-height:auto!important;max-height:none!important}.inventory-edit-panel{max-height:70vh!important}.inventory-edit-scroll{overflow-x:auto!important}}
