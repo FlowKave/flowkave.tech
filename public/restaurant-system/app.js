@@ -1086,7 +1086,7 @@ function render() {
   const modules = RestaurantCore.getEnabledModules(state, customer.id);
   const isCashier = currentRole() === 'cashier';
   const navItems = [
-    ['dashboard','داشبورد'],['customerBank','بانک مشتریان'],['menu','منو'],['sales','صندوق'],['recipes','رسپی'],['inventory','انبار'],['accounting','حسابداری'],['account','مشتری/پکیج']
+    ['dashboard','داشبورد'],['customerBank','باشگاه مشتریان'],['aiAssistant','هوش مصنوعی'],['menu','منو'],['sales','صندوق'],['recipes','رسپی'],['inventory','انبار'],['accounting','حسابداری'],['account','مشتری/پکیج']
   ].filter(([id]) => canAccessTab(id));
   const statsMarkup = isCashier ? '' : `<section class="grid stats">
           <article><span>درآمد</span><strong>${money(summary.revenue)}</strong><em>از فروش‌های ثبت‌شده</em></article>
@@ -1120,7 +1120,7 @@ function render() {
   updateBusinessDateLineDom();
 }
 
-function titleFor(tab){return {dashboard:'داشبورد عملیاتی',customerBank:'بانک مشتریان و بازگشت مشتری',menu:'ساخت و مدیریت منوی دیجیتال',sales:'صندوق و ثبت سفارش',recipes:'رسپی و قیمت تمام‌شده',inventory:'انبارگردانی',accounting:'حسابداری پایه',account:'حساب مشتری و پکیج'}[tab] || 'داشبورد'}
+function titleFor(tab){return {dashboard:'داشبورد عملیاتی',customerBank:'باشگاه مشتریان و بازگشت مشتری',aiAssistant:'هوش مصنوعی عملیاتی',menu:'ساخت و مدیریت منوی دیجیتال',sales:'صندوق و ثبت سفارش',recipes:'رسپی و قیمت تمام‌شده',inventory:'انبارگردانی',accounting:'حسابداری پایه',account:'حساب مشتری و پکیج'}[tab] || 'داشبورد'}
 
 function renderAuth() {
   const suffix = Date.now().toString().slice(-4);
@@ -1133,6 +1133,7 @@ function renderAuth() {
 
 function renderTab(customer) {
   if (currentTab === 'customerBank') return renderCustomerBank(customer);
+  if (currentTab === 'aiAssistant') return renderAiAssistant(customer);
   if (currentTab === 'menu') return renderMenu(customer);
   if (currentTab === 'sales') return renderSales(customer);
   if (currentTab === 'recipes') return renderRecipes(customer);
@@ -1154,7 +1155,24 @@ function renderCustomerBank(customer) {
     .map(([key, label, count]) => `<button type="button" class="customer-segment-card ${customerBankSegment === key ? 'active' : ''}" data-customer-segment="${esc(key)}"><b>${numberText(count,0)}</b><span>${esc(label)}</span></button>`).join('');
   const rows = profiles.map(profile => `<article class="customer-bank-row"><div><b>${esc(profile.name || 'مشتری بدون نام')}</b><small>${profile.phone ? faNum(profile.phone) : 'بدون شماره'} — ${esc(sourceLabel(profile.source))}</small>${profile.notes ? `<small>یادداشت: ${esc(profile.notes)}</small>` : ''}</div><div><strong>${money(profile.totalSpend || 0)}</strong><small>${numberText(profile.visitCount || 0,0)} مراجعه — میانگین ${money(profile.averageSpend || 0)}</small></div><div><span class="badge">${esc(customerSegmentLabel(Object.keys(segments).find(key => segments[key].some(item => item.id === profile.id)) || ''))}</span><small>آخرین مراجعه: ${profile.lastSeenAt ? formatDate(profile.lastSeenAt) : 'هنوز سفارش ندارد'}</small></div></article>`).join('');
   const campaignCards = suggestions.map(item => `<article class="customer-campaign-card"><div class="section-title"><h3>${esc(item.title)}</h3><span class="badge">${numberText(item.audience,0)} نفر</span></div><p>${esc(item.message)}</p><button type="button" class="secondary" data-copy-campaign-message="${esc(item.message)}">کپی متن کمپین</button></article>`).join('');
-  return `<section class="workspace customer-bank-workspace"><div class="panel wide customer-bank-hero"><div class="section-title"><h2>بانک مشتریان و بازگشت مشتری</h2><span class="badge">هسته رشد FlowKave</span></div><p>هر شماره موبایل یا مهمانی که از فروش، منوی عمومی یا فرم دستی وارد شود اینجا تبدیل به دارایی قابل پیگیری می‌شود؛ هدف بعدی کمپین بازگشت مشتری است.</p><div class="customer-segment-grid">${segmentCards}</div></div><form id="customerBankSearchForm" class="panel wide customer-bank-search"><label>جستجوی نام، موبایل یا برچسب<input name="query" value="${esc(customerBankQuery)}" placeholder="مثلا ۰۹۱۲ یا VIP"></label><button class="secondary">جستجو</button><button type="button" class="ghost" data-reset-customer-bank>نمایش همه</button></form><form id="customerProfileForm" class="panel"><h2>ثبت مشتری دستی</h2><label>نام مشتری<input name="name" placeholder="مثلا علی رضایی"></label><label>موبایل<input name="phone" inputmode="tel" dir="ltr" data-number placeholder="0912..."></label><label>برچسب‌ها<input name="tags" placeholder="VIP، تولد، تخفیف‌پسند"></label><label>یادداشت<textarea name="notes" rows="3" placeholder="نکته مهم برای پیگیری بعدی"></textarea></label><button class="primary">افزودن به بانک مشتریان</button></form><div class="panel customer-campaign-panel"><h2>پیشنهاد کمپین امروز</h2>${campaignCards}</div><div class="panel wide customer-bank-list"><div class="section-title"><h2>لیست مشتریان</h2><span>${numberText(profiles.length,0)} از ${numberText(allProfiles.length,0)}</span></div>${rows || '<p>هنوز مشتری در بانک ثبت نشده؛ از سفارش عمومی، فروش یا فرم دستی اولین مشتری را اضافه کن.</p>'}</div></section>`;
+  return `<section class="workspace customer-bank-workspace"><div class="panel wide customer-bank-hero"><div class="section-title"><h2>باشگاه مشتریان و بازگشت مشتری</h2><span class="badge">هسته رشد FlowKave</span></div><p>هر شماره موبایل یا مهمانی که از فروش، منوی عمومی یا فرم دستی وارد شود اینجا تبدیل به دارایی قابل پیگیری می‌شود؛ هدف بعدی کمپین بازگشت مشتری است.</p><div class="customer-segment-grid">${segmentCards}</div></div><form id="customerBankSearchForm" class="panel wide customer-bank-search"><label>جستجوی نام، موبایل یا برچسب<input name="query" value="${esc(customerBankQuery)}" placeholder="مثلا ۰۹۱۲ یا VIP"></label><button class="secondary">جستجو</button><button type="button" class="ghost" data-reset-customer-bank>نمایش همه</button></form><form id="customerProfileForm" class="panel"><h2>ثبت مشتری دستی</h2><label>نام مشتری<input name="name" placeholder="مثلا علی رضایی"></label><label>موبایل<input name="phone" inputmode="tel" dir="ltr" data-number placeholder="0912..."></label><label>برچسب‌ها<input name="tags" placeholder="VIP، تولد، تخفیف‌پسند"></label><label>یادداشت<textarea name="notes" rows="3" placeholder="نکته مهم برای پیگیری بعدی"></textarea></label><button class="primary">افزودن به باشگاه مشتریان</button></form><div class="panel customer-campaign-panel"><h2>پیشنهاد کمپین امروز</h2>${campaignCards}</div><div class="panel wide customer-bank-list"><div class="section-title"><h2>لیست مشتریان</h2><span>${numberText(profiles.length,0)} از ${numberText(allProfiles.length,0)}</span></div>${rows || '<p>هنوز مشتری در باشگاه ثبت نشده؛ از سفارش عمومی، فروش یا فرم دستی اولین مشتری را اضافه کن.</p>'}</div></section>`;
+}
+
+
+function renderAiAssistant(customer) {
+  const summary = RestaurantCore.getAccountingSummary(state, customer.id);
+  const inventory = byCustomer(state.inventory);
+  const orders = byCustomer(state.orders);
+  const profiles = RestaurantCore.getCustomerProfiles ? RestaurantCore.getCustomerProfiles(state, customer.id) : [];
+  const lowStock = RestaurantCore.getLowStockItems(state, customer.id);
+  const suggestions = RestaurantCore.getCustomerCampaignSuggestions ? RestaurantCore.getCustomerCampaignSuggestions(state, customer.id) : [];
+  const prompt = `گزارش سریع ${customer.businessName}: درآمد ${money(summary.revenue)}، هزینه ${money(summary.expenses)}، سود ${money(summary.profit)}، فروش‌ها ${numberText(orders.length,0)}، مواد اولیه ${numberText(inventory.length,0)}، اعضای باشگاه مشتریان ${numberText(profiles.length,0)}.`;
+  const aiCards = [
+    ['تحلیل امروز', summary.profit >= 0 ? 'سود فعلی مثبت است؛ فروش‌های پرتکرار و مواد کم‌موجودی را کنار هم بررسی کن.' : 'سود فعلی منفی است؛ هزینه‌های عملیاتی و قیمت تمام‌شده رسپی‌ها را بازبینی کن.'],
+    ['هشدار انبار', lowStock.length ? `این اقلام نیاز به پیگیری دارند: ${lowStockText(lowStock)}` : 'فعلاً هشدار کمبود موجودی ثبت نشده است.'],
+    ['پیشنهاد باشگاه مشتریان', suggestions[0]?.message || 'بعد از ثبت مشتری/فروش، پیشنهاد کمپین بازگشت مشتری اینجا آماده می‌شود.'],
+  ];
+  return `<section class="workspace ai-assistant-workspace"><div class="panel wide ai-assistant-hero"><div class="section-title"><h2>هوش مصنوعی عملیاتی</h2><span class="badge">دستیار مدیریت</span></div><p>این بخش فعلاً بر اساس داده‌های واقعی همین رستوران پیشنهاد عملیاتی می‌دهد؛ بعداً به مدل هوش مصنوعی متصل می‌شود اما داده‌اش از همین دیتابیس و سامانه می‌آید.</p><button type="button" class="secondary" data-copy-ai-brief="${esc(prompt)}">کپی خلاصه برای مشاور/هوش مصنوعی</button></div>${aiCards.map(([title, body]) => `<article class="panel ai-assistant-card"><h2>${esc(title)}</h2><p>${esc(body)}</p></article>`).join('')}<div class="panel wide"><h2>کارهای پیشنهادی بعدی</h2><div class="dashboard-shortcuts"><button type="button" class="secondary" data-onboarding-tab="customerBank">رفتن به باشگاه مشتریان</button><button type="button" class="secondary" data-onboarding-tab="inventory">کنترل انبار</button><button type="button" class="secondary" data-onboarding-tab="accounting">بررسی حسابداری</button></div></div></section>`;
 }
 
 function renderDashboard(customer) {
@@ -2124,6 +2142,7 @@ function bindCommon() {
   document.querySelector('#customerBankSearchForm')?.addEventListener('submit', (e) => { e.preventDefault(); customerBankQuery = new FormData(e.target).get('query') || ''; render(); });
   document.querySelector('#customerProfileForm')?.addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); normalizeNumberFields(e.target); RestaurantCore.upsertCustomerProfile(state, currentCustomer().id, { name: f.get('name'), phone: toEnglishDigits(f.get('phone') || ''), notes: f.get('notes'), tags: String(f.get('tags') || '').split(/[،,]/), source: 'manual' }); saveState(); render(); });
   document.querySelectorAll('[data-copy-campaign-message]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyCampaignMessage || ''); alert('متن کمپین کپی شد'); } catch { alert(btn.dataset.copyCampaignMessage || ''); } }));
+  document.querySelectorAll('[data-copy-ai-brief]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyAiBrief || ''); alert('خلاصه هوش مصنوعی کپی شد'); } catch { alert(btn.dataset.copyAiBrief || ''); } }));
   bindCalculator();
   document.querySelectorAll('[data-accounting-subtab]').forEach(btn => btn.addEventListener('click', () => { accountingSubTab = btn.dataset.accountingSubtab; render(); }));
   document.querySelectorAll('[data-recipe-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentRecipeCategoryTab = btn.dataset.recipeCategoryTab; render(); }));
