@@ -76,7 +76,7 @@ const menuItemDetails = {
 
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) { const parsed = JSON.parse(raw); migrateDisplayState(parsed); return parsed; }
+  if (raw) { const parsed = JSON.parse(raw); migrateDisplayState(parsed); saveState(parsed); return parsed; }
   const fresh = RestaurantCore.createDemoSampleState ? RestaurantCore.createDemoSampleState() : RestaurantCore.createInitialState();
   saveState(fresh);
   return fresh;
@@ -119,6 +119,7 @@ function migrateDisplayState(next) {
   if (!Array.isArray(next.passwordResetTokens)) next.passwordResetTokens = [];
   if (!Array.isArray(next.securityEvents)) next.securityEvents = [];
   if (!Array.isArray(next.backupExports)) next.backupExports = [];
+  next.customers?.forEach(c => { if (c.businessName === 'کافه تست واقعی') c.businessName = 'رستوران نمونه'; });
   next.purchases.forEach(p => { if (!p.paymentStatus) p.paymentStatus = 'unpaid'; });
   next.orders?.forEach((order, index) => {
     if (!order.status) order.status = 'completed';
@@ -362,6 +363,19 @@ function persianWeekdayName(date = new Date()) {
   return iranDateTimeParts(date).weekday.replace(/^./, first => first.toLocaleUpperCase('fa-IR'));
 }
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
+
+function appLogoMarkup() {
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی گرافیکی فلوکیو رستوران" role="img">
+    <svg viewBox="0 0 96 64" aria-hidden="true" focusable="false" class="restaurant-logo-svg">
+      <defs><linearGradient id="restaurantLogoGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="0.55" stop-color="#2563eb"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
+      <rect class="restaurant-logo-card" x="5" y="7" width="86" height="50" rx="16"/>
+      <path class="restaurant-logo-steam" d="M34 18c-4 4 4 6 0 10M48 15c-5 5 5 7 0 12M62 18c-4 4 4 6 0 10"/>
+      <path class="restaurant-logo-cloche" d="M24 42c2-10 12-18 24-18s22 8 24 18M20 42h56M48 24v-5"/>
+      <path class="restaurant-logo-fork" d="M20 18v28M16 18v12M20 18v12M24 18v12"/>
+      <path class="restaurant-logo-spoon" d="M77 18c5 0 7 5 7 10s-2 9-7 10v8"/>
+    </svg>
+  </div>`;
+}
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
   if (line) line.textContent = businessDateLine(date);
@@ -1045,7 +1059,7 @@ function render() {
       <header class="app-header" data-app-header>
         <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong></div>
         <div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div>
-        <div class="app-logo" aria-label="لوگوی سامانه"><span>ف</span></div>
+        ${appLogoMarkup()}
       </header>
       <aside class="sidebar">
         ${renderThemePicker()}

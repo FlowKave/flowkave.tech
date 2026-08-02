@@ -521,7 +521,7 @@
 
   function createDemoCustomer(state) {
     return createCustomer(state, {
-      businessName: 'کافه تست واقعی',
+      businessName: 'رستوران نمونه',
       ownerName: 'کاوه رضایی',
       phone: '09120000000',
       email: DEMO_EMAIL,
