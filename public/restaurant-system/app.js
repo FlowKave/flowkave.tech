@@ -346,16 +346,26 @@ function formatGroupedNumberInput(value) {
 }
 function numInput(name, value, attrs = '') { const display = value === '' || value == null ? '' : numberText(value); const moneyAttr = isMoneyFieldName(name) ? ' data-money' : ''; return `<input name="${name}" inputmode="decimal" data-number${moneyAttr} value="${display}" ${attrs}>`; }
 function unitSelect(name, selected, units = ['کیلوگرم', 'لیتر', 'عدد']) { const placeholder = selected === '' ? '<option value="" selected disabled>انتخاب واحد</option>' : ''; return `<select name="${name}">${placeholder}${units.map(unit => `<option value="${unit}" ${unit === selected ? 'selected' : ''}>${unit}</option>`).join('')}</select>`; }
-function gregorianToJalaliParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+const IRAN_TIME_ZONE = 'Asia/Tehran';
+function iranDateTimeParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone: IRAN_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date);
   const val = (type) => parts.find((part) => part.type === type)?.value || '';
-  return { year: val('year'), month: val('month'), day: val('day') };
+  return { weekday: val('weekday'), year: val('year'), month: val('month'), day: val('day'), hour: val('hour'), minute: val('minute') };
+}
+function gregorianToJalaliParts(date = new Date()) {
+  const p = iranDateTimeParts(date);
+  return { year: p.year, month: p.month, day: p.day };
 }
 function jalaliDateText(date = new Date()) { const p = gregorianToJalaliParts(date); return `${p.year}/${p.month}/${p.day}`; }
+function iranTimeText(date = new Date()) { const p = iranDateTimeParts(date); return `${p.hour}:${p.minute}`; }
 function persianWeekdayName(date = new Date()) {
-  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { weekday: 'long' }).format(date).replace(/^./, first => first.toLocaleUpperCase('fa-IR'));
+  return iranDateTimeParts(date).weekday.replace(/^./, first => first.toLocaleUpperCase('fa-IR'));
 }
-function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)}`; }
+function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
+function updateBusinessDateLineDom(date = new Date()) {
+  const line = document.querySelector('[data-business-date-line]');
+  if (line) line.textContent = businessDateLine(date);
+}
 function jalaliDateInput(name, label, value = jalaliDateText()) { return `<label>${label}<div class="jalali-date-field"><input name="${name}" value="${esc(value || jalaliDateText())}" placeholder="۱۴۰۳/۰۱/۰۱" data-jalali-date data-jalali-calendar><button type="button" class="secondary jalali-calendar-button" data-open-jalali-calendar aria-label="انتخاب تاریخ">📅</button></div></label>`; }
 function parseJalaliDateParts(value) {
   const parts = toEnglishDigits(value || jalaliDateText()).split(/[\/\-.]/).map(part => Number(part));
@@ -1031,7 +1041,7 @@ function render() {
           <article><span>سود تقریبی</span><strong>${money(summary.profit)}</strong><em>${summary.profit >= 0 ? 'مثبت' : 'منفی'}</em></article>
         </section>`;
   app.innerHTML = `
-    <div class="business-date-line" data-business-date-line aria-label="روز و تاریخ شمسی">${esc(businessDateLine())}</div>
+    <div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div>
     <div class="app-shell theme-${currentTheme}">
       <aside class="sidebar">
         <div class="brand"><div class="brand-mark">ر</div><div><strong>سامانه رستوران</strong><span>${esc(customer.businessName)} — نقش: ${esc(roleLabel(currentRole()))}</span></div></div>
@@ -1052,6 +1062,7 @@ function render() {
   restoreInventoryScrollFocus();
   restoreMenuEditScrollFocus();
   restoreAccountScrollFocus();
+  updateBusinessDateLineDom();
 }
 
 function titleFor(tab){return {dashboard:'داشبورد عملیاتی',customerBank:'بانک مشتریان و بازگشت مشتری',menu:'ساخت و مدیریت منوی دیجیتال',sales:'صندوق و ثبت سفارش',recipes:'رسپی و قیمت تمام‌شده',inventory:'انبارگردانی',accounting:'حسابداری پایه',account:'حساب مشتری و پکیج'}[tab] || 'داشبورد'}
@@ -1126,6 +1137,7 @@ function renderPublicMenu(customerId) {
   restoreInventoryScrollFocus();
   restoreMenuEditScrollFocus();
   restoreAccountScrollFocus();
+  updateBusinessDateLineDom();
 }
 
 function bindPublicMenu(customerId, items) {
@@ -2665,4 +2677,5 @@ function bindCommon() {
 
 window.addEventListener('hashchange', render);
 render();
+setInterval(updateBusinessDateLineDom, 15000);
 initSharedStateSync();
