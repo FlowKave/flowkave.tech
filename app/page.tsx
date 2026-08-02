@@ -40,7 +40,7 @@ const modules = [
 const benefits = [
   ['دید عملیاتی واضح', 'مدیر به جای چند دفتر و فایل پراکنده، فروش، انبار، رسپی و حسابداری را در یک سامانه می‌بیند.'],
   ['مناسب کافه و رستوران واقعی', 'سناریوها بر اساس میز سالن، صندوق، فاکتور خرید، مواد اولیه، رسپی و پرداخت طراحی شده‌اند.'],
-  ['آماده توسعه محلی و ابری', 'برای تست روی وب آماده است و مسیر نسخه محلی داخل رستوران و همگام‌سازی آینده هم در طراحی دیده شده.']
+  ['آماده توسعه محلی و ابری', 'برای ارائه روی وب آماده است و مسیر نسخه محلی داخل رستوران و همگام‌سازی آینده هم در طراحی دیده شده.']
 ];
 
 const screenshots = [
@@ -90,7 +90,7 @@ export default function Home() {
             <a href="#features" className="transition hover:text-cyan-200">قابلیت‌ها</a>
             <a href="#screens" className="transition hover:text-cyan-200">نمای سامانه</a>
             <a href="#benefits" className="transition hover:text-cyan-200">مزیت‌ها</a>
-            <a href="#contact" className="transition hover:text-cyan-200">شروع تست</a>
+            <a href="https://app.flowkave.tech/signup" className="transition hover:text-cyan-200">ساخت حساب</a>
           </div>
           <a href="https://app.flowkave.tech" className="rounded-2xl bg-cyan-200 px-5 py-3 text-sm font-black text-[#05070d] shadow-[0_16px_45px_rgba(103,232,249,.22)] transition hover:-translate-y-0.5 hover:bg-white">ورود به سامانه</a>
         </div>
@@ -110,6 +110,7 @@ export default function Home() {
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a href="https://app.flowkave.tech" className="rounded-2xl bg-cyan-200 px-7 py-4 text-center font-black text-[#05070d] shadow-[0_18px_60px_rgba(103,232,249,.22)] transition hover:-translate-y-1 hover:bg-white">ورود به سامانه</a>
+            <a href="https://app.flowkave.tech/signup" className="rounded-2xl border border-emerald-200/50 bg-emerald-200/10 px-7 py-4 text-center font-black text-emerald-100 transition hover:-translate-y-1 hover:bg-emerald-200 hover:text-[#05070d]">ساخت حساب در سامانه</a>
             <a href="#screens" className="rounded-2xl border border-cyan-200/40 bg-cyan-200/10 px-7 py-4 text-center font-black text-cyan-100 transition hover:-translate-y-1 hover:bg-cyan-200 hover:text-[#05070d]">دیدن بخش‌های سامانه</a>
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
@@ -139,7 +140,7 @@ export default function Home() {
               ))}
             </div>
             <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-r from-cyan-300/10 to-violet-400/10 p-5 text-sm font-semibold leading-7 text-slate-100">
-              هدف: مشتری قبل از خرید، دقیقاً بفهمد سامانه چه چیزی را در کار روزانه‌اش ساده‌تر می‌کند.
+              هدف: مشتری دقیقاً بفهمد سامانه چه چیزی را در کار روزانه‌اش ساده‌تر می‌کند.
             </div>
           </div>
         </div>
@@ -168,7 +169,7 @@ export default function Home() {
         <div className="grid gap-10 lg:grid-cols-[.85fr_1.15fr]">
           <div>
             <p className="text-sm font-black tracking-[.2em] text-violet-200">نمای ملموس برای مشتری</p>
-            <h2 className="mt-4 text-4xl font-black tracking-[-.035em] md:text-6xl">قبل از خرید، صفحه‌ها را ببیند و کاربرد را حس کند.</h2>
+            <h2 className="mt-4 text-4xl font-black tracking-[-.035em] md:text-6xl">صفحه‌ها را ببیند و کاربرد را ملموس حس کند.</h2>
             <p className="mt-6 text-lg leading-9 text-slate-300">این بخش‌ها برای فروش مهم‌اند: مشتری باید ببیند سامانه واقعاً در سالن، صندوق، آشپزخانه، انبار و حسابداری چه کمکی می‌کند.</p>
           </div>
           <div className="grid gap-5">
@@ -200,16 +201,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="contact" className="relative z-10 mx-auto max-w-7xl px-5 py-24">
-        <div className="rounded-[2.5rem] border border-cyan-200/25 bg-gradient-to-br from-cyan-300/18 via-white/[.07] to-violet-500/20 p-8 text-center shadow-[0_30px_120px_rgba(34,211,238,.12)] md:p-16">
-          <h2 className="text-4xl font-black tracking-[-.04em] md:text-7xl">سامانه را ببینید، بعد برای خرید تصمیم بگیرید.</h2>
-          <p className="mx-auto mt-6 max-w-3xl text-lg leading-9 text-slate-200">ورود به سامانه تستی از طریق app.flowkave.tech انجام می‌شود. مسیر خرید نهایی می‌تواند بعد از مشاهده دموی واقعی و تنظیم پکیج مناسب رستوران فعال شود.</p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a href="https://app.flowkave.tech" className="inline-flex rounded-2xl bg-cyan-200 px-8 py-4 font-black text-[#05070d] transition hover:-translate-y-1 hover:bg-white">ورود به سامانه</a>
-            <a href="https://app.flowkave.tech/signup" className="inline-flex rounded-2xl border border-white/15 px-8 py-4 font-black text-white transition hover:-translate-y-1 hover:bg-white/10">ساخت حساب تستی</a>
-          </div>
-        </div>
-      </section>
 
       <footer className="relative z-10 border-t border-white/10 px-5 py-8 text-center text-sm font-semibold text-slate-400">فلوکیو — سامانه مدیریت رستوران و کافه</footer>
     </main>
