@@ -355,6 +355,79 @@
     return { schemaVersion: 1, exportedAt: new Date().toISOString(), data };
   }
 
+  function createSectionBackup(state, customerId, section) {
+    requireCustomer(state, customerId);
+    if (!['inventory', 'recipes'].includes(section)) throw new Error('INVALID_SECTION_BACKUP');
+    const inventoryById = new Map((state.inventory || []).filter((item) => item.customerId === customerId).map((item) => [item.id, item]));
+    const rows = section === 'inventory'
+      ? (state.inventory || []).filter((item) => item.customerId === customerId).map((item) => cloneJson(item))
+      : (state.recipes || []).filter((recipe) => recipe.customerId === customerId).map((recipe) => ({
+        ...cloneJson(recipe),
+        ingredients: (recipe.ingredients || []).map((ingredient) => {
+          const inv = inventoryById.get(ingredient.inventoryItemId);
+          return { ...cloneJson(ingredient), inventoryItemName: inv?.name || ingredient.inventoryItemName || ingredient.materialName || '' };
+        }),
+      }));
+    return {
+      schemaVersion: 1,
+      type: section === 'inventory' ? 'restaurant_inventory_section_backup' : 'restaurant_recipes_section_backup',
+      section,
+      exportedAt: new Date().toISOString(),
+      itemCount: rows.length,
+      data: { [section]: rows },
+    };
+  }
+
+  function restoreSectionBackup(state, customerId, backup, expectedSection = '') {
+    requireCustomer(state, customerId);
+    if (!backup || typeof backup !== 'object') throw new Error('INVALID_SECTION_BACKUP');
+    const section = backup.section || (backup.type === 'restaurant_inventory_section_backup' ? 'inventory' : (backup.type === 'restaurant_recipes_section_backup' ? 'recipes' : expectedSection));
+    if (!['inventory', 'recipes'].includes(section) || (expectedSection && section !== expectedSection)) throw new Error('INVALID_SECTION_BACKUP');
+    const rows = backup.data?.[section] || backup[section];
+    if (!Array.isArray(rows)) throw new Error('INVALID_SECTION_BACKUP');
+    if (section === 'inventory') {
+      state.inventory = (state.inventory || []).filter((item) => item.customerId !== customerId);
+      const imported = rows.map((item) => ({
+        ...cloneJson(item),
+        id: item.id || uid('inv'),
+        customerId,
+        name: cleanPersianText(item.name),
+        unit: normalizeUnit(item.unit || 'عدد'),
+        recipeUnit: normalizeUnit(item.recipeUnit || item.inputUnit || item.unit || 'عدد'),
+        stock: Number(item.stock || 0),
+        unitCost: Number(item.unitCost || 0),
+        minStock: Number(item.minStock ?? item.minimumStock ?? 0),
+      }));
+      state.inventory.push(...imported);
+      return { section, replacedCount: imported.length };
+    }
+    const inventoryById = new Map((state.inventory || []).filter((item) => item.customerId === customerId).map((item) => [item.id, item]));
+    const inventoryByName = new Map((state.inventory || []).filter((item) => item.customerId === customerId).map((item) => [cleanPersianText(item.name), item]));
+    const menuItemIds = new Set((state.menuItems || []).filter((item) => item.customerId === customerId).map((item) => item.id));
+    state.recipes = (state.recipes || []).filter((recipe) => recipe.customerId !== customerId);
+    const imported = rows.map((recipe) => ({
+      ...cloneJson(recipe),
+      id: recipe.id || uid('rec'),
+      customerId,
+      itemId: recipe.itemId && menuItemIds.has(recipe.itemId) ? recipe.itemId : '',
+      itemName: cleanPersianText(recipe.itemName || recipe.name || ''),
+      category: cleanPersianText(recipe.category || ''),
+      ingredients: (recipe.ingredients || []).map((ingredient) => {
+        const name = cleanPersianText(ingredient.inventoryItemName || ingredient.materialName || ingredient.name || '');
+        const matched = inventoryById.get(ingredient.inventoryItemId) || inventoryByName.get(name);
+        return {
+          inventoryItemId: matched?.id || ingredient.inventoryItemId || '',
+          inventoryItemName: matched?.name || name,
+          qty: Number(ingredient.qty ?? ingredient.amount ?? 0),
+          unit: normalizeUnit(ingredient.unit || 'عدد'),
+        };
+      }),
+      cookingSteps: recipe.cookingSteps || recipe.preparationSteps || '',
+    }));
+    state.recipes.push(...imported);
+    return { section, replacedCount: imported.length };
+  }
+
   function restorePrototypeBackup(backup) {
     if (!backup || typeof backup !== 'object') throw new Error('INVALID_BACKUP');
     const source = (backup.schemaVersion === 1 && backup.data && typeof backup.data === 'object')
@@ -2180,6 +2253,8 @@
     createInitialState,
     createDemoSampleState,
     createPrototypeBackup,
+    createSectionBackup,
+    restoreSectionBackup,
     restorePrototypeBackup,
     recordPrototypeBackupExport,
     getOnboardingChecklist,

@@ -300,6 +300,47 @@ function downloadTextFile(filename, text) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+function sectionBackupLabel(section) { return section === 'inventory' ? 'انبار' : 'رسپی'; }
+function sectionBackupFilePrefix(section) { return section === 'inventory' ? 'backup-inventory' : 'backup-recipes'; }
+function sectionBackupControls(section) {
+  const label = sectionBackupLabel(section);
+  return `<div class="section-backup-actions" data-section-backup-actions="${section}"><button type="button" class="section-backup-button" data-export-section-backup="${section}" aria-label="دریافت بک‌آپ کامل ${label}">خروجی کل ${label}</button><input type="file" accept="application/json,.json" hidden data-import-section-backup-input="${section}"><button type="button" class="section-backup-button" data-import-section-backup="${section}" aria-label="ایمپورت بک‌آپ کامل ${label}">ایمپورت کل ${label}</button></div>`;
+}
+function bindSectionBackupControls(customer) {
+  document.querySelectorAll('[data-export-section-backup]').forEach(btn => btn.addEventListener('click', () => {
+    const section = btn.dataset.exportSectionBackup;
+    const backup = RestaurantCore.createSectionBackup(state, customer.id, section);
+    downloadTextFile(`${sectionBackupFilePrefix(section)}-${Date.now()}.json`, JSON.stringify(backup, null, 2));
+    backupMessage = `بک‌آپ کامل ${sectionBackupLabel(section)} آماده دریافت شد.`;
+    render();
+  }));
+  document.querySelectorAll('[data-import-section-backup]').forEach(btn => btn.addEventListener('click', () => {
+    const input = document.querySelector(`[data-import-section-backup-input="${btn.dataset.importSectionBackup}"]`);
+    if (input) input.click();
+  }));
+  document.querySelectorAll('[data-import-section-backup-input]').forEach(input => input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    const section = input.dataset.importSectionBackupInput;
+    if (!file || !section) return;
+    const label = sectionBackupLabel(section);
+    if (!confirm(`کل بخش ${label} این اکانت با محتوای فایل جایگزین شود؟ سایر بخش‌ها تغییر نمی‌کنند.`)) { input.value = ''; return; }
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      try {
+        const result = RestaurantCore.restoreSectionBackup(state, customer.id, JSON.parse(reader.result), section);
+        backupMessage = `ایمپورت بک‌آپ کامل ${label} انجام شد؛ ${numberText(result.replacedCount, 0)} ردیف جایگزین شد.`;
+        input.value = '';
+        saveState();
+        render();
+      } catch {
+        input.value = '';
+        alert(`فایل بک‌آپ کامل ${label} معتبر نیست`);
+      }
+    });
+    reader.readAsText(file);
+  }));
+}
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const EN_DIGITS = '0123456789';
 function faNum(value) { return String(value ?? '').replace(/[0-9]/g, d => FA_DIGITS[Number(d)]).replace(/[٠-٩]/g, d => FA_DIGITS['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]); }
@@ -1520,11 +1561,12 @@ function inventoryItemByNameOrId(customerId, value) {
 
 function renderIngredientRow(inv, number, ingredient = {}) {
   const selected = inv.find(x => x.id === ingredient.inventoryItemId);
+  const materialName = selected ? cleanPersianText(selected.name) : cleanPersianText(ingredient.inventoryItemName || ingredient.materialName || '');
   const qty = ingredient.qty ?? 0;
   const unit = ingredient.unit || 'گرم';
   return `<div class="ingredient-row" data-ingredient-row>
     <div class="ingredient-number">${numberText(number,0)}</div>
-    <label class="ingredient-material-field">ماده<input name="ingredientName" value="${esc(selected ? cleanPersianText(selected.name) : '')}" data-ingredient-material-name autocomplete="off" placeholder="شروع به نوشتن نام ماده"><input type="hidden" name="inventoryItemId" value="${esc(selected?.id || '')}" data-ingredient-inventory-id><div class="ingredient-autocomplete" data-ingredient-autocomplete hidden></div></label>
+    <label class="ingredient-material-field">ماده<input name="ingredientName" value="${esc(materialName)}" data-ingredient-material-name autocomplete="off" placeholder="شروع به نوشتن نام ماده"><input type="hidden" name="inventoryItemId" value="${esc(selected?.id || '')}" data-ingredient-inventory-id><div class="ingredient-autocomplete" data-ingredient-autocomplete hidden></div></label>
     <label class="ingredient-qty-field">مقدار مصرف${numInput('qty', qty)}</label>
     <label class="ingredient-unit-field">واحد مصرف${unitSelect('unit', unit, ['گرم','میلی‌لیتر','عدد','کیلوگرم','لیتر'])}</label>
     ${actionDecalButton('delete', 'data-remove-ingredient', 'ingredient-remove-button')}
@@ -1676,11 +1718,14 @@ function renderRecipes(customer) {
   const categoryTabs = categories.length ? `<div class="recipe-category-tabs" role="tablist">${categories.map(category => `<button type="button" class="recipe-category-tab ${category === activeCategory ? 'active' : ''}" data-recipe-category-tab="${esc(category)}" role="tab" aria-selected="${category === activeCategory ? 'true' : 'false'}">${esc(category)}</button>`).join('')}</div>` : '';
   const recipeRows = visibleRecipes.map(r=>{
     const item = itemById.get(r.itemId);
-    const cost = RestaurantCore.calculateRecipeCost(state, customer.id, r.ingredients).totalCost;
+    let cost = 0;
+    let costLabel = '';
+    try { cost = RestaurantCore.calculateRecipeCost(state, customer.id, r.ingredients).totalCost; costLabel = money(cost); }
+    catch { costLabel = 'نیازمند اتصال مواد به انبار'; }
     const recipeName = recipeDisplayName(r);
-    return `<div class="recipe-row"><b>${esc(recipeName)}</b><strong>قیمت تمام‌شده هر پرس: ${money(cost)}</strong><div class="recipe-row-actions">${actionDecalButton('delete', `data-delete-recipe="${r.id}"`, 'recipe-row-decal')}${actionDecalButton('edit', `data-edit-recipe="${r.id}"`, 'recipe-row-decal')}${actionDecalButton('print', `data-print-recipe="${r.id}"`, 'recipe-row-decal')}</div></div>`;
+    return `<div class="recipe-row"><b>${esc(recipeName)}</b><strong>قیمت تمام‌شده هر پرس: ${costLabel}</strong><div class="recipe-row-actions">${actionDecalButton('delete', `data-delete-recipe="${r.id}"`, 'recipe-row-decal')}${actionDecalButton('edit', `data-edit-recipe="${r.id}"`, 'recipe-row-decal')}${actionDecalButton('print', `data-print-recipe="${r.id}"`, 'recipe-row-decal')}</div></div>`;
   }).join('') || '<p>برای این دسته هنوز رسپی ثبت نشده.</p>';
-  return `<section class="workspace recipe-workspace"><form class="panel recipe-form-panel" id="recipeForm"><div class="recipe-new-action"><button type="button" class="primary" data-new-recipe>ایجاد رسپی جدید</button></div><p>برای هر غذا مواد اولیه را اضافه کن؛ مراحل آماده‌سازی را بنویس و قبل از ذخیره قیمت تمام‌شده هر پرس را زنده ببین.</p><input type="hidden" name="editingItemId" value=""><input type="hidden" name="editingRecipeId" value=""><label>نام آیتم<input name="itemName" value=""></label><label>دسته‌بندی<input name="category" value=""></label><div id="ingredientRows">${starterRows}</div><button type="button" class="secondary" id="addIngredient">+ افزودن مواد اولیه</button><label>مراحل آماده‌سازی<textarea name="cookingSteps" rows="۵" placeholder="مثلا: مواد را آماده کن، حرارت بده، ترکیب کن و سرو کن."></textarea></label><div class="cost-preview" id="recipeCostPreview" aria-live="polite"><b>قیمت تمام‌شده:</b><span>برای محاسبه، یک ماده اولیه اضافه کنید.</span></div><button class="primary">ذخیره رسپی</button></form><div class="panel wide recipe-list-panel"><h2>رسپی‌های ثبت‌شده</h2><div class="recipe-list-scroll">${categoryTabs}<div class="recipe-category-content">${recipeRows}</div></div></div></section>`;
+  return `<section class="workspace recipe-workspace"><form class="panel recipe-form-panel" id="recipeForm"><div class="recipe-new-action"><button type="button" class="primary" data-new-recipe>ایجاد رسپی جدید</button></div><p>برای هر غذا مواد اولیه را اضافه کن؛ مراحل آماده‌سازی را بنویس و قبل از ذخیره قیمت تمام‌شده هر پرس را زنده ببین.</p><input type="hidden" name="editingItemId" value=""><input type="hidden" name="editingRecipeId" value=""><label>نام آیتم<input name="itemName" value=""></label><label>دسته‌بندی<input name="category" value=""></label><div id="ingredientRows">${starterRows}</div><button type="button" class="secondary" id="addIngredient">+ افزودن مواد اولیه</button><label>مراحل آماده‌سازی<textarea name="cookingSteps" rows="۵" placeholder="مثلا: مواد را آماده کن، حرارت بده، ترکیب کن و سرو کن."></textarea></label><div class="cost-preview" id="recipeCostPreview" aria-live="polite"><b>قیمت تمام‌شده:</b><span>برای محاسبه، یک ماده اولیه اضافه کنید.</span></div><button class="primary">ذخیره رسپی</button></form><div class="panel wide recipe-list-panel"><div class="section-title recipe-list-title"><h2>رسپی‌های ثبت‌شده</h2>${sectionBackupControls('recipes')}</div><div class="recipe-list-scroll">${categoryTabs}<div class="recipe-category-content">${recipeRows}</div></div></div></section>`;
 }
 
 
@@ -1708,7 +1753,7 @@ function renderInventory(customer) {
     <form class="panel inventory-create-panel" id="inventoryForm"><h2>ماده اولیه جدید</h2><label>نام<input name="name" value=""></label><label>واحد پایه انبار${unitSelect('unit', '')}</label><label>موجودی${numInput('stock', '')}</label><label>قیمت${numInput('unitCost', '')}</label><label>حداقل موجودی${numInput('minStock', '')}</label><button class="primary">افزودن به انبار</button><small>واحدهای انبار و حسابداری: کیلوگرم، لیتر و عدد. مصرف رسپی می‌تواند گرم یا میلی‌لیتر باشد و خودکار تبدیل می‌شود.</small></form>
     <form class="panel inventory-import-panel" id="inventoryImportForm"><h2>ایمپورت فایل انبار</h2><p>فایل اکسل، CSV/JSON، PDF متنی یا متن کپی‌شده را وارد کن؛ ستون‌ها: نام، موجودی، واحد، قیمت، حداقل موجودی.</p><input id="inventoryImportInput" type="file" accept=".csv,.json,.xlsx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json" data-inventory-import-pdf><textarea name="rows" rows="۵" placeholder="نام,موجودی,واحد,قیمت,حداقل موجودی
 شیر,۱۲,لیتر,۴۸۰۰۰,۲"></textarea><button class="primary">ایمپورت به انبار</button><small>PDF باید متنی باشد تا ردیف‌ها خوانده شوند؛ اگر PDF اسکن تصویری باشد، به OCR نیاز دارد.</small></form>
-    <div class="panel wide inventory-edit-panel"><div class="section-title"><h2>موجودی انبار</h2>${actionDecalButton('print', 'data-print-inventory onclick="showInventoryPrintPreview()"', 'inventory-print-decal', 'پرینت A4 موجودی')}</div><div class="inventory-search-field"><label>جستجوی اقلام<input name="inventorySearch" value="" autocomplete="off" data-inventory-search placeholder="شروع به نوشتن نام قلم کن"></label><div class="inventory-search-menu" data-inventory-search-menu hidden></div></div><div class="inventory-edit-scroll">${sortedInv.map(renderInventoryEditRow).join('') || '<p>هنوز ماده اولیه‌ای ثبت نشده.</p>'}</div></div>
+    <div class="panel wide inventory-edit-panel"><div class="section-title inventory-stock-title"><h2>موجودی انبار</h2><div class="inventory-title-actions">${sectionBackupControls('inventory')}${actionDecalButton('print', 'data-print-inventory onclick="showInventoryPrintPreview()"', 'inventory-print-decal', 'پرینت A4 موجودی')}</div></div><div class="inventory-search-field"><label>جستجوی اقلام<input name="inventorySearch" value="" autocomplete="off" data-inventory-search placeholder="شروع به نوشتن نام قلم کن"></label><div class="inventory-search-menu" data-inventory-search-menu hidden></div></div><div class="inventory-edit-scroll">${sortedInv.map(renderInventoryEditRow).join('') || '<p>هنوز ماده اولیه‌ای ثبت نشده.</p>'}</div></div>
   </section>`;
 }
 
@@ -2153,6 +2198,7 @@ function bindCommon() {
   if (seedSale) seedSale.addEventListener('click', () => { const items = customerMenuItems(); if (!items[0]) return alert('اول آیتم منو بساز'); const order = RestaurantCore.createSale(state, currentCustomer().id, [{ itemId: items[0].id, qty: 1 }], 'card'); saveState(); render(); notifyLowStock(order); });
   const customer = currentCustomer();
   bindInventorySearch(customer);
+  bindSectionBackupControls(customer);
   document.querySelectorAll('[data-close-shift]').forEach(btn => btn.addEventListener('click', () => {
     try { RestaurantCore.closeCashierShift(state, customer.id, btn.dataset.closeShift); saveState(); render(); }
     catch (err) { alert(err.message === 'SHIFT_NOT_FOUND' ? 'شیفت پیدا نشد' : err.message); }
