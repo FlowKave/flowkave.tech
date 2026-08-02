@@ -1062,3 +1062,67 @@ html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs{
   border-color:#fdba74!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 10px 26px rgba(251,146,60,.10)!important;
 }
+
+/* POS fixed dual-line online scoped override: beat .content[data-current-tab="sales"] button 3D theme rules too. */
+html body .app-shell .content[data-current-tab="sales"] .pos-channel-tabs button,
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button,
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] .pos-channel-tabs button,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] .pos-channel-tabs button,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] .pos-channel-tabs button,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab{
+  border-radius:999px!important;
+  border:1px solid rgba(154,52,18,.72)!important;
+  background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important;
+  background-image:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  font-weight:950!important;
+  text-shadow:0 2px 4px rgba(83,27,8,.42)!important;
+  box-shadow:inset 0 3px 8px rgba(255,255,255,.66),inset 0 -9px 12px rgba(93,29,9,.38),0 12px 22px rgba(124,45,18,.28)!important;
+  transform:translateY(-1px)!important;
+}
+html body .app-shell .content[data-current-tab="sales"] .pos-channel-tabs button.active,
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab.active,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button.active,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab.active,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] .pos-channel-tabs button.active,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab.active,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] .pos-channel-tabs button.active,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab.active,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] .pos-channel-tabs button.active,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tab.active{
+  border-color:rgba(248,113,113,.82)!important;
+  background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important;
+  background-image:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  box-shadow:inset 0 3px 9px rgba(255,255,255,.72),inset 0 -10px 14px rgba(127,18,36,.42),0 0 0 4px rgba(244,63,94,.20),0 14px 26px rgba(190,18,60,.34)!important;
+}
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-berry .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important;
+  border-color:#fdba74!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 10px 26px rgba(251,146,60,.10)!important;
+}
