@@ -778,6 +778,47 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
   color:rgba(255,255,255,.92)!important;
   -webkit-text-fill-color:rgba(255,255,255,.92)!important;
 }
+/* Preserve state cues after the glossy treatment: active channel/category/selected table and open-order tables must not look like normal buttons. */
+.content[data-current-tab="sales"] .pos-channel-tabs button.active,
+.content[data-current-tab="sales"] .hall-category-tabs button.active,
+.content[data-current-tab="sales"] .hall-table-card.active{
+  background-image:
+    linear-gradient(180deg,rgba(255,255,255,.88) 0%,rgba(255,255,255,.46) 18%,rgba(255,255,255,0) 34%),
+    linear-gradient(180deg,color-mix(in srgb,var(--accent) 52%,#ffffff) 0%,var(--accent) 46%,color-mix(in srgb,var(--accent) 70%,var(--primary-2)) 100%)!important;
+  border-color:color-mix(in srgb,var(--accent) 70%,#ffffff)!important;
+  outline:3px solid color-mix(in srgb,var(--accent) 34%,transparent)!important;
+  outline-offset:2px!important;
+  box-shadow:
+    inset 0 4px 6px rgba(255,255,255,.76),
+    inset 0 -8px 12px rgba(15,23,42,.26),
+    0 3px 0 color-mix(in srgb,var(--accent) 62%,#0f172a),
+    0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent),
+    0 12px 22px color-mix(in srgb,var(--accent) 30%,rgba(15,23,42,.20))!important;
+}
+.content[data-current-tab="sales"] button.hall-table-card.open-order{
+  background-image:
+    linear-gradient(180deg,rgba(255,255,255,.84) 0%,rgba(255,255,255,.42) 18%,rgba(255,255,255,0) 34%),
+    linear-gradient(180deg,#fbbf24 0%,#f97316 50%,#c2410c 100%)!important;
+  border-color:#fdba74!important;
+  outline:2px solid rgba(251,146,60,.34)!important;
+  outline-offset:1px!important;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.70),inset 0 -8px 12px rgba(124,45,18,.28),0 3px 0 #9a3412,0 10px 20px rgba(249,115,22,.26)!important;
+}
+.content[data-current-tab="sales"] button.hall-table-card.waiting-payment{
+  background-image:
+    linear-gradient(180deg,rgba(255,255,255,.84) 0%,rgba(255,255,255,.42) 18%,rgba(255,255,255,0) 34%),
+    linear-gradient(180deg,#fb7185 0%,#e11d48 50%,#9f1239 100%)!important;
+  border-color:#fda4af!important;
+  outline:2px solid rgba(225,29,72,.34)!important;
+  outline-offset:1px!important;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.62),inset 0 -8px 12px rgba(127,29,29,.30),0 3px 0 #881337,0 10px 20px rgba(225,29,72,.25)!important;
+}
+.content[data-current-tab="sales"] .hall-table-card.active.open-order,
+.content[data-current-tab="sales"] .hall-table-card.active.waiting-payment{
+  outline-width:4px!important;
+  outline-color:rgba(255,255,255,.72)!important;
+  filter:saturate(1.12) brightness(1.04)!important;
+}
 .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close):hover:not(:disabled),
 .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close):focus-visible:not(:disabled){
   filter:saturate(1.08) brightness(1.04)!important;
