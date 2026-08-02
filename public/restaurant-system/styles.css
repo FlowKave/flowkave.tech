@@ -933,3 +933,42 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
   -webkit-text-fill-color:#fff!important;
   border-color:rgba(154,52,18,.72)!important;
 }
+
+/* POS category strip absolute final: Kaveh screenshot fix.
+   The category strip behind نوشیدنی گرم/سرد/دسر must NOT stay the آفتابی cream line in non-sunrise moods. */
+html body .app-shell:not(.theme-sunrise) .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell:not(.theme-sunrise) .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 70%,var(--primary) 22%),color-mix(in srgb,var(--surface-strong,#fff) 82%,var(--accent) 16%))!important;
+  border-color:var(--hall-theme-border)!important;
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface-strong,#fff) 45%,transparent),0 10px 26px color-mix(in srgb,var(--primary) 18%,transparent)!important;
+}
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important;
+  border-color:rgba(56,189,248,.32)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 26px rgba(0,0,0,.34)!important;
+}
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-side,
+html body .app-shell.theme-sunrise .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important;
+  border-color:#fdba74!important;
+}
+
+/* POS category strip real-local fallback: the local/shared build may render .content without data-current-tab. */
+html body .app-shell:not(.theme-sunrise) #hallSaleForm .hall-category-side,
+html body .app-shell:not(.theme-sunrise) #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 70%,var(--primary) 22%),color-mix(in srgb,var(--surface-strong,#fff) 82%,var(--accent) 16%))!important;
+  border-color:var(--hall-theme-border)!important;
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--surface-strong,#fff) 45%,transparent),0 10px 26px color-mix(in srgb,var(--primary) 18%,transparent)!important;
+}
+html body .app-shell.theme-midnight #hallSaleForm .hall-category-side,
+html body .app-shell.theme-midnight #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important;
+  border-color:rgba(56,189,248,.32)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 26px rgba(0,0,0,.34)!important;
+}
+html body .app-shell.theme-sunrise #hallSaleForm .hall-category-side,
+html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs{
+  background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important;
+  border-color:#fdba74!important;
+}
