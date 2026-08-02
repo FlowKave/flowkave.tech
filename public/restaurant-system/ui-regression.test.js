@@ -21,9 +21,9 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=sales-glossy-pill-buttons-1');
-mustContain(html, 'core.js?v=sales-glossy-pill-buttons-1');
-mustContain(html, 'app.js?v=sales-glossy-pill-buttons-1');
+mustContain(html, 'styles.css?v=sales-glossy-readable-text-1');
+mustContain(html, 'core.js?v=sales-glossy-readable-text-1');
+mustContain(html, 'app.js?v=sales-glossy-readable-text-1');
 
 // Sales/Cashier page buttons should use the glossy pill shape from the user's reference image without changing sizes.
 mustContain(app, 'data-current-tab="${esc(currentTab)}"', 'Content root must expose current tab for scoped cashier styling.');
@@ -31,6 +31,10 @@ mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-
 mustContain(styles, 'border-radius:999px!important;', 'Sales buttons must use a rounded capsule/pill form.');
 mustContain(styles, 'linear-gradient(180deg,rgba(255,255,255,.82)', 'Sales buttons must include a glossy top highlight band.');
 mustContain(styles, 'inset 0 -7px 10px rgba(15,23,42,.24)', 'Sales buttons must include a darker lower bevel.');
+mustContain(styles, 'color:#fff!important;', 'Sales button text must be forced to a readable high-contrast color.');
+mustContain(styles, '-webkit-text-fill-color:#fff!important;', 'Sales button text fill must override inherited theme colors.');
+mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close) *', 'Nested button labels/icons must inherit readable contrast, not old text colors.');
+mustContain(styles, 'rgba(255,255,255,.92)', 'Menu chip price text must remain readable on glossy buttons.');
 mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close):active:not(:disabled)', 'Sales buttons need pressed state feedback.');
 mustContain(styles, '.app-shell.theme-midnight .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Glossy cashier buttons must stay theme-aware in night mode.');
 assert(!styles.includes('border-width:1.5px!important;'), 'Glossy form must not change button size through forced thicker borders.');
