@@ -303,9 +303,16 @@ function downloadTextFile(filename, text) {
 
 function sectionBackupLabel(section) { return section === 'inventory' ? 'انبار' : 'رسپی'; }
 function sectionBackupFilePrefix(section) { return section === 'inventory' ? 'backup-inventory' : 'backup-recipes'; }
+function sectionBackupIcon(type) {
+  const icons = {
+    export: '<svg class="section-backup-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>',
+    import: '<svg class="section-backup-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21V11"/><path d="M8 17l4 4 4-4"/><path d="M5 11V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5"/></svg>',
+  };
+  return icons[type] || '';
+}
 function sectionBackupControls(section) {
   const label = sectionBackupLabel(section);
-  return `<div class="section-backup-actions" data-section-backup-actions="${section}"><button type="button" class="section-backup-button" data-export-section-backup="${section}" aria-label="دریافت بک‌آپ کامل ${label}">خروجی کل ${label}</button><input type="file" accept="application/json,.json" hidden data-import-section-backup-input="${section}"><button type="button" class="section-backup-button" data-import-section-backup="${section}" aria-label="ایمپورت بک‌آپ کامل ${label}">ایمپورت کل ${label}</button></div>`;
+  return `<div class="section-backup-actions" data-section-backup-actions="${section}"><button type="button" class="section-backup-decal section-backup-export-decal" data-export-section-backup="${section}" data-tooltip="دریافت فایل پشتیبان" aria-label="دریافت فایل پشتیبان ${label}">${sectionBackupIcon('export')}</button><input type="file" accept="application/json,.json" hidden data-import-section-backup-input="${section}"><button type="button" class="section-backup-decal section-backup-import-decal" data-import-section-backup="${section}" data-tooltip="ایمپورت فایل پشتیبان" aria-label="ایمپورت فایل پشتیبان ${label}">${sectionBackupIcon('import')}</button></div>`;
 }
 function bindSectionBackupControls(customer) {
   document.querySelectorAll('[data-export-section-backup]').forEach(btn => btn.addEventListener('click', () => {
