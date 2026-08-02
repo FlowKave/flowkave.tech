@@ -1041,15 +1041,16 @@ function render() {
           <article><span>سود تقریبی</span><strong>${money(summary.profit)}</strong><em>${summary.profit >= 0 ? 'مثبت' : 'منفی'}</em></article>
         </section>`;
   app.innerHTML = `
-    <div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div>
     <div class="app-shell theme-${currentTheme}">
+      <header class="app-header" data-app-header>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong></div>
+        <div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div>
+        <div class="app-logo" aria-label="لوگوی سامانه"><span>ف</span></div>
+      </header>
       <aside class="sidebar">
-        <div class="brand"><div class="brand-mark">ر</div><div><strong>سامانه رستوران</strong><span>${esc(customer.businessName)} — نقش: ${esc(roleLabel(currentRole()))}</span></div></div>
         ${renderThemePicker()}
         <nav>${navItems.map(([id,label]) => `<button class="nav ${currentTab===id?'active':''}" data-tab="${id}">${label}</button>`).join('')}</nav>
         <button type="button" class="calculator-launch-button" data-open-calculator>ماشین حساب</button>
-        ${isCashier ? '' : '<div class="ai-card"><small>هوش مصنوعی محلی آماده</small><p>نسخه بعد: پیشنهاد قیمت، هشدار کمبود و تولید توضیح غذا با مدل محلی.</p></div>'}
-        <button class="ghost" id="logout">خروج</button>
       </aside>
       <main class="content">
         ${statsMarkup}
