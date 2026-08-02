@@ -1155,7 +1155,7 @@ function render() {
         <nav>${navItems.map(([id,label]) => `<button class="nav ${currentTab===id?'active':''}" data-tab="${id}">${label}</button>`).join('')}</nav>
         <button type="button" class="calculator-launch-button" data-open-calculator>ماشین حساب</button>
       </aside>
-      <main class="content">
+      <main class="content" data-current-tab="${esc(currentTab)}">
         ${statsMarkup}
         ${renderTab(customer)}
       </main>
