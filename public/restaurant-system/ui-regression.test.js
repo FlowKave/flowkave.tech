@@ -21,16 +21,18 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=sales-raised-buttons-1');
-mustContain(html, 'core.js?v=sales-raised-buttons-1');
-mustContain(html, 'app.js?v=sales-raised-buttons-1');
+mustContain(html, 'styles.css?v=sales-glossy-pill-buttons-1');
+mustContain(html, 'core.js?v=sales-glossy-pill-buttons-1');
+mustContain(html, 'app.js?v=sales-glossy-pill-buttons-1');
 
-// Sales/Cashier page buttons should be visibly raised/tactile.
+// Sales/Cashier page buttons should use the glossy pill shape from the user's reference image without changing sizes.
 mustContain(app, 'data-current-tab="${esc(currentTab)}"', 'Content root must expose current tab for scoped cashier styling.');
-mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Raised button styling must be scoped to the Sales/Cashier page.');
-mustContain(styles, 'transform:translateY(-2px)!important;', 'Sales buttons must have an elevated raised transform.');
-mustContain(styles, 'box-shadow:0 9px 0', 'Sales buttons must have a visible bottom/depth shadow.');
+mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Glossy pill styling must be scoped to the Sales/Cashier page.');
+mustContain(styles, 'border-radius:999px!important;', 'Sales buttons must use a rounded capsule/pill form.');
+mustContain(styles, 'linear-gradient(180deg,rgba(255,255,255,.82)', 'Sales buttons must include a glossy top highlight band.');
+mustContain(styles, 'inset 0 -7px 10px rgba(15,23,42,.24)', 'Sales buttons must include a darker lower bevel.');
 mustContain(styles, '.content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close):active:not(:disabled)', 'Sales buttons need pressed state feedback.');
-mustContain(styles, '.app-shell.theme-midnight .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Raised cashier buttons must stay theme-aware in night mode.');
+mustContain(styles, '.app-shell.theme-midnight .content[data-current-tab="sales"] button:not(.modal-close-icon):not(.calculator-close)', 'Glossy cashier buttons must stay theme-aware in night mode.');
+assert(!styles.includes('border-width:1.5px!important;'), 'Glossy form must not change button size through forced thicker borders.');
 
 console.log('ui-regression.test.js: ok');
