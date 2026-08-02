@@ -618,3 +618,10 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
 /* Header left order: physical left خروج button, then restaurant name */
 .app-header .header-actions{direction:ltr!important;justify-self:start!important}
 .app-header .header-restaurant-name{direction:rtl!important;text-align:right!important}
+
+
+/* Authenticated header must remain visible while page content scrolls */
+.app-shell{padding-top:74px!important;grid-template-rows:1fr!important}
+.app-header{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100%!important;grid-column:auto!important}
+.sidebar,.content{grid-row:1!important}.content{padding-top:30px!important}
+@media(max-width:900px){.app-shell{padding-top:156px!important}.content{padding-top:18px!important}}
