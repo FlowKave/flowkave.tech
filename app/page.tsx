@@ -1,75 +1,114 @@
 const modules = [
-  {
-    title: 'صندوق و ثبت سفارش',
-    body: 'ثبت سفارش سالن، دلیوری و اسنپ‌فود با انتخاب میز، فیش باز، تسویه کامل یا مرحله‌ای و چاپ رسید.',
-    color: 'from-cyan-300/24 to-emerald-400/10',
-    rows: ['میز ۱۲ · فیش باز', 'لاته × ۳', 'تسویه اقلام باقی‌مانده']
-  },
-  {
-    title: 'منوی دیجیتال',
-    body: 'ساخت منو، دسته‌بندی غذا و نوشیدنی، انتشار منوی قابل مشاهده برای مشتری و کنترل آیتم‌های فعال.',
-    color: 'from-violet-300/24 to-cyan-400/10',
-    rows: ['نوشیدنی گرم', 'دسر', 'انتشار منو']
-  },
-  {
-    title: 'رسپی و قیمت تمام‌شده',
-    body: 'ثبت رسپی هر آیتم، مصرف مواد اولیه، محاسبه قیمت تمام‌شده و آماده‌سازی برای تصمیم قیمت‌گذاری.',
-    color: 'from-amber-300/24 to-rose-400/10',
-    rows: ['شیر: ۱۸۰ میلی‌لیتر', 'قهوه: ۱۸ گرم', 'قیمت تمام‌شده هر پرس']
-  },
-  {
-    title: 'انبار و فاکتور خرید',
-    body: 'کنترل موجودی مواد اولیه، هشدار کمبود، ورود فاکتور خرید و اثر خودکار روی انبار.',
-    color: 'from-emerald-300/24 to-teal-400/10',
-    rows: ['موجودی شیر', 'حداقل هشدار', 'ثبت فاکتور خرید']
-  },
-  {
-    title: 'حسابداری پایه',
-    body: 'حساب‌های بانکی و نقدی، هزینه عملیاتی، چک‌ها، دفتر مالی و گزارش سود تقریبی در یک محیط ساده.',
-    color: 'from-blue-300/24 to-violet-400/10',
-    rows: ['حساب‌ها', 'هزینه‌ها', 'چک‌ها']
-  },
-  {
-    title: 'بانک مشتریان',
-    body: 'ثبت مشتری، سگمنت‌ها، سابقه خرید، مشتریان غیرفعال و پیشنهاد کمپین برگشت مشتری.',
-    color: 'from-pink-300/24 to-orange-400/10',
-    rows: ['مشتری وفادار', 'پرخرج', 'کمپین بازگشت']
-  }
+  ['صندوق و ثبت سفارش', 'فروش سالن، دلیوری، فیش باز، انتخاب میز، آیتم‌های منو و تسویه در یک صفحه قابل کنترل.'],
+  ['منوی دیجیتال', 'ساخت منو، دسته‌بندی، آیتم‌های فعال، جزئیات غذا و آماده‌سازی برای نمایش عمومی.'],
+  ['رسپی و قیمت تمام‌شده', 'ثبت مواد اولیه هر آیتم، مقدار مصرف، مراحل آماده‌سازی و محاسبه قیمت تمام‌شده.'],
+  ['انبار و فاکتور خرید', 'موجودی مواد، هشدار کمبود، ثبت فاکتور خرید و ارتباط مستقیم با رسپی‌ها.'],
+  ['حسابداری پایه', 'حساب‌ها، هزینه‌ها، چک‌ها، دفتر مالی و گزارش سود تقریبی برای مدیریت روزانه.'],
+  ['بانک مشتریان', 'ثبت مشتری، سابقه خرید، سگمنت‌بندی و مسیر آماده برای کمپین بازگشت مشتری.']
 ];
 
 const benefits = [
   ['دید عملیاتی واضح', 'مدیر به جای چند دفتر و فایل پراکنده، فروش، انبار، رسپی و حسابداری را در یک سامانه می‌بیند.'],
   ['مناسب کافه و رستوران واقعی', 'سناریوها بر اساس میز سالن، صندوق، فاکتور خرید، مواد اولیه، رسپی و پرداخت طراحی شده‌اند.'],
-  ['آماده توسعه محلی و ابری', 'برای ارائه روی وب آماده است و مسیر نسخه محلی داخل رستوران و همگام‌سازی آینده هم در طراحی دیده شده.']
+  ['آماده توسعه محلی و ابری', 'مسیر نسخه محلی داخل رستوران، کار روی شبکه داخلی و همگام‌سازی آینده در طراحی دیده شده است.']
 ];
 
-const screenshots = [
-  { label: 'داشبورد مدیریتی', title: 'نمای کلی وضعیت روز', stats: ['درآمد امروز', 'هزینه‌ها', 'سود تقریبی', 'هشدار انبار'] },
-  { label: 'صندوق', title: 'ثبت سفارش میز و تسویه', stats: ['انتخاب میز', 'افزودن آیتم', 'تقسیم پرداخت', 'چاپ رسید'] },
-  { label: 'حسابداری', title: 'هزینه، چک و دفتر مالی', stats: ['ثبت هزینه', 'فاکتور خرید', 'چک‌های نزدیک', 'گزارش‌ها'] }
-];
-
-function ProductMockup({ title, rows, color }: { title: string; rows: string[]; color: string }) {
+function WindowShell({ title, tag, children }: { title: string; tag: string; children: React.ReactNode }) {
   return (
-    <div className={`rounded-[1.75rem] border border-white/10 bg-gradient-to-br ${color} p-4 shadow-2xl`}>
-      <div className="rounded-[1.35rem] border border-white/10 bg-[#07101d]/92 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" /></div>
-          <span className="rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1 text-[11px] font-black text-cyan-100">{title}</span>
-        </div>
-        <div className="grid gap-3">
-          {rows.map((row, index) => (
-            <div key={row} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-2xl border border-white/10 bg-white/[.055] p-3">
-              <div>
-                <p className="text-sm font-black text-slate-100">{row}</p>
-                <p className="mt-1 text-xs font-bold text-slate-500">نمونه از صفحه سامانه</p>
-              </div>
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-200 text-xs font-black text-[#06111f]">{index + 1}</span>
-            </div>
-          ))}
+    <div className="rounded-[2rem] border border-white/10 bg-[#07101d]/95 p-4 shadow-2xl">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-300" /></div>
+        <div className="text-left">
+          <p className="text-xs font-black text-cyan-200">{tag}</p>
+          <h3 className="mt-1 text-xl font-black text-white">{title}</h3>
         </div>
       </div>
+      {children}
     </div>
+  );
+}
+
+function CashierSlide() {
+  const items = ['لاته', 'کاپوچینو', 'موکا', 'چیزکیک', 'املت ویژه', 'سالاد سزار', 'آیس لاته', 'براونی'];
+  return (
+    <WindowShell title="صفحه صندوق و فروش سالن" tag="اسلاید عملیاتی">
+      <div className="grid gap-4 lg:grid-cols-[1.25fr_.75fr]">
+        <div className="rounded-3xl border border-white/10 bg-white/[.045] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="rounded-2xl bg-cyan-200 px-3 py-2 text-xs font-black text-[#06111f]">میز ۱۲ انتخاب شده</span>
+            <span className="text-sm font-black text-slate-300">دسته‌بندی آیتم‌ها</span>
+          </div>
+          <div className="mb-4 flex flex-wrap gap-2 text-xs font-black text-slate-200">
+            {['نوشیدنی گرم', 'نوشیدنی سرد', 'صبحانه', 'غذای اصلی', 'دسر'].map((x, i) => <span key={x} className={`rounded-full px-3 py-2 ${i === 0 ? 'bg-cyan-200 text-[#06111f]' : 'bg-white/[.07]'}`}>{x}</span>)}
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {items.map((item, i) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-[#0d1828] p-3 text-center shadow-lg">
+                <p className="truncate text-base font-black text-white">{item}</p>
+                <p className="mt-1 text-sm font-bold text-cyan-200">{['۹۵٬۰۰۰','۱۱۰٬۰۰۰','۱۲۵٬۰۰۰','۱۴۰٬۰۰۰'][i % 4]} تومان</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 rounded-2xl border border-emerald-200/20 bg-emerald-200/10 p-3 text-sm font-bold leading-7 text-emerald-100">با کلیک روی هر آیتم، همان لحظه به فیش سمت چپ اضافه می‌شود و صندوق‌دار قبل از پرداخت همه اقلام را می‌بیند.</p>
+        </div>
+        <div className="rounded-3xl border border-cyan-200/20 bg-cyan-200/10 p-4">
+          <p className="text-lg font-black text-cyan-100">فیش باز میز ۱۲</p>
+          <div className="mt-4 grid gap-3">
+            {['لاته × ۳', 'چیزکیک × ۱', 'موکا × ۲'].map((x, i) => <div key={x} className="flex items-center justify-between rounded-2xl bg-[#07101d]/85 p-3"><b>{x}</b><span className="text-cyan-200">{['۲۸۵٬۰۰۰','۱۴۰٬۰۰۰','۲۵۰٬۰۰۰'][i]}</span></div>)}
+          </div>
+          <div className="mt-4 rounded-2xl bg-white p-4 text-[#06111f]">
+            <div className="flex justify-between text-sm font-bold"><span>جمع پرداخت</span><span>۶۷۵٬۰۰۰ تومان</span></div>
+            <button className="mt-4 w-full rounded-2xl bg-[#06111f] py-3 font-black text-white">پرداخت اقلام انتخاب‌شده</button>
+          </div>
+        </div>
+      </div>
+    </WindowShell>
+  );
+}
+
+function RecipeSlide() {
+  return (
+    <WindowShell title="صفحه رسپی و قیمت تمام‌شده" tag="اسلاید رسپی">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/10 bg-emerald-200/10 p-4">
+          <p className="text-lg font-black text-emerald-100">ایجاد رسپی جدید</p>
+          {['نام آیتم: لاته', 'دسته‌بندی: نوشیدنی گرم', 'مواد اولیه: شیر، قهوه', 'مراحل آماده‌سازی'].map((x) => <div key={x} className="mt-3 rounded-2xl bg-[#07101d]/85 p-3 text-sm font-bold text-slate-200">{x}</div>)}
+          <div className="mt-3 rounded-2xl border border-cyan-200/20 bg-cyan-200/10 p-3 text-sm font-bold leading-7 text-cyan-100">قیمت تمام‌شده هر پرس: ۵۴٬۰۰۰ تومان</div>
+        </div>
+        <div className="rounded-3xl border border-white/10 bg-white/[.045] p-4">
+          <p className="text-lg font-black text-white">رسپی‌های ثبت‌شده</p>
+          {['لاته — ۵۴٬۰۰۰ تومان', 'کاپوچینو — ۴۸٬۰۰۰ تومان', 'املت ویژه — ۶۹٬۰۰۰ تومان'].map((x) => <div key={x} className="mt-3 flex items-center justify-between rounded-2xl bg-[#0d1828] p-3"><span className="font-bold">{x}</span><span className="text-cyan-200">ویرایش</span></div>)}
+        </div>
+      </div>
+    </WindowShell>
+  );
+}
+
+function InventorySlide() {
+  return (
+    <WindowShell title="صفحه انبار و فاکتور خرید" tag="اسلاید انبار">
+      <div className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
+        <div className="rounded-3xl border border-white/10 bg-white/[.045] p-4">
+          <p className="text-lg font-black text-white">موجودی انبار</p>
+          {['شیر: ۵ لیتر', 'قهوه: ۱ کیلوگرم', 'تخم‌مرغ: ۶۰ عدد', 'گوجه: ۸ کیلوگرم'].map((x, i) => <div key={x} className="mt-3 grid grid-cols-[1fr_auto] rounded-2xl bg-[#0d1828] p-3 text-sm font-bold"><span>{x}</span><span className={i === 1 ? 'text-amber-200' : 'text-emerald-200'}>{i === 1 ? 'نزدیک هشدار' : 'موجود'}</span></div>)}
+        </div>
+        <div className="rounded-3xl border border-cyan-200/20 bg-cyan-200/10 p-4">
+          <p className="text-lg font-black text-cyan-100">ثبت فاکتور خرید</p>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold"><span className="rounded-2xl bg-[#07101d]/85 p-3">تأمین‌کننده</span><span className="rounded-2xl bg-[#07101d]/85 p-3">مبلغ فاکتور</span><span className="rounded-2xl bg-[#07101d]/85 p-3">روش پرداخت</span><span className="rounded-2xl bg-[#07101d]/85 p-3">حساب پرداخت‌کننده</span></div>
+          <div className="mt-4 rounded-2xl bg-white p-4 text-[#06111f]"><b>آیتم‌های فاکتور:</b><p className="mt-2 text-sm font-bold">شیر × ۱۰ لیتر، قهوه × ۲ کیلوگرم، شکر × ۵ کیلوگرم</p></div>
+        </div>
+      </div>
+    </WindowShell>
+  );
+}
+
+function AccountingSlide() {
+  return (
+    <WindowShell title="صفحه حسابداری و گزارش" tag="اسلاید مدیریت مالی">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {['حساب‌ها', 'هزینه‌ها', 'چک‌ها'].map((title, i) => <div key={title} className="rounded-3xl border border-white/10 bg-white/[.045] p-4"><p className="text-lg font-black text-cyan-100">{title}</p><p className="mt-4 text-3xl font-black">{['۱۴٬۵۰۰٬۰۰۰','۲٬۳۰۰٬۰۰۰','۳ مورد'][i]}</p><p className="mt-2 text-sm font-bold text-slate-400">نمای مدیریتی روزانه</p></div>)}
+      </div>
+    </WindowShell>
   );
 }
 
@@ -119,30 +158,17 @@ export default function Home() {
         </div>
 
         <div className="glass relative rounded-[2.25rem] p-4">
-          <div className="rounded-[1.7rem] border border-white/10 bg-[#070a13] p-5 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-black text-emerald-100">نمونه نمای مدیریتی</span>
-              <div className="flex gap-2"><span className="h-3 w-3 rounded-full bg-[#ff6b6b]" /><span className="h-3 w-3 rounded-full bg-[#ffd166]" /><span className="h-3 w-3 rounded-full bg-[#06d6a0]" /></div>
-            </div>
-            <p className="text-3xl font-black">داشبورد عملیاتی رستوران</p>
-            <p className="mt-2 text-sm leading-6 text-slate-400">مدیر در یک نگاه می‌بیند امروز چه فروخته، چه هزینه‌ای ثبت شده، کدام مواد رو به اتمام است و کدام سفارش‌ها باز هستند.</p>
-            <div className="my-6 grid gap-3 sm:grid-cols-2">
+          <WindowShell title="داشبورد عملیاتی رستوران" tag="نمای مدیریتی">
+            <div className="grid gap-3 sm:grid-cols-2">
               {[
                 ['درآمد امروز', '۱۲٬۸۵۰٬۰۰۰ تومان'],
                 ['فیش‌های باز', '۷ میز'],
                 ['هشدار انبار', '۴ ماده'],
                 ['چک نزدیک', '۲ مورد']
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl border border-white/10 bg-white/[.045] p-4">
-                  <p className="text-xs font-bold text-slate-500">{label}</p>
-                  <p className="mt-2 text-xl font-black text-cyan-200">{value}</p>
-                </div>
-              ))}
+              ].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.045] p-4"><p className="text-xs font-bold text-slate-500">{label}</p><p className="mt-2 text-xl font-black text-cyan-200">{value}</p></div>)}
             </div>
-            <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-r from-cyan-300/10 to-violet-400/10 p-5 text-sm font-semibold leading-7 text-slate-100">
-              هدف: مشتری دقیقاً بفهمد سامانه چه چیزی را در کار روزانه‌اش ساده‌تر می‌کند.
-            </div>
-          </div>
+            <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-gradient-to-r from-cyan-300/10 to-violet-400/10 p-5 text-sm font-semibold leading-7 text-slate-100">مشتری دقیقاً می‌بیند سامانه چه چیزی را در کار روزانه رستوران ساده‌تر می‌کند.</div>
+          </WindowShell>
         </div>
       </section>
 
@@ -153,38 +179,23 @@ export default function Home() {
           <p className="mt-5 text-lg leading-9 text-slate-300">هر بخش برای یک مسئله واقعی طراحی شده: فروش، مواد اولیه، قیمت تمام‌شده، پرداخت‌ها، مشتریان و گزارش مدیریتی.</p>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {modules.map((module) => (
-            <article key={module.title} className="glass rounded-[1.9rem] p-5 transition hover:-translate-y-1 hover:border-cyan-200/30">
-              <ProductMockup title={module.title} rows={module.rows} color={module.color} />
-              <h3 className="mt-6 text-2xl font-black">{module.title}</h3>
-              <p className="mt-3 leading-8 text-slate-300">{module.body}</p>
-            </article>
-          ))}
+          {modules.map(([title, body]) => <article key={title} className="glass rounded-[1.9rem] p-7 transition hover:-translate-y-1 hover:border-cyan-200/30"><h3 className="text-2xl font-black text-cyan-100">{title}</h3><p className="mt-4 leading-8 text-slate-300">{body}</p></article>)}
         </div>
       </section>
 
       <div className="hairline mx-auto max-w-7xl" />
 
       <section id="screens" className="relative z-10 mx-auto max-w-7xl px-5 py-20">
-        <div className="grid gap-10 lg:grid-cols-[.85fr_1.15fr]">
-          <div>
-            <p className="text-sm font-black tracking-[.2em] text-violet-200">نمای ملموس برای مشتری</p>
-            <h2 className="mt-4 text-4xl font-black tracking-[-.035em] md:text-6xl">صفحه‌ها را ببیند و کاربرد را ملموس حس کند.</h2>
-            <p className="mt-6 text-lg leading-9 text-slate-300">این بخش‌ها برای فروش مهم‌اند: مشتری باید ببیند سامانه واقعاً در سالن، صندوق، آشپزخانه، انبار و حسابداری چه کمکی می‌کند.</p>
-          </div>
-          <div className="grid gap-5">
-            {screenshots.map((screen) => (
-              <div key={screen.title} className="rounded-[2rem] border border-white/10 bg-[#07101d]/90 p-5 shadow-2xl">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-2xl font-black text-cyan-100">{screen.title}</h3>
-                  <span className="rounded-full bg-white/[.07] px-3 py-1 text-xs font-black text-slate-300">{screen.label}</span>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  {screen.stats.map((item) => <div key={item} className="rounded-2xl border border-white/10 bg-white/[.045] p-4 text-center text-sm font-black text-slate-200">{item}</div>)}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="mb-10 max-w-4xl">
+          <p className="text-sm font-black tracking-[.2em] text-violet-200">نمای ملموس برای مشتری</p>
+          <h2 className="mt-4 text-4xl font-black tracking-[-.035em] md:text-6xl">اسلایدهای تصویری از محیط واقعی سامانه</h2>
+          <p className="mt-6 text-lg leading-9 text-slate-300">در این بخش، هر قسمت مثل یک اسلاید پاورپوینت نمایش داده می‌شود تا مشتری دقیقاً ببیند در صندوق، رسپی، انبار و حسابداری چه اتفاقی می‌افتد.</p>
+        </div>
+        <div className="grid gap-8">
+          <CashierSlide />
+          <RecipeSlide />
+          <InventorySlide />
+          <AccountingSlide />
         </div>
       </section>
 
@@ -192,15 +203,9 @@ export default function Home() {
         <p className="text-sm font-black tracking-[.2em] text-cyan-200">چرا برای فروش جذاب است؟</p>
         <h2 className="mt-4 max-w-4xl text-4xl font-black tracking-[-.035em] md:text-6xl">به جای وعده کلی، مسئله‌های روزانه رستوران را نشان می‌دهد.</h2>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {benefits.map(([title, body]) => (
-            <article key={title} className="rounded-[1.9rem] border border-white/10 bg-[#070a13]/85 p-7 shadow-2xl">
-              <h3 className="text-3xl font-black text-cyan-100">{title}</h3>
-              <p className="mt-5 leading-8 text-slate-300">{body}</p>
-            </article>
-          ))}
+          {benefits.map(([title, body]) => <article key={title} className="rounded-[1.9rem] border border-white/10 bg-[#070a13]/85 p-7 shadow-2xl"><h3 className="text-3xl font-black text-cyan-100">{title}</h3><p className="mt-5 leading-8 text-slate-300">{body}</p></article>)}
         </div>
       </section>
-
 
       <footer className="relative z-10 border-t border-white/10 px-5 py-8 text-center text-sm font-semibold text-slate-400">فلوکیو — سامانه مدیریت رستوران و کافه</footer>
     </main>
