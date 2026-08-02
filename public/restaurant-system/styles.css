@@ -972,3 +972,28 @@ html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs{
   background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important;
   border-color:#fdba74!important;
 }
+
+/* POS channel/category active pill final restore: active must stay glossy red, never theme-purple. */
+html body .app-shell .pos-channel-tabs button.active,
+html body .app-shell #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell #hallSaleForm .hall-category-tab.active,
+html body .app-shell.theme-midnight .pos-channel-tabs button.active,
+html body .app-shell.theme-midnight #hallSaleForm .hall-category-tabs button.active,
+html body .app-shell.theme-midnight #hallSaleForm .hall-category-tab.active{
+  border-color:rgba(248,113,113,.82)!important;
+  background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important;
+  background-image:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  text-shadow:0 2px 4px rgba(83,27,8,.42)!important;
+  box-shadow:inset 0 3px 9px rgba(255,255,255,.72),inset 0 -10px 14px rgba(127,18,36,.42),0 0 0 4px rgba(244,63,94,.20),0 14px 26px rgba(190,18,60,.34)!important;
+}
+html body .app-shell .pos-channel-tabs button:not(.active),
+html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active),
+html body .app-shell #hallSaleForm .hall-category-tab:not(.active){
+  background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important;
+  background-image:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important;
+  border-color:rgba(154,52,18,.72)!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
