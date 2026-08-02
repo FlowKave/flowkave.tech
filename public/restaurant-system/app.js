@@ -39,6 +39,7 @@ let editingPurchaseInvoiceId = '';
 let posSalesChannel = 'hall';
 let selectedHallTableId = '';
 let hallTablePickerOpen = false;
+let hallTableConfigOpen = false;
 let selectedHallCategory = '';
 let hallOrderDrafts = {};
 let calculatorValue = '';
@@ -1456,7 +1457,12 @@ function renderHallTablePicker(tables, selectedTable) {
 function renderHallTableConfigForm(customer) {
   const tables = RestaurantCore.getHallTables(state, customer.id);
   const settings = customer.hallTableSettings || { count: tables.length || 8, prefix: 'میز', startNumber: 1, customNames: [] };
-  return `<form class="panel wide hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>تنظیم میزهای سالن</h2><span class="badge">مشتری/پکیج</span></div><p>مدیر هر رستوران تعداد میز و نحوه شماره‌گذاری را از این بخش تنظیم می‌کند؛ فروش فقط انتخاب میز و ثبت سفارش را نشان می‌دهد.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || tables.length || 8)}</label><label>عنوان/پیشوند<input name="prefix" value="${esc(settings.prefix || 'میز')}"></label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً میز ۱، وی‌آی‌پی، تراس ۱">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
+  return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میز، پیشوند و نام‌گذاری دستی سالن را همین‌جا تنظیم کن؛ بعد از ذخیره، انتخاب میز با چیدمان جدید نمایش داده می‌شود.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || tables.length || 8)}</label><label>عنوان/پیشوند<input name="prefix" value="${esc(settings.prefix || 'میز')}"></label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً میز ۱، وی‌آی‌پی، تراس ۱">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
+}
+
+function renderHallTableConfigPopup(customer) {
+  if (!hallTableConfigOpen) return '';
+  return `<div class="modal-backdrop hall-table-config-backdrop" data-close-hall-table-config><div class="hall-table-config-popup" role="dialog" aria-modal="true" aria-label="چیدمان میزهای سالن"><button type="button" class="modal-close-icon hall-table-config-close" data-close-hall-table-config aria-label="بستن">×</button>${renderHallTableConfigForm(customer)}</div></div>`;
 }
 
 function renderHallSales(customer) {
@@ -1468,13 +1474,15 @@ function renderHallSales(customer) {
   const categories = [...new Set(items.map(item => item.category || 'بدون دسته‌بندی'))];
   if (!selectedHallCategory || !categories.includes(selectedHallCategory)) selectedHallCategory = categories[0] || '';
   const visibleItems = selectedHallCategory ? items.filter(item => (item.category || 'بدون دسته‌بندی') === selectedHallCategory) : items;
-  const picker = `<div class="hall-corner-picker"><button type="button" class="hall-table-trigger" data-open-hall-table-picker><span class="hall-table-3d-icon" aria-hidden="true"><svg viewBox="0 0 96 72" focusable="false"><defs><linearGradient id="hallTableTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fed7aa"/><stop offset="0.52" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient><linearGradient id="hallTableLeg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a3412"/><stop offset="1" stop-color="#431407"/></linearGradient><filter id="hallTableShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#7c2d12" flood-opacity=".32"/></filter></defs><ellipse cx="48" cy="62" rx="34" ry="7" fill="#7c2d12" opacity=".16"/><g filter="url(#hallTableShadow)"><path d="M18 22 48 8l30 14-30 15z" fill="url(#hallTableTop)"/><path d="M18 22v13l30 16V37z" fill="#ea580c"/><path d="M78 22v13L48 51V37z" fill="#9a3412"/><path d="M48 8 78 22 48 37 18 22z" fill="none" stroke="#fff7ed" stroke-width="3" opacity=".55"/><path d="M29 38v22M67 38v22" stroke="url(#hallTableLeg)" stroke-width="8" stroke-linecap="round"/><path d="M39 45v19M57 45v19" stroke="#7c2d12" stroke-width="6" stroke-linecap="round"/></g></svg></span><b>انتخاب میز</b></button></div>${renderHallTablePicker(tables, selectedTable)}`;
+  const tableIconMarkup = `<span class="hall-table-3d-icon" aria-hidden="true"><svg viewBox="0 0 96 72" focusable="false"><defs><linearGradient id="hallTableTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fed7aa"/><stop offset="0.52" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient><linearGradient id="hallTableLeg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a3412"/><stop offset="1" stop-color="#431407"/></linearGradient><filter id="hallTableShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#7c2d12" flood-opacity=".32"/></filter></defs><ellipse cx="48" cy="62" rx="34" ry="7" fill="#7c2d12" opacity=".16"/><g filter="url(#hallTableShadow)"><path d="M18 22 48 8l30 14-30 15z" fill="url(#hallTableTop)"/><path d="M18 22v13l30 16V37z" fill="#ea580c"/><path d="M78 22v13L48 51V37z" fill="#9a3412"/><path d="M48 8 78 22 48 37 18 22z" fill="none" stroke="#fff7ed" stroke-width="3" opacity=".55"/><path d="M29 38v22M67 38v22" stroke="url(#hallTableLeg)" stroke-width="8" stroke-linecap="round"/><path d="M39 45v19M57 45v19" stroke="#7c2d12" stroke-width="6" stroke-linecap="round"/></g></svg></span>`;
+  const picker = `<div class="hall-corner-picker hall-table-toolbar"><button type="button" class="hall-table-trigger" data-open-hall-table-picker>${tableIconMarkup}<b>انتخاب میز</b></button><button type="button" class="hall-table-trigger hall-table-layout-trigger" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>`;
+  const tableOverlays = `${renderHallTablePicker(tables, selectedTable)}${renderHallTableConfigPopup(customer)}`;
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش ${esc(selectedTable.name)}</div>` : '';
   const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label><button class="primary" ${selectedTable && items.length ? '' : 'disabled'}>${selectedTable ? (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش و صدور فیش') : 'اول میز را انتخاب کنید'}</button>${activeOrder ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}</form>`;
   const payment = activeOrder ? renderHallPaymentPanel(activeOrder) : `<div class="panel hall-payment-panel"><h2>تقسیم فیش و پرداخت</h2><p>بعد از ثبت سفارش، اقلام پرداخت‌نشده همین‌جا برای تسویه کامل یا جزئی نمایش داده می‌شوند.</p></div>`;
-  return `<div class="pos-hall-workspace">${orderForm}${payment}</div>`;
+  return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
 
 function renderHallPaymentPanel(order) {
@@ -1904,7 +1912,6 @@ function renderAccount(customer) {
   const securityTypes = ['staff-invitation-created', 'staff-invitation-cancelled', 'staff-invitation-accepted', 'password-reset-requested', 'password-reset-used', 'staff-activated', 'staff-deactivated', 'staff-deleted'];
   return `<section class="workspace">
     ${renderOnboardingChecklist(customer)}
-    ${renderHallTableConfigForm(customer)}
     <form class="panel" id="packageForm"><h2>پکیج مشتری</h2><label>پکیج<select name="packageName">${Object.keys(RestaurantCore.packages).map(p=>`<option value="${p}" ${p===customer.packageName?'selected':''}>${esc(packageLabel(p))}</option>`).join('')}</select></label><button class="primary">ذخیره پکیج</button></form>
     <form class="panel" id="staffForm"><h2>تعریف کارکنان مجاز</h2><p>مالک پکیج در این بخش فقط کارکنان خودش را تعریف می‌کند؛ مالک در این لیست نمایش داده نمی‌شود و ورود کارکنان با کد پرسنلی و پین است.</p><label>نام کارمند<input name="name" value="صندوق‌دار شیفت"></label><label>کد پرسنلی<input name="personnelCode" value="۱۰۰۱" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>پین کد<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option></select></label><button class="primary">افزودن کارمند</button></form>
     <form class="panel" id="invitationForm"><h2>دعوت کارکنان</h2><p>دعوت در انتظار پذیرش، کاربر فعال عملیاتی نمی‌سازد و برای نسخه واقعی به لینک زمان‌دار تبدیل می‌شود.</p><label>نام دعوت‌شونده<input name="name" value="صندوق‌دار تازه"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option></select></label><button class="primary">ساخت دعوت کارکنان</button></form>
@@ -2378,8 +2385,10 @@ function bindCommon() {
     updateRecipeCostPreview(document.querySelector('#recipeForm'), customer.id);
   });
   document.querySelectorAll('[data-pos-channel]').forEach(btn => btn.addEventListener('click', () => { posSalesChannel = btn.dataset.posChannel; render(); }));
-  document.querySelectorAll('[data-open-hall-table-picker]').forEach(btn => btn.addEventListener('click', () => { hallTablePickerOpen = true; render(); }));
+  document.querySelectorAll('[data-open-hall-table-picker]').forEach(btn => btn.addEventListener('click', () => { hallTablePickerOpen = true; hallTableConfigOpen = false; render(); }));
+  document.querySelectorAll('[data-open-hall-table-config]').forEach(btn => btn.addEventListener('click', () => { hallTableConfigOpen = true; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-close-hall-table-picker]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-picker-popup')) return; hallTablePickerOpen = false; render(); }));
+  document.querySelectorAll('[data-close-hall-table-config]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-config-popup')) return; hallTableConfigOpen = false; render(); }));
   document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallTable; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
@@ -2735,6 +2744,7 @@ function bindCommon() {
       const tables = RestaurantCore.configureHallTables(state, customer.id, { count: parseFaNumber(f.get('count')), prefix: cleanPersianText(f.get('prefix') || 'میز'), startNumber: parseFaNumber(f.get('startNumber')) || 1, customNames: String(f.get('customNames') || '').split(/[،,\n]/).map(x => cleanPersianText(x)).filter(Boolean) });
       selectedHallTableId = tables[0]?.id || '';
       hallTablePickerOpen = false;
+      hallTableConfigOpen = false;
       return tables;
     },
     hallSaleForm: (f, form) => {
@@ -2788,7 +2798,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message); } });
+    if (form) form.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message); } });
   }
 }
 

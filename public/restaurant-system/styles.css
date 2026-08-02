@@ -732,3 +732,15 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
 .inventory-edit-panel{grid-area:stock!important;width:100%!important;max-width:none!important;margin-inline:0!important;height:800px!important;min-height:800px!important;max-height:800px!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
 .inventory-edit-scroll{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important}
 @media(max-width:1100px){.inventory-workspace{grid-template-columns:1fr!important;grid-template-areas:"create" "stock"!important}.inventory-create-panel,.inventory-edit-panel{height:auto!important;min-height:auto!important;max-height:none!important}.inventory-edit-panel{max-height:70vh!important}.inventory-edit-scroll{overflow-x:auto!important}}
+
+
+/* Hall table layout moved from customer/package into the cashier box popup. */
+.hall-table-toolbar{position:static!important;display:flex!important;align-items:center!important;justify-content:space-between!important;direction:rtl!important;gap:12px!important;width:100%!important;margin:0 0 12px!important;z-index:4!important}
+.hall-table-toolbar .hall-table-trigger{margin:0!important;flex:0 0 auto!important}
+.hall-table-layout-trigger{background:linear-gradient(135deg,#fff7ed,#ffedd5)!important;border-color:#fdba74!important;box-shadow:0 14px 30px rgba(251,146,60,.18)!important}
+.hall-table-layout-trigger .hall-table-3d-icon svg{filter:saturate(1.08)}
+.hall-table-config-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.34);display:flex!important;align-items:flex-start!important;justify-content:center!important;padding-top:clamp(92px,15vh,150px)!important;overflow:auto!important;z-index:1000}
+.hall-table-config-popup{position:relative!important;width:min(680px,92vw)!important;max-height:min(78vh,720px)!important;overflow:auto!important;padding-top:54px!important}
+.hall-table-config-popup .hall-table-config-form{width:100%!important;margin:0!important}
+.hall-table-config-close{position:absolute!important;top:18px!important;right:18px!important;left:auto!important;z-index:30!important;display:grid!important}
+@media(max-width:820px){.hall-table-toolbar{flex-wrap:wrap!important}.hall-table-toolbar .hall-table-trigger{min-width:150px!important}.hall-table-config-popup{width:min(680px,94vw)!important}}
