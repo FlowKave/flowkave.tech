@@ -1073,15 +1073,7 @@ function renderAuth() {
 
   document.querySelector('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { setActiveSession(RestaurantCore.login(state, f.get('email'), toEnglishDigits(f.get('password')))); saveState(); render(); } catch { alert('ورود مالک ناموفق است'); }});
   document.querySelector('#staffLoginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { setActiveSession(RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')))); saveState(); render(); } catch { alert('کد پرسنلی یا پین نامعتبر است'); }});
-  document.querySelector('#registerForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { const input = Object.fromEntries(f); input.password = toEnglishDigits(input.password); input.phone = toEnglishDigits(input.phone); const loginPassword = input.password; const c = RestaurantCore.createCustomer(state, input); seedForCustomer(c.id); setActiveSession(RestaurantCore.login(state, c.email, loginPassword)); saveState(); render(); } catch (err) { alert(err.message); }});
-}
-
-function seedForCustomer(customerId){
-  const menu = RestaurantCore.createMenu(state, customerId, { name: 'منوی اصلی', branchName: 'شعبه مرکزی' });
-  const item = RestaurantCore.createMenuItem(state, customerId, menu.id, { name: 'پیتزا مارگاریتا', category: 'غذای اصلی', price: 220000, available: true });
-  const cheese = RestaurantCore.createInventoryItem(state, customerId, { name: 'پنیر', unit: 'گرم', stock: 3000, unitCost: 1.5, minStock: 500 });
-  const dough = RestaurantCore.createInventoryItem(state, customerId, { name: 'خمیر', unit: 'عدد', stock: 40, unitCost: 18000, minStock: 8 });
-  RestaurantCore.setRecipe(state, customerId, item.id, [{ inventoryItemId: cheese.id, qty: 120 }, { inventoryItemId: dough.id, qty: 1 }], { cookingSteps: 'خمیر را پهن کن، مواد را اضافه کن و در فر داغ بپز.' });
+  document.querySelector('#registerForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { const input = Object.fromEntries(f); input.password = toEnglishDigits(input.password); input.phone = toEnglishDigits(input.phone); const loginPassword = input.password; const c = RestaurantCore.createCustomer(state, input); setActiveSession(RestaurantCore.login(state, c.email, loginPassword)); saveState(); render(); } catch (err) { alert(err.message); }});
 }
 
 function renderTab(customer) {
