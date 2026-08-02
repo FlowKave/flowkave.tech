@@ -1460,8 +1460,12 @@ function renderHallTableConfigForm(customer) {
   return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میز، پیشوند و نام‌گذاری دستی سالن را همین‌جا تنظیم کن؛ بعد از ذخیره، انتخاب میز با چیدمان جدید نمایش داده می‌شود.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || tables.length || 8)}</label><label>عنوان/پیشوند<input name="prefix" value="${esc(settings.prefix || 'میز')}"></label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً میز ۱، وی‌آی‌پی، تراس ۱">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
 }
 
+function canManageHallTableLayout() {
+  return currentRole() === 'manager';
+}
+
 function renderHallTableConfigPopup(customer) {
-  if (!hallTableConfigOpen) return '';
+  if (!hallTableConfigOpen || !canManageHallTableLayout()) return '';
   return `<div class="modal-backdrop hall-table-config-backdrop" data-close-hall-table-config><div class="hall-table-config-popup" role="dialog" aria-modal="true" aria-label="چیدمان میزهای سالن"><button type="button" class="modal-close-icon hall-table-config-close" data-close-hall-table-config aria-label="بستن">×</button>${renderHallTableConfigForm(customer)}</div></div>`;
 }
 
@@ -1475,7 +1479,8 @@ function renderHallSales(customer) {
   if (!selectedHallCategory || !categories.includes(selectedHallCategory)) selectedHallCategory = categories[0] || '';
   const visibleItems = selectedHallCategory ? items.filter(item => (item.category || 'بدون دسته‌بندی') === selectedHallCategory) : items;
   const tableIconMarkup = `<span class="hall-table-3d-icon" aria-hidden="true"><svg viewBox="0 0 96 72" focusable="false"><defs><linearGradient id="hallTableTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fed7aa"/><stop offset="0.52" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></linearGradient><linearGradient id="hallTableLeg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a3412"/><stop offset="1" stop-color="#431407"/></linearGradient><filter id="hallTableShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#7c2d12" flood-opacity=".32"/></filter></defs><ellipse cx="48" cy="62" rx="34" ry="7" fill="#7c2d12" opacity=".16"/><g filter="url(#hallTableShadow)"><path d="M18 22 48 8l30 14-30 15z" fill="url(#hallTableTop)"/><path d="M18 22v13l30 16V37z" fill="#ea580c"/><path d="M78 22v13L48 51V37z" fill="#9a3412"/><path d="M48 8 78 22 48 37 18 22z" fill="none" stroke="#fff7ed" stroke-width="3" opacity=".55"/><path d="M29 38v22M67 38v22" stroke="url(#hallTableLeg)" stroke-width="8" stroke-linecap="round"/><path d="M39 45v19M57 45v19" stroke="#7c2d12" stroke-width="6" stroke-linecap="round"/></g></svg></span>`;
-  const picker = `<div class="hall-corner-picker hall-table-toolbar"><button type="button" class="hall-table-trigger" data-open-hall-table-picker>${tableIconMarkup}<b>انتخاب میز</b></button><button type="button" class="hall-table-trigger hall-table-layout-trigger" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>`;
+  const tableLayoutButton = canManageHallTableLayout() ? `<button type="button" class="hall-table-trigger hall-table-layout-trigger" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button>` : '';
+  const picker = `<div class="hall-corner-picker hall-table-toolbar"><button type="button" class="hall-table-trigger" data-open-hall-table-picker>${tableIconMarkup}<b>انتخاب میز</b></button>${tableLayoutButton}</div>`;
   const tableOverlays = `${renderHallTablePicker(tables, selectedTable)}${renderHallTableConfigPopup(customer)}`;
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
@@ -2386,7 +2391,7 @@ function bindCommon() {
   });
   document.querySelectorAll('[data-pos-channel]').forEach(btn => btn.addEventListener('click', () => { posSalesChannel = btn.dataset.posChannel; render(); }));
   document.querySelectorAll('[data-open-hall-table-picker]').forEach(btn => btn.addEventListener('click', () => { hallTablePickerOpen = true; hallTableConfigOpen = false; render(); }));
-  document.querySelectorAll('[data-open-hall-table-config]').forEach(btn => btn.addEventListener('click', () => { hallTableConfigOpen = true; hallTablePickerOpen = false; render(); }));
+  document.querySelectorAll('[data-open-hall-table-config]').forEach(btn => btn.addEventListener('click', () => { if (!canManageHallTableLayout()) return; hallTableConfigOpen = true; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-close-hall-table-picker]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-picker-popup')) return; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-close-hall-table-config]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-config-popup')) return; hallTableConfigOpen = false; render(); }));
   document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallTable; hallTablePickerOpen = false; render(); }));
