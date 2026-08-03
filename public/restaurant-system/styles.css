@@ -1203,3 +1203,8 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .dashboard-low-stock-panel,.dashboard-status-panel{height:170px!important;min-height:170px!important;max-height:170px!important;box-sizing:border-box!important;overflow:hidden!important;justify-content:flex-start!important;padding-top:26px!important}
 .dashboard-low-stock-panel h2,.dashboard-status-panel h2{position:static!important;transform:none!important;margin:0 0 12px!important;font-size:clamp(18px,1.25vw,22px)!important;line-height:1.35!important}
 .dashboard-status-panel p{margin:2px 0!important;line-height:1.55!important;font-size:14px!important}
+
+
+/* Customer-facing dashboard: no internal launch checklist or migration/debug panels. */
+.dashboard-customer-layout{display:block!important;direction:rtl!important;max-width:980px!important;margin-inline:auto!important}
+.dashboard-customer-layout .dashboard-left-stack{width:100%!important}
