@@ -1208,3 +1208,11 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 /* Customer-facing dashboard: no internal launch checklist or migration/debug panels. */
 .dashboard-customer-layout{display:block!important;direction:rtl!important;max-width:980px!important;margin-inline:auto!important}
 .dashboard-customer-layout .dashboard-left-stack{width:100%!important}
+
+
+/* Personnel module: staff is a real personnel profile first, system access second. */
+.personnel-workspace{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.personnel-hero{grid-column:1/-1!important;background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 84%,var(--primary) 10%),color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary-2) 14%))!important}
+.personnel-model-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important}.personnel-model-cards div{border:1px solid var(--border);border-radius:18px;padding:14px;background:color-mix(in srgb,var(--surface-strong,#fff) 88%,var(--primary-2) 8%)}
+.settings-workspace{grid-template-columns:minmax(280px,.8fr) minmax(360px,1.2fr)!important}
+@media(max-width:900px){.personnel-workspace,.settings-workspace{grid-template-columns:1fr!important}.personnel-model-cards{grid-template-columns:1fr!important}}

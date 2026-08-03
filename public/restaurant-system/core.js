@@ -633,7 +633,7 @@
   }
 
   const rolePermissions = {
-    manager: ['dashboard', 'customerBank', 'aiAssistant', 'menu', 'sales', 'recipes', 'inventory', 'accounting', 'account', 'staff:manage'],
+    manager: ['dashboard', 'customerBank', 'aiAssistant', 'menu', 'sales', 'recipes', 'inventory', 'accounting', 'personnel', 'account', 'staff:manage'],
     cashier: ['sales'],
   };
 
