@@ -2808,6 +2808,10 @@ function bindCommon() {
 }
 
 window.addEventListener('hashchange', render);
+if (portalMode) {
+  ensurePortalCustomerSession(portalIdentity);
+  saveState(state);
+}
 render();
 setInterval(updateBusinessDateLineDom, 15000);
 initSharedStateSync();
