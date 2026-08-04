@@ -1216,3 +1216,8 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .personnel-model-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important}.personnel-model-cards div{border:1px solid var(--border);border-radius:18px;padding:14px;background:color-mix(in srgb,var(--surface-strong,#fff) 88%,var(--primary-2) 8%)}
 .settings-workspace{grid-template-columns:minmax(280px,.8fr) minmax(360px,1.2fr)!important}
 @media(max-width:900px){.personnel-workspace,.settings-workspace{grid-template-columns:1fr!important}.personnel-model-cards{grid-template-columns:1fr!important}}
+
+
+/* HR/personnel module: real personnel file, access, attendance, schedules and payroll. */
+.staff-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.staff-profile-grid .wide-field{grid-column:1/-1}.attendance-row.pending-approval{border-color:#f59e0b!important;background:color-mix(in srgb,#fff 82%,#f59e0b 12%)!important}.personnel-workspace .panel h2{line-height:1.35}.personnel-workspace .badge{white-space:nowrap}
+@media(max-width:900px){.staff-profile-grid{grid-template-columns:1fr}}

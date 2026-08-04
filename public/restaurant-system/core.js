@@ -126,6 +126,8 @@
       purchaseInvoices: [],
       shifts: [],
       staffUsers: [],
+      staffSchedules: [],
+      staffAttendance: [],
       staffInvitations: [],
       passwordResetTokens: [],
       securityEvents: [],
@@ -165,7 +167,7 @@
     return state;
   }
 
-  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'shifts', 'staffUsers', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
+  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'shifts', 'staffUsers', 'staffSchedules', 'staffAttendance', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
   const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
   const mvpMigrationPlan = {
@@ -626,19 +628,19 @@
   function loginWithStaffCode(state, personnelCode, pin) {
     migrateAuthState(state);
     const code = normalizePersonnelCode(personnelCode);
-    const user = (state.staffUsers || []).find((u) => normalizePersonnelCode(u.personnelCode) === code && verifyPasswordRecord(u, pin) && u.active !== false);
+    const user = (state.staffUsers || []).find((u) => normalizePersonnelCode(u.personnelCode) === code && u.accessActive !== false && verifyPasswordRecord(u, pin) && u.active !== false);
     const customer = user ? state.customers.find((c) => c.id === user.customerId) : null;
     if (!customer) throw new Error('INVALID_STAFF_LOGIN');
     return createLoginSession(state, customer, user);
   }
 
   const rolePermissions = {
-    manager: ['dashboard', 'customerBank', 'aiAssistant', 'menu', 'sales', 'recipes', 'inventory', 'accounting', 'personnel', 'account', 'staff:manage'],
+    manager: ['dashboard', 'personnel', 'customerBank', 'aiAssistant', 'menu', 'sales', 'recipes', 'inventory', 'accounting', 'account', 'staff:manage'],
     cashier: ['sales'],
   };
 
   function roleLabel(role) {
-    return role === 'cashier' ? 'صندوق‌دار' : 'مدیر';
+    return ({ cashier: 'صندوق‌دار', manager: 'مدیر', kitchen: 'آشپزخانه', inventory: 'انباردار', accountant: 'حسابدار' })[role] || 'پرسنل';
   }
 
   function getRolePermissions(role) {
@@ -816,26 +818,47 @@
     return { customerId: request.customerId, staffUserId: staffUser?.id || request.staffUserId || '', invalidatedSessions: request.invalidatedSessions };
   }
 
+  function normalizeStaffRole(role) {
+    return ['manager', 'cashier', 'kitchen', 'inventory', 'accountant'].includes(role) ? role : 'cashier';
+  }
+
+  function normalizeStaffFields(input = {}) {
+    const firstName = cleanPersianText(input.firstName || '');
+    const lastName = cleanPersianText(input.lastName || '');
+    const fullName = cleanPersianText(input.name || `${firstName} ${lastName}`);
+    return {
+      name: fullName || roleLabel(input.role),
+      firstName,
+      lastName,
+      fatherName: cleanPersianText(input.fatherName || ''),
+      nationalId: String(input.nationalId || '').trim(),
+      mobile: String(input.mobile || input.phone || '').trim(),
+      email: normalizeEmailForAuth(input.email || ''),
+      address: cleanPersianText(input.address || ''),
+      jobTitle: cleanPersianText(input.jobTitle || roleLabel(input.role)),
+      hourlyWage: Number(input.hourlyWage || 0),
+    };
+  }
+
   function createStaffUser(state, customerId, input) {
     requireCustomer(state, customerId);
     if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
     const personnelCode = normalizePersonnelCode(input.personnelCode || input.staffCode || input.code);
-    const pin = input.pin || input.password;
-    if (!personnelCode || !pin) throw new Error('STAFF_LOGIN_REQUIRED');
+    if (!personnelCode) throw new Error('STAFF_PERSONNEL_CODE_REQUIRED');
     if (state.staffUsers.some((u) => normalizePersonnelCode(u.personnelCode) === personnelCode)) throw new Error('STAFF_CODE_ALREADY_EXISTS');
-    const passwordRecord = createPasswordRecord(pin);
+    const pin = input.pin || input.password;
+    const fields = normalizeStaffFields(input);
     const staffUser = {
       id: uid('usr'),
       customerId,
-      name: input.name || roleLabel(input.role),
+      ...fields,
       personnelCode,
-      email: normalizeEmailForAuth(input.email || ''),
-      passwordHash: passwordRecord.passwordHash,
-      passwordSalt: passwordRecord.passwordSalt,
-      role: input.role === 'cashier' ? 'cashier' : 'manager',
+      role: normalizeStaffRole(input.role),
       active: input.active !== false,
+      accessActive: Boolean(pin),
       createdAt: new Date().toISOString(),
     };
+    if (pin) Object.assign(staffUser, createPasswordRecord(pin));
     state.staffUsers.push(staffUser);
     return staffUser;
   }
@@ -845,7 +868,7 @@
     if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
     const staffUser = state.staffUsers.find((u) => u.id === staffUserId && u.customerId === customerId);
     if (!staffUser) throw new Error('STAFF_NOT_FOUND');
-    if (input.name !== undefined) staffUser.name = input.name || staffUser.name;
+    if (input.name !== undefined || input.firstName !== undefined || input.lastName !== undefined) Object.assign(staffUser, normalizeStaffFields({ ...staffUser, ...input }));
     if (input.personnelCode !== undefined) {
       const personnelCode = normalizePersonnelCode(input.personnelCode);
       if (!personnelCode) throw new Error('STAFF_LOGIN_REQUIRED');
@@ -853,8 +876,10 @@
       staffUser.personnelCode = personnelCode;
     }
     if (input.email !== undefined) staffUser.email = normalizeEmailForAuth(input.email || '');
+    for (const key of ['fatherName','nationalId','mobile','address','jobTitle','hourlyWage']) if (input[key] !== undefined) staffUser[key] = key === 'hourlyWage' ? Number(input[key] || 0) : cleanPersianText(input[key] || '');
     const nextPin = input.pin || input.password;
     if (nextPin !== undefined && nextPin) {
+      staffUser.accessActive = true;
       Object.assign(staffUser, createPasswordRecord(nextPin));
       delete staffUser.password;
       invalidateUserSessions(state, customerId, staffUser.id);
@@ -865,7 +890,8 @@
       }
       recordSecurityEvent(state, customerId, 'password-reset-used', { targetName: staffUser.name, targetEmail: staffUser.email, detail: 'تغییر رمز توسط مدیر پکیج', sourceId: staffUser.id });
     }
-    if (input.role !== undefined) staffUser.role = input.role === 'cashier' ? 'cashier' : 'manager';
+    if (input.role !== undefined) staffUser.role = normalizeStaffRole(input.role);
+    if (input.accessActive !== undefined) staffUser.accessActive = Boolean(input.accessActive);
     if (input.active !== undefined) {
       const nextActive = Boolean(input.active);
       if (staffUser.active !== nextActive) {
@@ -919,6 +945,122 @@
   function getCurrentCashierShift(state, customerId) {
     requireCustomer(state, customerId);
     return (state.shifts || []).find((shift) => shift.customerId === customerId && !shift.closedAt) || null;
+  }
+
+
+  function ensureStaffHrCollections(state) {
+    if (!Array.isArray(state.staffSchedules)) state.staffSchedules = [];
+    if (!Array.isArray(state.staffAttendance)) state.staffAttendance = [];
+    if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
+  }
+
+  function getStaffById(state, customerId, staffId) {
+    ensureStaffHrCollections(state);
+    const staff = state.staffUsers.find((u) => u.id === staffId && u.customerId === customerId && u.active !== false);
+    if (!staff) throw new Error('STAFF_NOT_FOUND');
+    return staff;
+  }
+
+  function weekdayOf(dateText) {
+    return new Date(`${dateText}T12:00:00`).getDay();
+  }
+
+  function minutesOf(timeText) {
+    const [h, m] = String(timeText || '00:00').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  function createStaffSchedule(state, customerId, input = {}) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    getStaffById(state, customerId, input.staffUserId);
+    const schedule = {
+      id: uid('schedule'), customerId, staffUserId: input.staffUserId,
+      weekday: Number(input.weekday || 0), startTime: input.startTime || '09:00', endTime: input.endTime || '17:00',
+      note: cleanPersianText(input.note || ''), active: input.active !== false, createdAt: new Date().toISOString(),
+    };
+    state.staffSchedules.push(schedule); return schedule;
+  }
+
+  function getStaffSchedules(state, customerId, staffUserId = '') {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    return state.staffSchedules.filter((s) => s.customerId === customerId && (!staffUserId || s.staffUserId === staffUserId) && s.active !== false).map(cloneJson);
+  }
+
+  function scheduleFor(state, customerId, staffUserId, dateText) {
+    const day = weekdayOf(dateText);
+    return getStaffSchedules(state, customerId, staffUserId).find((s) => Number(s.weekday) === day) || null;
+  }
+
+  function attendanceNeedsApproval(schedule, type, timeText) {
+    if (!schedule) return type === 'in' ? 'ورود خارج از برنامه کاری' : '';
+    if (type === 'in' && minutesOf(timeText) < minutesOf(schedule.startTime)) return 'ورود زودتر از برنامه کاری';
+    if (type === 'out' && minutesOf(timeText) > minutesOf(schedule.endTime)) return 'خروج دیرتر از برنامه کاری';
+    return '';
+  }
+
+  function clockInStaff(state, customerId, input = {}) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const staff = getStaffById(state, customerId, input.staffUserId);
+    const date = input.date || new Date().toISOString().slice(0,10);
+    const time = input.time || new Date().toTimeString().slice(0,5);
+    if (state.staffAttendance.some((r) => r.customerId === customerId && r.staffUserId === staff.id && r.date === date && !r.clockOutAt)) throw new Error('ATTENDANCE_ALREADY_OPEN');
+    const schedule = scheduleFor(state, customerId, staff.id, date);
+    const exceptionType = attendanceNeedsApproval(schedule, 'in', time);
+    if (exceptionType && !cleanPersianText(input.reason || '')) throw new Error('ATTENDANCE_REASON_REQUIRED');
+    const record = { id: uid('att'), customerId, staffUserId: staff.id, staffName: staff.name, date, clockInAt: `${date}T${time}:00`, clockOutAt: '', scheduleId: schedule?.id || '', scheduledStart: schedule?.startTime || '', scheduledEnd: schedule?.endTime || '', exceptionType, reason: cleanPersianText(input.reason || ''), managerApproval: exceptionType ? 'pending' : 'approved', source: input.source || 'manual', fingerprintDeviceId: input.fingerprintDeviceId || '', createdAt: new Date().toISOString() };
+    state.staffAttendance.push(record); return record;
+  }
+
+  function clockOutStaff(state, customerId, attendanceId, input = {}) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const rec = state.staffAttendance.find((r) => r.id === attendanceId && r.customerId === customerId);
+    if (!rec) throw new Error('ATTENDANCE_NOT_FOUND');
+    if (rec.clockOutAt) throw new Error('ATTENDANCE_ALREADY_CLOSED');
+    const date = rec.date;
+    const time = input.time || new Date().toTimeString().slice(0,5);
+    const schedule = scheduleFor(state, customerId, rec.staffUserId, date);
+    const exceptionType = attendanceNeedsApproval(schedule, 'out', time);
+    if (exceptionType && !cleanPersianText(input.reason || '')) throw new Error('ATTENDANCE_REASON_REQUIRED');
+    rec.clockOutAt = `${date}T${time}:00`;
+    if (exceptionType) rec.exceptionType = rec.exceptionType ? `${rec.exceptionType} + ${exceptionType}` : exceptionType;
+    if (input.reason) rec.reason = rec.reason ? `${rec.reason} / ${cleanPersianText(input.reason)}` : cleanPersianText(input.reason);
+    if (exceptionType) rec.managerApproval = 'pending';
+    rec.sourceOut = input.source || 'manual';
+    rec.fingerprintDeviceId = input.fingerprintDeviceId || rec.fingerprintDeviceId || '';
+    return rec;
+  }
+
+  function approveStaffAttendance(state, customerId, attendanceId, approved = true) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const rec = state.staffAttendance.find((r) => r.id === attendanceId && r.customerId === customerId);
+    if (!rec) throw new Error('ATTENDANCE_NOT_FOUND');
+    rec.managerApproval = approved ? 'approved' : 'rejected';
+    rec.reviewedAt = new Date().toISOString(); return rec;
+  }
+
+  function getStaffAttendance(state, customerId) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    return state.staffAttendance.filter((r) => r.customerId === customerId).map(cloneJson).sort((a,b)=>String(b.clockInAt).localeCompare(String(a.clockInAt)));
+  }
+
+  function calculateStaffPayroll(state, customerId, filters = {}) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const staff = getStaffUsers(state, customerId);
+    const byId = Object.fromEntries(staff.map((s)=>[s.id,s]));
+    const rows = getStaffAttendance(state, customerId).filter((r)=>r.clockInAt && r.clockOutAt && r.managerApproval !== 'pending' && r.managerApproval !== 'rejected')
+      .filter((r)=>!filters.staffUserId || r.staffUserId === filters.staffUserId);
+    const totals = {};
+    for (const r of rows) {
+      const hours = Math.max(0, (new Date(r.clockOutAt).getTime() - new Date(r.clockInAt).getTime()) / 3600000);
+      const wage = Number(byId[r.staffUserId]?.hourlyWage || 0);
+      if (!totals[r.staffUserId]) totals[r.staffUserId] = { staffUserId: r.staffUserId, staffName: byId[r.staffUserId]?.name || r.staffName, hours: 0, hourlyWage: wage, wage: 0 };
+      totals[r.staffUserId].hours += hours; totals[r.staffUserId].wage += hours * wage;
+    }
+    return Object.values(totals).map((x)=>({ ...x, hours: Number(x.hours.toFixed(2)), wage: Math.round(x.wage) }));
+  }
+
+  function getFingerprintDeviceContract() {
+    return { mode: 'external-usb-scanner', events: ['fingerprint.enrolled','fingerprint.clockIn','fingerprint.clockOut'], requiredPayload: ['customerId','staffUserId','fingerprintTemplateId','deviceId','capturedAt'], note: 'اسکنر کوچک اکسترنال باید از طریق درایور/Bridge امن اثر انگشت را به staffUserId وصل کند؛ اثر خام ذخیره نمی‌شود و فقط templateId/verification result ثبت می‌شود.' };
   }
 
   function setPackage(state, customerId, packageName) {
@@ -2277,6 +2419,14 @@
     getRolePermissions,
     canAccess,
     getStaffUsers,
+    createStaffSchedule,
+    getStaffSchedules,
+    clockInStaff,
+    clockOutStaff,
+    approveStaffAttendance,
+    getStaffAttendance,
+    calculateStaffPayroll,
+    getFingerprintDeviceContract,
     getStaffInvitations,
     createStaffInvitation,
     cancelStaffInvitation,
