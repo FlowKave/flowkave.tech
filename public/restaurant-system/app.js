@@ -2081,6 +2081,37 @@ function printPersonnelModal(selector) {
 function weekdayLabel(day) { return ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][Number(day || 0)] || 'روز'; }
 function staffOptions(staffUsers, selected = '') { return staffUsers.map(u => `<option value="${esc(u.id)}" ${u.id === selected ? 'selected' : ''}>${esc(u.personnelCode || '')} — ${esc(u.name || `${u.firstName || ''} ${u.lastName || ''}`)}</option>`).join(''); }
 function attendanceStatusLabel(row) { return row.managerApproval === 'pending' ? 'در انتظار تایید مدیر' : row.managerApproval === 'rejected' ? 'رد شده' : 'تایید شده'; }
+function attendanceExceptionParts(row) {
+  return String(row?.exceptionType || '').split(/\s*\+\s*/).map(part => part.trim()).filter(Boolean);
+}
+function attendanceReasonParts(row) {
+  return String(row?.reason || '').split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean);
+}
+function attendanceManagementNotes(row) {
+  const exceptions = attendanceExceptionParts(row);
+  if (!exceptions.length) return '';
+  const reasons = attendanceReasonParts(row);
+  return exceptions.map((type, index) => {
+    const reason = reasons[index] || reasons[0] || '';
+    const prefix = index === 0 && type.includes('ورود زودتر') ? 'خارج از برنامه: ' : '';
+    const safeType = esc(type);
+    const safeReason = reason ? esc(reason) : '';
+    return `${prefix}${safeType}${safeReason ? ` — توضیح: ${safeReason}` : ''}`;
+  }).join('<br>');
+}
+function shiftMinutesValueFromRow(row, field) {
+  return shiftMinutesText(attendanceDisplayTime(row, field));
+}
+function attendanceManagementRowClass(row, schedule) {
+  if (row.managerApproval === 'pending') return 'pending-approval';
+  const start = shiftMinutesText(schedule?.startTime || row.scheduledStart);
+  const end = shiftMinutesText(schedule?.endTime || row.scheduledEnd);
+  const clockIn = shiftMinutesValueFromRow(row, 'clockInAt');
+  const clockOut = row.clockOutAt ? shiftMinutesValueFromRow(row, 'clockOutAt') : null;
+  const noApprovalDeviation = (clockIn !== null && start !== null && clockIn > start) || (clockOut !== null && end !== null && clockOut < end);
+  if (noApprovalDeviation && !attendanceExceptionParts(row).length) return 'schedule-deviation-no-approval';
+  return row.managerApproval === 'rejected' ? 'rejected-approval' : 'approved-approval';
+}
 function dateTextToJalaliDate(dateText = todayDateText()) {
   const safe = String(dateText || todayDateText()).slice(0, 10);
   return fullJalaliDate(new Date(`${safe}T12:00:00`));
@@ -2096,8 +2127,9 @@ function attendanceClockValue(row, field) {
 function renderAttendanceManagementRow(row, staffUsers = [], schedules = []) {
   const staffName = row.staffName || staffUsers.find(u => u.id === row.staffUserId)?.name || 'پرسنل';
   const schedule = scheduleForAttendanceRow(row, schedules);
-  const note = [row.exceptionType ? `خارج از برنامه: ${row.exceptionType}` : '', row.reason ? `توضیح: ${row.reason}` : ''].filter(Boolean).join(' — ');
-  return `<tr class="attendance-row ${row.managerApproval === 'pending' ? 'pending-approval' : ''}" data-attendance-row="${esc(row.id)}"><td><b>${esc(staffName)}</b><small>${esc(staffUsers.find(u=>u.id===row.staffUserId)?.personnelCode || '')}</small></td><td>${esc(faNum(dateTextToJalaliDate(row.date)))}</td><td>${esc(faNum(schedule?.startTime || row.scheduledStart || '--:--'))}</td><td>${esc(faNum(schedule?.endTime || row.scheduledEnd || '--:--'))}</td><td><input name="clockInTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockInAt')))}" placeholder="--:--"></td><td><input name="clockOutTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockOutAt')))}" placeholder="--:--"></td><td><textarea name="reason" rows="2" placeholder="توضیحات مدیر">${esc(row.reason || '')}</textarea><small>${esc(note || '—')}</small></td><td><span class="badge">${attendanceStatusLabel(row)}</span></td><td><div class="staff-attendance-row-actions"><button class="primary" type="button" data-save-attendance-row="${esc(row.id)}">تایید</button><button class="danger-button" type="button" data-delete-attendance="${esc(row.id)}">حذف</button></div></td></tr>`;
+  const note = attendanceManagementNotes(row);
+  const rowClass = attendanceManagementRowClass(row, schedule);
+  return `<tr class="attendance-row ${rowClass}" data-attendance-row="${esc(row.id)}"><td><b>${esc(staffName)}</b><small>${esc(staffUsers.find(u=>u.id===row.staffUserId)?.personnelCode || '')}</small></td><td>${esc(faNum(dateTextToJalaliDate(row.date)))}</td><td>${esc(faNum(schedule?.startTime || row.scheduledStart || '--:--'))}</td><td>${esc(faNum(schedule?.endTime || row.scheduledEnd || '--:--'))}</td><td><input name="clockInTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockInAt')))}" placeholder="--:--"></td><td><input name="clockOutTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockOutAt')))}" placeholder="--:--"></td><td><div class="attendance-note-lines">${note || ''}</div></td><td><span class="badge">${attendanceStatusLabel(row)}</span></td><td><div class="staff-attendance-row-actions"><button class="primary" type="button" data-save-attendance-row="${esc(row.id)}">تایید</button><button class="danger-button" type="button" data-delete-attendance="${esc(row.id)}">حذف</button></div></td></tr>`;
 }
 function renderAttendanceManagementTable(attendanceRows) {
   return attendanceRows ? `<div class="attendance-management-scroll"><table class="attendance-management-table"><thead><tr><th>نام پرسنل</th><th>تاریخ</th><th>شروع طبق برنامه</th><th>پایان طبق برنامه</th><th>ساعت ورود</th><th>ساعت خروج</th><th>توضیحات</th><th>وضعیت</th><th>تایید</th></tr></thead><tbody>${attendanceRows}</tbody></table></div>` : '<p>هنوز ورود/خروجی ثبت نشده است.</p>';
@@ -2109,8 +2141,6 @@ function updateAttendanceRowFromManager(customerId, attendanceId, rowEl) {
   const clockOut = normalizeShiftTimeInput(rowEl.querySelector('[name="clockOutTime"]')?.value || '');
   if (clockIn) row.clockInAt = `${row.date}T${clockIn}:00`;
   row.clockOutAt = clockOut ? `${row.date}T${clockOut}:00` : '';
-  const reason = cleanPersianText(rowEl.querySelector('[name="reason"]')?.value || '');
-  if (reason) row.reason = reason;
   RestaurantCore.approveStaffAttendance(state, customerId, attendanceId, true);
   row.reviewedAt = new Date().toISOString();
   row.reviewSource = 'manager-attendance-table';

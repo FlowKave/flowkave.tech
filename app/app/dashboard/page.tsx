@@ -15,7 +15,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   if (authError || !authData.user) redirect('/login');
 
   const staffLogin = params?.staffLogin === '1' || params?.staff === '1';
-  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=online-staff-login-49`;
+  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=attendance-approval-colors-50`;
 
   return (
     <main dir="rtl" className="min-h-screen bg-[#05070d] text-white">
