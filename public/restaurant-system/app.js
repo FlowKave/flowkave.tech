@@ -2070,12 +2070,30 @@ function handleAttendanceModalSubmit(form, customerId, action) {
   return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason, source: 'personnel-code-popup' });
 }
 function printPersonnelModal(selector) {
-  const modal = document.querySelector(selector);
-  if (!modal) return;
+  const target = document.querySelector(selector);
+  if (!target) return;
   const previousTitle = document.title;
+  const previousPrintTarget = document.body.dataset.personnelPrintTarget || '';
+  const printTarget = target.classList.contains('staff-list-modal') ? 'staff-list' : 'weekly-schedule';
+  document.getElementById('personnelPrintRoot')?.remove();
+  const printRoot = document.createElement('div');
+  printRoot.id = 'personnelPrintRoot';
+  printRoot.className = 'personnel-print-root';
+  printRoot.dataset.personnelPrintTarget = printTarget;
+  const clone = target.cloneNode(true);
+  printRoot.appendChild(clone);
+  document.body.appendChild(printRoot);
+  document.body.dataset.personnelPrintTarget = printTarget;
+  document.body.classList.add('personnel-printing');
   document.title = '';
   window.print();
-  setTimeout(() => { document.title = previousTitle; }, 300);
+  setTimeout(() => {
+    document.title = previousTitle;
+    if (previousPrintTarget) document.body.dataset.personnelPrintTarget = previousPrintTarget;
+    else delete document.body.dataset.personnelPrintTarget;
+    document.body.classList.remove('personnel-printing');
+    printRoot.remove();
+  }, 300);
 }
 
 function weekdayLabel(day) { return ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][Number(day || 0)] || 'روز'; }

@@ -27,6 +27,8 @@ assert(app.includes('data-open-staff-modal') && app.includes('renderStaffCreateM
 assert(app.includes('function nextPersonnelCode') && app.includes('state.staffUsers || [])') && app.includes('let code = 1001') && app.includes('data-auto-personnel-code') && app.includes('readonly'), 'کد پرسنلی باید خودکار و از ۱۰۰۱ به بعد ساخته شود');
 assert(app.includes('data-open-staff-list-modal') && app.includes('renderStaffListModal(staffUsers)') && app.includes('data-print-staff-list') && app.includes('staff-user-edit-form'), 'زیر افزودن پرسنل باید دکمه لیست پرسنل با پرینت و ادیت باز شود');
 assert(app.includes('data-print-weekly-schedule') && styles.includes('.weekly-schedule-print-decal'), 'برنامه کاری باید قابلیت پرینت داشته باشد');
+assert(app.includes('document.body.dataset.personnelPrintTarget') && app.includes("printRoot.id = 'personnelPrintRoot'") && app.includes("target.classList.contains('staff-list-modal') ? 'staff-list' : 'weekly-schedule'"), 'پرینت پرسنلی باید قبل از window.print هدف لیست یا برنامه کاری را روی body بگذارد تا CSS چاپ صفحه را خالی نکند');
+assert(styles.includes(':not(#personnelPrintRoot){display:none!important}') && styles.includes('#personnelPrintRoot{display:block!important') && styles.includes('body.personnel-printing #app{display:none!important}') && styles.includes('body[data-personnel-print-target=\"staff-list\"] .staff-list-modal') && styles.includes('body[data-personnel-print-target=\"weekly-schedule\"] .personnel-workspace>.staff-schedule-weekly-panel'), 'CSS چاپ پرسنلی باید ریشه اختصاصی پرسنل را از قانون عمومی چاپ مستثنا کند و خود #app را چاپ نکند');
 assert(styles.includes('Personnel modal workflow: add/list buttons open printable/editable popups.') && styles.includes('.personnel-modal-overlay') && styles.includes('@media print'), 'پاپ‌آپ‌های پرسنلی و پرینت باید CSS اختصاصی داشته باشند');
 
 // Cashier role must not see or open the hall table-layout/settings action.
@@ -43,10 +45,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=attendance-approval-colors-50');
-mustContain(html, 'core.js?v=attendance-approval-colors-50');
-mustContain(html, 'app.js?v=attendance-approval-colors-50');
-mustContain(html, 'core.js?v=attendance-approval-colors-50');
+mustContain(html, 'styles.css?v=personnel-print-visible-51');
+mustContain(html, 'core.js?v=personnel-print-visible-51');
+mustContain(html, 'app.js?v=personnel-print-visible-51');
+mustContain(html, 'core.js?v=personnel-print-visible-51');
 mustContain(app, 'const portalStaffLoginMode = portalMode && portalParams.get(\'staffLogin\') === \'1\';', 'Online restaurant iframe must support a dedicated staff-login mode.');
 mustContain(app, 'ورود کارکنان آنلاین', 'Online staff-login mode must render a visible staff login screen.');
 mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');
@@ -54,7 +56,7 @@ mustContain(app, 'if (portalStaffLoginMode)', 'Portal auto-owner session must no
 const dashboardSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'app', 'dashboard', 'page.tsx'), 'utf8');
 const loginPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'login', 'page.tsx'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
-mustContain(dashboardSource, 'attendance-approval-colors-50', 'Dashboard iframe cache-bust token must match the online staff login asset.');
+mustContain(dashboardSource, 'personnel-print-visible-51', 'Dashboard iframe cache-bust token must match the online staff login asset.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 
 mustContain(app, "field === 'clockInAt'", 'Attendance display must only use createdAt for clock-in display.');
@@ -95,8 +97,8 @@ console.log('ui-regression.test.js: ok');
 function testThemeHarmonyForCashierTablesAndPos() {
   const assert = require('assert');
   const fs = require('fs');
-  const styles = fs.readFileSync('./styles.css', 'utf8');
-  const index = fs.readFileSync('./index.html', 'utf8');
+  const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+  const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert(styles.includes('POS table picker fixed status colors') && styles.includes('html body .app-shell.theme-midnight .hall-table-picker-grid button.hall-table-card.free') && styles.includes('html body .app-shell.theme-emerald .hall-table-picker-grid button.hall-table-card.open-order'), 'میز آزاد باید نارنجی ثابتِ دسته‌بندی غیرفعال و میز با سفارش باز قرمز ثابتِ دسته‌بندی فعال باشد و با تم عوض نشود');
   assert(styles.includes('Theme harmony high-specificity overrides') && styles.includes('.app-shell .hall-order-category-panel .hall-category-tabs button.active') && styles.includes('.app-shell .hall-order-category-panel .hall-table-trigger'), 'قوانین هماهنگی تم باید با specificity بالاتر روی تب‌ها و دکمه میز اثر کند');
   assert(styles.includes('POS lower category bar final fit') && styles.includes('flex:0 0 clamp(150px,18vw,190px)!important') && styles.includes('height:54px!important') && styles.includes('overflow-y:visible!important'), 'دسته‌بندی‌های پایین صندوق در نسخه آنلاین باید پهن، وسط‌چین و بدون کلیپ عمودی باشند');
@@ -104,7 +106,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=attendance-approval-colors-50') && index.includes('core.js?v=attendance-approval-colors-50') && index.includes('app.js?v=attendance-approval-colors-50'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=personnel-print-visible-51') && index.includes('core.js?v=personnel-print-visible-51') && index.includes('app.js?v=personnel-print-visible-51'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
