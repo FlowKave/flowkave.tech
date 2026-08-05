@@ -15,7 +15,7 @@ export default async function DashboardPage() {
           The embedded restaurant app owns the single fixed authenticated header. */}
       <iframe
         title="سامانه رستوران FlowKave"
-        src="/restaurant-system/index.html?portal=1&v=personnel-national-id-3-6-1-26"
+        src="/restaurant-system/index.html?portal=1&v=email-optional-inline-27"
         className="block h-screen w-full border-0 bg-white"
       />
     </main>

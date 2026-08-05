@@ -1224,4 +1224,8 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 
 
 /* Optional field micro-labels should be visible but secondary. */
-.field-optional{font-size:.78em;font-weight:700;color:var(--muted);margin-inline-start:4px;white-space:nowrap;}
+.field-optional{display:inline!important;font-size:.78em;font-weight:700;color:var(--muted);margin-inline-start:4px;white-space:nowrap;}
+
+.field-label-inline{display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap;width:max-content;}
+
+.field-label-inline .field-optional{display:inline-block!important;font-size:.78em;font-weight:700;color:var(--muted);margin-inline-start:4px;white-space:nowrap;line-height:1;vertical-align:baseline;}
