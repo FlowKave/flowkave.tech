@@ -47,6 +47,7 @@ let pendingAccountScrollFocus = null;
 let scheduleWeekOffset = 0;
 let staffFormModalOpen = false;
 let staffListModalOpen = false;
+let attendanceModalOpen = false;
 let weeklyScheduleSaveTimers = new Map();
 let customerBankQuery = '';
 let customerBankSegment = '';
@@ -466,7 +467,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=system-logo-cropped-noframe-35" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=staff-attendance-modal-36" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1936,6 +1937,60 @@ function renderStaffListModal(staffUsers) {
   if (!staffListModalOpen) return '';
   return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><p>این لیست فقط نیروهایی را نشان می‌دهد که مالک تعریف کرده است؛ حساب مالک در لیست پرسنلی نمایش داده نمی‌شود.</p><div class="staff-user-list printable-staff-list">${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div></section></div>`;
 }
+function renderAttendanceModal() {
+  if (!attendanceModalOpen) return '';
+  return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><p>فعلاً تا زمان اتصال اسکنر اثر انگشت، کد پرسنلی وارد می‌شود؛ بعداً همین پاپ‌آپ درخواست اسکن اثر انگشت می‌دهد.</p><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><div class="attendance-modal-actions"><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out>خروج</button></div><small>مرحله بعدی: بعد از نصب اسکنر، همین دکمه پاپ‌آپ را باز می‌کند و به‌جای کد، تایید اثر انگشت می‌خواهد.</small></form></section></div>`;
+}
+function attendanceStaffByCode(customerId, code) {
+  const normalized = toEnglishDigits(code || '').trim();
+  if (!normalized) return null;
+  return RestaurantCore.getStaffUsers(state, customerId).find(u => String(u.personnelCode || '') === normalized) || null;
+}
+function todayDateText() { return new Date().toISOString().slice(0, 10); }
+function nowTimeText() { return new Date().toTimeString().slice(0, 5); }
+function attendanceScheduleForStaff(customerId, staffUserId, dateText = todayDateText()) {
+  const weekday = new Date(`${dateText}T12:00:00`).getDay();
+  const schedules = RestaurantCore.getStaffSchedules ? RestaurantCore.getStaffSchedules(state, customerId, staffUserId) : [];
+  return staffScheduleForCell(schedules, staffUserId, dateText, weekday);
+}
+function openAttendanceForStaff(customerId, staffUserId, dateText = todayDateText()) {
+  const rows = RestaurantCore.getStaffAttendance ? RestaurantCore.getStaffAttendance(state, customerId) : [];
+  return rows.find(r => r.staffUserId === staffUserId && r.date === dateText && !r.clockOutAt) || null;
+}
+function updateAttendanceSchedulePreview(customerId) {
+  const input = document.querySelector('[data-attendance-personnel-code]');
+  const box = document.querySelector('[data-attendance-schedule-preview]');
+  if (!input || !box) return;
+  const staff = attendanceStaffByCode(customerId, input.value);
+  if (!staff) { box.innerHTML = '<span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span>'; return; }
+  const dateText = todayDateText();
+  const schedule = attendanceScheduleForStaff(customerId, staff.id, dateText);
+  const open = openAttendanceForStaff(customerId, staff.id, dateText);
+  box.innerHTML = `<b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>برنامه امروز: ${schedule ? `${esc(faNum(schedule.startTime))} تا ${esc(faNum(schedule.endTime))}` : 'برای امروز برنامه‌ای ثبت نشده'}</span><small>${open ? `وضعیت: از ساعت ${esc(faNum((open.clockInAt || '').slice(11,16)))} وارد شده و هنوز خروج نزده است.` : 'وضعیت: ورود باز برای امروز ندارد.'}</small>`;
+}
+function attendanceModalErrorMessage(err) {
+  const msg = err?.message || '';
+  if (msg === 'ATTENDANCE_ALREADY_OPEN') return 'برای این پرسنل امروز ورود باز ثبت شده است؛ برای پایان کار روی خروج بزنید.';
+  if (msg === 'ATTENDANCE_NOT_FOUND') return 'برای این پرسنل ورود باز امروز پیدا نشد.';
+  if (msg === 'ATTENDANCE_REASON_REQUIRED') return 'این ورود/خروج خارج از برنامه است و به عنوان مورد نیازمند تایید مدیر ثبت می‌شود.';
+  if (msg === 'STAFF_NOT_FOUND') return 'کد پرسنلی پیدا نشد.';
+  return msg || 'ثبت ورود/خروج انجام نشد.';
+}
+function handleAttendanceModalSubmit(form, customerId, action) {
+  const f = new FormData(form);
+  const staff = attendanceStaffByCode(customerId, f.get('personnelCode'));
+  if (!staff) throw new Error('STAFF_NOT_FOUND');
+  const date = todayDateText();
+  const time = nowTimeText();
+  if (action === 'out') {
+    const open = openAttendanceForStaff(customerId, staff.id, date);
+    if (!open) throw new Error('ATTENDANCE_NOT_FOUND');
+    try { return RestaurantCore.clockOutStaff(state, customerId, open.id, { time, reason: 'ثبت خروج از پاپ‌آپ کد پرسنلی', source: 'personnel-code-popup' }); }
+    catch (err) { if (err.message === 'ATTENDANCE_REASON_REQUIRED') return RestaurantCore.clockOutStaff(state, customerId, open.id, { time, reason: 'خروج خارج از برنامه با کد پرسنلی تا اتصال اسکنر اثر انگشت', source: 'personnel-code-popup' }); throw err; }
+  }
+  try { return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason: '', source: 'personnel-code-popup' }); }
+  catch (err) { if (err.message === 'ATTENDANCE_REASON_REQUIRED') return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason: 'ورود خارج از برنامه با کد پرسنلی تا اتصال اسکنر اثر انگشت', source: 'personnel-code-popup' }); throw err; }
+}
 function printPersonnelModal(selector) {
   const modal = document.querySelector(selector);
   if (!modal) return;
@@ -2046,12 +2101,11 @@ function renderPersonnel(customer) {
   const attendanceRows = attendance.map(r => `<div class="order-row attendance-row ${r.managerApproval === 'pending' ? 'pending-approval' : ''}"><div><b>${esc(r.staffName || staffUsers.find(u=>u.id===r.staffUserId)?.name || 'پرسنل')}</b><span>${esc(faNum(r.date))} — ورود ${esc(faNum((r.clockInAt || '').slice(11,16)))}${r.clockOutAt ? ` / خروج ${esc(faNum(r.clockOutAt.slice(11,16)))}` : ' / هنوز خارج نشده'}</span>${r.exceptionType ? `<small>خارج از برنامه: ${esc(r.exceptionType)} — توضیح: ${esc(r.reason || 'بدون توضیح')}</small>` : ''}</div><div><span class="badge">${attendanceStatusLabel(r)}</span>${r.managerApproval === 'pending' ? `<button type="button" class="secondary" data-approve-attendance="${esc(r.id)}">تایید مدیر</button><button type="button" class="danger-button" data-reject-attendance="${esc(r.id)}">رد</button>` : ''}</div></div>`).join('');
   const payrollRows = payroll.map(p => `<div class="order-row"><b>${esc(p.staffName)}</b><span>${numberText(p.hours,2)} ساعت × ${money(p.hourlyWage)} = ${money(p.wage)}</span></div>`).join('');
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
-    <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
+    <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن، لیست پرسنل و ورود/خروج از اینجا به صورت پاپ‌آپ باز می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button><button type="button" class="secondary staff-attendance-launch" data-open-attendance-modal>ورود/خروج پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}${renderAttendanceModal()}
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
     <form class="panel" id="invitationForm"><h2>دعوت ایمیلی نقش‌های حساس</h2><p>برای مدیر، حسابدار یا نیرویی که باید حساب کاربری کامل داشته باشد، دعوت ایمیلی بسازید؛ تا زمان پذیرش، کاربر فعال عملیاتی ساخته نمی‌شود.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت دعوت کارکنان</button></form>
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
-    <form class="panel" id="staffClockInForm"><h2>ثبت ورود</h2><label>پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>تاریخ<input name="date" type="date" value="${new Date().toISOString().slice(0,10)}"></label><label>ساعت ورود<input name="time" type="time" value="${new Date().toTimeString().slice(0,5)}"></label><label>توضیح خارج از برنامه<textarea name="reason" rows="2" placeholder="اگر زودتر از برنامه یا بدون برنامه وارد می‌شود، دلیل را بنویسید"></textarea></label><button class="primary">ثبت ورود</button></form>
-    <form class="panel" id="staffClockOutForm"><h2>ثبت خروج</h2><label>ورود باز<select name="attendanceId">${openAttendance.map(r=>`<option value="${esc(r.id)}">${esc(r.staffName)} — ${esc(faNum(r.date))} ${esc(faNum((r.clockInAt||'').slice(11,16)))}</option>`).join('')}</select></label><label>ساعت خروج<input name="time" type="time" value="${new Date().toTimeString().slice(0,5)}"></label><label>توضیح خروج دیرتر<textarea name="reason" rows="2" placeholder="اگر دیرتر از برنامه خارج می‌شود، دلیل را بنویسید"></textarea></label><button class="primary">ثبت خروج</button></form>
+    <div class="panel staff-attendance-kiosk-panel"><h2>ثبت ورود/خروج</h2><p>برای ثبت ورود یا پایان کار، دکمه «ورود/خروج پرسنل» را بزنید؛ پاپ‌آپ کد پرسنلی را می‌گیرد، ساعت برنامه کاری همان پرسنل را نشان می‌دهد و سپس دکمه ورود یا خروج ثبت می‌کند.</p><button type="button" class="primary" data-open-attendance-modal>باز کردن پاپ‌آپ ورود/خروج</button></div>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
     <div class="panel wide"><h2>ورود و خروج پرسنل</h2>${attendanceRows || '<p>هنوز ورود/خروجی ثبت نشده است.</p>'}</div>
     <div class="panel wide"><h2>محاسبه حقوق و دستمزد</h2><p>فقط رکوردهای کامل و تاییدشده در حقوق محاسبه می‌شوند؛ رکوردهای خارج از برنامه تا تایید مدیر وارد محاسبه نمی‌شوند.</p>${payrollRows || '<p>هنوز ساعت تاییدشده‌ای برای محاسبه وجود ندارد.</p>'}</div>
@@ -2819,9 +2873,13 @@ function bindCommon() {
   }));
   document.querySelector('[data-open-staff-modal]')?.addEventListener('click', () => { staffFormModalOpen = true; render(); });
   document.querySelector('[data-open-staff-list-modal]')?.addEventListener('click', () => { staffListModalOpen = true; render(); });
+  document.querySelectorAll('[data-open-attendance-modal]').forEach(btn => btn.addEventListener('click', () => { attendanceModalOpen = true; render(); }));
+  document.querySelector('[data-close-attendance-modal]')?.addEventListener('click', () => { attendanceModalOpen = false; render(); });
+  document.querySelector('[data-attendance-personnel-code]')?.addEventListener('input', () => updateAttendanceSchedulePreview(customer.id));
+  document.querySelector('#staffAttendanceModalForm')?.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(e.target); const submitter = e.submitter; handleAttendanceModalSubmit(e.target, customer.id, submitter?.value || 'in'); attendanceModalOpen = false; saveState(); render(); } catch (err) { alert(attendanceModalErrorMessage(err)); updateAttendanceSchedulePreview(customer.id); } });
   document.querySelectorAll('[data-close-staff-modal]').forEach(btn => btn.addEventListener('click', () => { staffFormModalOpen = false; render(); }));
   document.querySelectorAll('[data-close-staff-list-modal]').forEach(btn => btn.addEventListener('click', () => { staffListModalOpen = false; render(); }));
-  document.querySelectorAll('[data-personnel-modal-overlay]').forEach(overlay => overlay.addEventListener('click', (e) => { if (e.target !== overlay) return; staffFormModalOpen = false; staffListModalOpen = false; render(); }));
+  document.querySelectorAll('[data-personnel-modal-overlay]').forEach(overlay => overlay.addEventListener('click', (e) => { if (e.target !== overlay) return; staffFormModalOpen = false; staffListModalOpen = false; attendanceModalOpen = false; render(); }));
   document.querySelector('[data-print-staff-list]')?.addEventListener('click', () => printPersonnelModal('.staff-list-modal'));
   document.querySelector('[data-print-weekly-schedule]')?.addEventListener('click', () => printPersonnelModal('.staff-schedule-weekly-panel'));
   document.querySelectorAll('.staff-user-edit-form').forEach(form => form.addEventListener('submit', (e) => {
