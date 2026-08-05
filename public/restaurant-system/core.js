@@ -818,6 +818,15 @@
     return { customerId: request.customerId, staffUserId: staffUser?.id || request.staffUserId || '', invalidatedSessions: request.invalidatedSessions };
   }
 
+  function normalizeNationalId(value) {
+    const digits = String(value || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '').slice(0, 10);
+    const fa = (v) => persianDigits(v);
+    if (!digits) return '';
+    if (digits.length <= 3) return fa(digits);
+    if (digits.length <= 9) return `${fa(digits.slice(3))}-${fa(digits.slice(0, 3))}`;
+    return `${fa(digits.slice(9, 10))}-${fa(digits.slice(3, 9))}-${fa(digits.slice(0, 3))}`;
+  }
+
   function normalizeStaffRole(role) {
     return ['manager', 'cashier', 'kitchen', 'inventory', 'accountant'].includes(role) ? role : 'cashier';
   }
@@ -831,7 +840,7 @@
       firstName,
       lastName,
       fatherName: cleanPersianText(input.fatherName || ''),
-      nationalId: String(input.nationalId || '').trim(),
+      nationalId: normalizeNationalId(input.nationalId),
       mobile: String(input.mobile || input.phone || '').trim(),
       email: normalizeEmailForAuth(input.email || ''),
       address: cleanPersianText(input.address || ''),
@@ -876,7 +885,8 @@
       staffUser.personnelCode = personnelCode;
     }
     if (input.email !== undefined) staffUser.email = normalizeEmailForAuth(input.email || '');
-    for (const key of ['fatherName','nationalId','mobile','address','jobTitle','hourlyWage']) if (input[key] !== undefined) staffUser[key] = key === 'hourlyWage' ? Number(input[key] || 0) : cleanPersianText(input[key] || '');
+    for (const key of ['fatherName','mobile','address','jobTitle','hourlyWage']) if (input[key] !== undefined) staffUser[key] = key === 'hourlyWage' ? Number(input[key] || 0) : cleanPersianText(input[key] || '');
+    if (input.nationalId !== undefined) staffUser.nationalId = normalizeNationalId(input.nationalId);
     const nextPin = input.pin || input.password;
     if (nextPin !== undefined && nextPin) {
       staffUser.accessActive = true;
