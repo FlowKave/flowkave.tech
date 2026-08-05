@@ -2147,6 +2147,23 @@ function normalizeShiftTimeInput(value) {
   mm = Math.min(59, Math.max(0, mm || 0));
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
+function weeklyScheduleDurationHours(startTime, endTime) {
+  const start = normalizeShiftTimeInput(startTime || '');
+  const end = normalizeShiftTimeInput(endTime || '');
+  if (!start || !end) return 0;
+  return Math.max(0, minutesFromTimeText(end) - minutesFromTimeText(start)) / 60;
+}
+function updateWeeklyScheduleRowTotalFromInputs(row) {
+  if (!row) return;
+  const totalEl = row.querySelector('[data-weekly-schedule-total]');
+  if (!totalEl) return;
+  const total = [...row.querySelectorAll('[data-weekly-schedule-form]')].reduce((sum, form) => {
+    const start = form.querySelector('[name="startTime"]')?.value || '';
+    const end = form.querySelector('[name="endTime"]')?.value || '';
+    return sum + weeklyScheduleDurationHours(start, end);
+  }, 0);
+  totalEl.textContent = `${numberText(total,1)} ساعت`;
+}
 function saveWeeklyScheduleCell(form, customerId, { clear = false } = {}) {
   const f = new FormData(form);
   if (clear) {
@@ -2154,6 +2171,7 @@ function saveWeeklyScheduleCell(form, customerId, { clear = false } = {}) {
     form.querySelector('[name="startTime"]').value = '';
     form.querySelector('[name="endTime"]').value = '';
     form.querySelector('[name="note"]').value = '';
+    updateWeeklyScheduleRowTotalFromInputs(form.closest('tr'));
     saveState();
     form.classList.add('schedule-cell-saved'); setTimeout(() => form.classList.remove('schedule-cell-saved'), 700);
     return;
@@ -2161,6 +2179,7 @@ function saveWeeklyScheduleCell(form, customerId, { clear = false } = {}) {
   const start = form.querySelector('[name="startTime"]')?.value || '';
   const end = form.querySelector('[name="endTime"]')?.value || '';
   const note = cleanPersianText(f.get('note'));
+  updateWeeklyScheduleRowTotalFromInputs(form.closest('tr'));
   if (!start || !end) return;
   RestaurantCore.createStaffSchedule(state, customerId, { staffUserId: f.get('staffUserId'), weekday: f.get('weekday'), date: f.get('date'), jalaliDate: f.get('jalaliDate'), startTime: start, endTime: end, note });
   saveState();
@@ -2179,7 +2198,7 @@ function renderWeeklyScheduleGrid(staffUsers, schedules) {
       return `<td><form class="weekly-schedule-cell-form" data-weekly-schedule-form><input type="hidden" name="staffUserId" value="${esc(staff.id)}"><input type="hidden" name="weekday" value="${day.weekday}"><input type="hidden" name="date" value="${dateText}"><input type="hidden" name="jalaliDate" value="${esc(fullJalaliDate(day.date))}"><label class="shift-start-field">شروع<input name="startTime" type="text" inputmode="numeric" autocomplete="off" data-shift-time placeholder="--:--" value="${esc(schedule?.startTime || '')}"></label><label class="shift-end-field">پایان<input name="endTime" type="text" inputmode="numeric" autocomplete="off" data-shift-time placeholder="--:--" value="${esc(schedule?.endTime || '')}"></label><button type="button" class="schedule-clear-decal" data-clear-weekly-schedule aria-label="پاک کردن شیفت" title="پاک کردن شیفت">×</button><label class="shift-note-field" aria-label="توضیح شیفت"><input name="note" value="${esc(schedule?.note || '')}" placeholder="توضیح شیفت"></label></form></td>`;
     }).join('');
     const total = schedules.filter(s => s.staffUserId === staff.id && s.active !== false && days.some(day => (s.date && s.date === isoDateOnly(day.date)) || (!s.date && Number(s.weekday) === Number(day.weekday)))).reduce((sum, s) => sum + Math.max(0, minutesFromTimeText(s.endTime) - minutesFromTimeText(s.startTime)) / 60, 0);
-    return `<tr><th class="staff-schedule-name"><b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>${esc(staff.personnelCode || '')}</span><em>${numberText(total,1)} ساعت</em></th>${cells}</tr>`;
+    return `<tr><th class="staff-schedule-name"><b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>${esc(staff.personnelCode || '')}</span><em data-weekly-schedule-total>${numberText(total,1)} ساعت</em></th>${cells}</tr>`;
   }).join('');
   return `<div class="weekly-schedule-board" data-weekly-schedule-board><div class="weekly-schedule-toolbar"><button type="button" class="secondary" data-schedule-week="prev">‹ هفته قبل</button><strong>برنامه کاری هفتگی — ${faNum(fullJalaliDate(weekStart))} تا ${faNum(fullJalaliDate(weekEnd))}</strong><div class="weekly-schedule-actions"><button type="button" class="secondary" data-schedule-week="next">هفته بعد ›</button>${actionDecalButton('print', 'data-print-weekly-schedule', 'weekly-schedule-print-decal', 'پرینت برنامه کاری')}</div></div><div class="weekly-schedule-scroll"><table class="weekly-schedule-table"><thead><tr><th class="staff-schedule-name">نام پرسنل</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></div><small class="weekly-schedule-note">روزها از راست با شنبه شروع می‌شود و تاریخ‌ها شمسی هستند. پرسنل همین جدول هفتگی را در اپ پرسنلی خود می‌بیند.</small></div>`;
 }
@@ -3124,8 +3143,9 @@ function bindCommon() {
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
     form.addEventListener('submit', (e) => e.preventDefault());
     form.querySelectorAll('[data-shift-time]').forEach(input => {
-      input.addEventListener('blur', () => { input.value = normalizeShiftTimeInput(input.value); saveWeeklyScheduleCell(form, customer.id); });
-      input.addEventListener('change', () => { input.value = normalizeShiftTimeInput(input.value); saveWeeklyScheduleCell(form, customer.id); });
+      input.addEventListener('input', () => updateWeeklyScheduleRowTotalFromInputs(form.closest('tr')));
+      input.addEventListener('blur', () => { input.value = normalizeShiftTimeInput(input.value); updateWeeklyScheduleRowTotalFromInputs(form.closest('tr')); saveWeeklyScheduleCell(form, customer.id); });
+      input.addEventListener('change', () => { input.value = normalizeShiftTimeInput(input.value); updateWeeklyScheduleRowTotalFromInputs(form.closest('tr')); saveWeeklyScheduleCell(form, customer.id); });
     });
     const note = form.querySelector('[name="note"]');
     if (note) note.addEventListener('input', () => { const key = `${form.querySelector('[name="staffUserId"]').value}:${form.querySelector('[name="date"]').value}`; clearTimeout(weeklyScheduleSaveTimers.get(key)); weeklyScheduleSaveTimers.set(key, setTimeout(() => saveWeeklyScheduleCell(form, customer.id), 450)); });
