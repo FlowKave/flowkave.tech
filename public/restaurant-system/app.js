@@ -477,7 +477,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=iran-attendance-time-39" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-management-table-40" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1171,7 +1171,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=iran-attendance-time-39" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-management-table-40" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2018,6 +2018,41 @@ function printPersonnelModal(selector) {
 function weekdayLabel(day) { return ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'][Number(day || 0)] || 'روز'; }
 function staffOptions(staffUsers, selected = '') { return staffUsers.map(u => `<option value="${esc(u.id)}" ${u.id === selected ? 'selected' : ''}>${esc(u.personnelCode || '')} — ${esc(u.name || `${u.firstName || ''} ${u.lastName || ''}`)}</option>`).join(''); }
 function attendanceStatusLabel(row) { return row.managerApproval === 'pending' ? 'در انتظار تایید مدیر' : row.managerApproval === 'rejected' ? 'رد شده' : 'تایید شده'; }
+function dateTextToJalaliDate(dateText = todayDateText()) {
+  const safe = String(dateText || todayDateText()).slice(0, 10);
+  return fullJalaliDate(new Date(`${safe}T12:00:00`));
+}
+function scheduleForAttendanceRow(row, schedules = []) {
+  const dateText = row?.date || todayDateText();
+  const weekday = new Date(`${dateText}T12:00:00`).getDay();
+  return staffScheduleForCell(schedules, row?.staffUserId || '', dateText, weekday) || { startTime: row?.scheduledStart || '', endTime: row?.scheduledEnd || '', note: '' };
+}
+function attendanceClockValue(row, field) {
+  return field === 'clockOutAt' && !row?.clockOutAt ? '' : attendanceDisplayTime(row, field);
+}
+function renderAttendanceManagementRow(row, staffUsers = [], schedules = []) {
+  const staffName = row.staffName || staffUsers.find(u => u.id === row.staffUserId)?.name || 'پرسنل';
+  const schedule = scheduleForAttendanceRow(row, schedules);
+  const note = [row.exceptionType ? `خارج از برنامه: ${row.exceptionType}` : '', row.reason ? `توضیح: ${row.reason}` : ''].filter(Boolean).join(' — ');
+  return `<tr class="attendance-row ${row.managerApproval === 'pending' ? 'pending-approval' : ''}" data-attendance-row="${esc(row.id)}"><td><b>${esc(staffName)}</b><small>${esc(staffUsers.find(u=>u.id===row.staffUserId)?.personnelCode || '')}</small></td><td>${esc(faNum(dateTextToJalaliDate(row.date)))}</td><td>${esc(faNum(schedule?.startTime || row.scheduledStart || '--:--'))}</td><td>${esc(faNum(schedule?.endTime || row.scheduledEnd || '--:--'))}</td><td><input name="clockInTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockInAt')))}" placeholder="--:--"></td><td><input name="clockOutTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockOutAt')))}" placeholder="--:--"></td><td><textarea name="reason" rows="2" placeholder="توضیحات مدیر">${esc(row.reason || '')}</textarea><small>${esc(note || '—')}</small></td><td><span class="badge">${attendanceStatusLabel(row)}</span></td><td><div class="staff-attendance-row-actions"><button class="primary" type="button" data-save-attendance-row="${esc(row.id)}">تایید</button><button class="danger-button" type="button" data-reject-attendance="${esc(row.id)}">رد</button></div></td></tr>`;
+}
+function renderAttendanceManagementTable(attendanceRows) {
+  return attendanceRows ? `<div class="attendance-management-scroll"><table class="attendance-management-table"><thead><tr><th>نام پرسنل</th><th>تاریخ</th><th>شروع طبق برنامه</th><th>پایان طبق برنامه</th><th>ساعت ورود</th><th>ساعت خروج</th><th>توضیحات</th><th>وضعیت</th><th>تایید</th></tr></thead><tbody>${attendanceRows}</tbody></table></div>` : '<p>هنوز ورود/خروجی ثبت نشده است.</p>';
+}
+function updateAttendanceRowFromManager(customerId, attendanceId, rowEl) {
+  const row = (state.staffAttendance || []).find(r => r.id === attendanceId && r.customerId === customerId);
+  if (!row) throw new Error('ATTENDANCE_NOT_FOUND');
+  const clockIn = normalizeShiftTimeInput(rowEl.querySelector('[name="clockInTime"]')?.value || '');
+  const clockOut = normalizeShiftTimeInput(rowEl.querySelector('[name="clockOutTime"]')?.value || '');
+  if (clockIn) row.clockInAt = `${row.date}T${clockIn}:00`;
+  row.clockOutAt = clockOut ? `${row.date}T${clockOut}:00` : '';
+  const reason = cleanPersianText(rowEl.querySelector('[name="reason"]')?.value || '');
+  if (reason) row.reason = reason;
+  RestaurantCore.approveStaffAttendance(state, customerId, attendanceId, true);
+  row.reviewedAt = new Date().toISOString();
+  row.reviewSource = 'manager-attendance-table';
+  return row;
+}
 
 
 const PERSIAN_WEEK_DAYS = [
@@ -2113,7 +2148,7 @@ function renderPersonnel(customer) {
   const payroll = RestaurantCore.calculateStaffPayroll ? RestaurantCore.calculateStaffPayroll(state, customer.id) : [];
   const fp = RestaurantCore.getFingerprintDeviceContract ? RestaurantCore.getFingerprintDeviceContract() : null;
   const openAttendance = attendance.filter(r => !r.clockOutAt);
-  const attendanceRows = attendance.map(r => `<div class="order-row attendance-row ${r.managerApproval === 'pending' ? 'pending-approval' : ''}"><div><b>${esc(r.staffName || staffUsers.find(u=>u.id===r.staffUserId)?.name || 'پرسنل')}</b><span>${esc(faNum(r.date))} — ورود ${esc(faNum(attendanceDisplayTime(r, 'clockInAt')))}${r.clockOutAt ? ` / خروج ${esc(faNum(attendanceDisplayTime(r, 'clockOutAt')))}` : ' / هنوز خارج نشده'}</span>${r.exceptionType ? `<small>خارج از برنامه: ${esc(r.exceptionType)} — توضیح: ${esc(r.reason || 'بدون توضیح')}</small>` : ''}</div><div><span class="badge">${attendanceStatusLabel(r)}</span>${r.managerApproval === 'pending' ? `<button type="button" class="secondary" data-approve-attendance="${esc(r.id)}">تایید مدیر</button><button type="button" class="danger-button" data-reject-attendance="${esc(r.id)}">رد</button>` : ''}</div></div>`).join('');
+  const attendanceRows = attendance.map(r => renderAttendanceManagementRow(r, staffUsers, schedules)).join('');
   const payrollRows = payroll.map(p => `<div class="order-row"><b>${esc(p.staffName)}</b><span>${numberText(p.hours,2)} ساعت × ${money(p.hourlyWage)} = ${money(p.wage)}</span></div>`).join('');
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
     <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود؛ ورود و خروج پرسنل از دکمه تصویری کنار نام رستوران در بالای صفحه انجام می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
@@ -2122,7 +2157,7 @@ function renderPersonnel(customer) {
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
     <div class="panel staff-attendance-kiosk-panel"><h2>ثبت ورود/خروج</h2><p>برای ثبت ورود یا پایان کار، دکمه «ورود/خروج پرسنل» را بزنید؛ پاپ‌آپ کد پرسنلی را می‌گیرد، ساعت برنامه کاری همان پرسنل را نشان می‌دهد و سپس دکمه ورود یا خروج ثبت می‌کند.</p><button type="button" class="primary" data-open-attendance-modal>باز کردن پاپ‌آپ ورود/خروج</button></div>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
-    <div class="panel wide"><h2>ورود و خروج پرسنل</h2>${attendanceRows || '<p>هنوز ورود/خروجی ثبت نشده است.</p>'}</div>
+    <div class="panel wide attendance-management-panel"><h2>ورود و خروج پرسنل</h2><p>مدیر می‌تواند ساعت ورود/خروج را با ساعت برنامه یکی کند و بعد تایید بزند.</p>${renderAttendanceManagementTable(attendanceRows)}</div>
     <div class="panel wide"><h2>محاسبه حقوق و دستمزد</h2><p>فقط رکوردهای کامل و تاییدشده در حقوق محاسبه می‌شوند؛ رکوردهای خارج از برنامه تا تایید مدیر وارد محاسبه نمی‌شوند.</p>${payrollRows || '<p>هنوز ساعت تاییدشده‌ای برای محاسبه وجود ندارد.</p>'}</div>
     <form class="panel" id="passwordResetForm"><h2>بازیابی رمز عبور</h2><p>برای حساب‌های ایمیلی، کد زمان‌دار ساخته می‌شود و پس از تغییر رمز، نشست‌های قبلی همان کاربر پاک می‌شود.</p><label>ایمیل حساب<input name="email" value="${esc(customer.email)}" type="email" dir="ltr" autocomplete="email"></label><button class="primary">ساخت کد بازیابی</button></form>
     <div class="panel wide"><h2>وضعیت بازیابی رمز</h2>${passwordResets.map(reset=>`<div class="order-row password-reset-row"><b>${esc(reset.email)}</b><span>وضعیت: ${esc(resetStatusLabel(reset.status))} — پایان اعتبار: ${formatDate(reset.expiresAt)}${reset.status === 'pending' ? ' — کد فعال است' : ''}${reset.invalidatedSessions ? ` — نشست‌های پاک‌شده: ${numberText(reset.invalidatedSessions,0)}` : ''}</span></div>`).join('') || '<p>درخواستی ثبت نشده است.</p>'}</div>
@@ -2925,6 +2960,11 @@ function bindCommon() {
     if (!confirm('این کاربر کارکنان حذف شود؟')) return;
     try { RestaurantCore.deleteStaffUser(state, customer.id, btn.dataset.deleteStaff); saveState(); render(); }
     catch (err) { alert(err.message === 'STAFF_NOT_FOUND' ? 'کاربر پیدا نشد' : err.message); }
+  }));
+  document.querySelectorAll('[data-save-attendance-row]').forEach(btn => btn.addEventListener('click', () => {
+    const rowEl = btn.closest('[data-attendance-row]');
+    try { updateAttendanceRowFromManager(customer.id, btn.dataset.saveAttendanceRow, rowEl); saveState(); render(); }
+    catch (err) { alert('رکورد حضور و غیاب پیدا نشد'); }
   }));
   document.querySelectorAll('[data-approve-attendance]').forEach(btn => btn.addEventListener('click', () => {
     try { RestaurantCore.approveStaffAttendance(state, customer.id, btn.dataset.approveAttendance, true); saveState(); render(); }
