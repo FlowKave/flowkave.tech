@@ -44,6 +44,7 @@ let selectedHallCategory = '';
 let hallOrderDrafts = {};
 let calculatorValue = '';
 let pendingAccountScrollFocus = null;
+let scheduleWeekOffset = 0;
 let customerBankQuery = '';
 let customerBankSegment = '';
 if (window.pdfjsLib?.GlobalWorkerOptions) {
@@ -1930,6 +1931,55 @@ function weekdayLabel(day) { return ['یکشنبه','دوشنبه','سه‌شن�
 function staffOptions(staffUsers, selected = '') { return staffUsers.map(u => `<option value="${esc(u.id)}" ${u.id === selected ? 'selected' : ''}>${esc(u.personnelCode || '')} — ${esc(u.name || `${u.firstName || ''} ${u.lastName || ''}`)}</option>`).join(''); }
 function attendanceStatusLabel(row) { return row.managerApproval === 'pending' ? 'در انتظار تایید مدیر' : row.managerApproval === 'rejected' ? 'رد شده' : 'تایید شده'; }
 
+
+const PERSIAN_WEEK_DAYS = [
+  { weekday: 6, label: 'شنبه' },
+  { weekday: 0, label: 'یکشنبه' },
+  { weekday: 1, label: 'دوشنبه' },
+  { weekday: 2, label: 'سه‌شنبه' },
+  { weekday: 3, label: 'چهارشنبه' },
+  { weekday: 4, label: 'پنجشنبه' },
+  { weekday: 5, label: 'جمعه' },
+];
+function isoDateOnly(date) { return date.toISOString().slice(0, 10); }
+function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+function persianWeekStart(offset = 0) {
+  const today = new Date();
+  const distanceFromSaturday = (today.getDay() + 1) % 7;
+  const start = addDays(today, -distanceFromSaturday + (Number(offset || 0) * 7));
+  start.setHours(12, 0, 0, 0);
+  return start;
+}
+function compactJalaliDate(date) {
+  const p = gregorianToJalaliParts(date);
+  return `${p.month}/${p.day}`;
+}
+function fullJalaliDate(date) {
+  const p = gregorianToJalaliParts(date);
+  return `${p.year}/${p.month}/${p.day}`;
+}
+function staffScheduleForCell(schedules, staffUserId, dateText, weekday) {
+  return schedules.find(s => s.staffUserId === staffUserId && s.date === dateText) || schedules.find(s => s.staffUserId === staffUserId && !s.date && Number(s.weekday) === Number(weekday)) || null;
+}
+function renderWeeklyScheduleGrid(staffUsers, schedules) {
+  const weekStart = persianWeekStart(scheduleWeekOffset);
+  const days = PERSIAN_WEEK_DAYS.map((day, index) => ({ ...day, date: addDays(weekStart, index) }));
+  const weekEnd = addDays(weekStart, 6);
+  if (!staffUsers.length) return `<div class="weekly-schedule-empty">اول حداقل یک پرونده پرسنلی بسازید تا جدول برنامه کاری هفتگی نمایش داده شود.</div>`;
+  const headerCells = days.map(day => `<th class="${day.weekday === 5 ? 'weekend-day' : ''}"><b>${day.label}</b><span>${faNum(compactJalaliDate(day.date))}</span></th>`).join('');
+  const rows = staffUsers.map(staff => {
+    const cells = days.map(day => {
+      const dateText = isoDateOnly(day.date);
+      const schedule = staffScheduleForCell(schedules, staff.id, dateText, day.weekday);
+      return `<td><form class="weekly-schedule-cell-form" data-weekly-schedule-form><input type="hidden" name="staffUserId" value="${esc(staff.id)}"><input type="hidden" name="weekday" value="${day.weekday}"><input type="hidden" name="date" value="${dateText}"><input type="hidden" name="jalaliDate" value="${esc(fullJalaliDate(day.date))}"><label>شروع<input name="startTime" type="time" value="${esc(schedule?.startTime || '')}"></label><label>پایان<input name="endTime" type="time" value="${esc(schedule?.endTime || '')}"></label><button type="submit" class="schedule-save-button">ثبت</button></form></td>`;
+    }).join('');
+    const total = schedules.filter(s => s.staffUserId === staff.id && s.active !== false && days.some(day => (s.date && s.date === isoDateOnly(day.date)) || (!s.date && Number(s.weekday) === Number(day.weekday)))).reduce((sum, s) => sum + Math.max(0, minutesFromTimeText(s.endTime) - minutesFromTimeText(s.startTime)) / 60, 0);
+    return `<tr><th class="staff-schedule-name"><b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>${esc(staff.personnelCode || '')}</span><em>${numberText(total,1)} ساعت</em></th>${cells}</tr>`;
+  }).join('');
+  return `<div class="weekly-schedule-board" data-weekly-schedule-board><div class="weekly-schedule-toolbar"><button type="button" class="secondary" data-schedule-week="prev">‹ هفته قبل</button><strong>برنامه کاری هفتگی — ${faNum(fullJalaliDate(weekStart))} تا ${faNum(fullJalaliDate(weekEnd))}</strong><button type="button" class="secondary" data-schedule-week="next">هفته بعد ›</button></div><div class="weekly-schedule-scroll"><table class="weekly-schedule-table"><thead><tr><th class="staff-schedule-name">نام پرسنل</th>${headerCells}</tr></thead><tbody>${rows}</tbody></table></div><small class="weekly-schedule-note">روزها از راست با شنبه شروع می‌شود و تاریخ‌ها شمسی هستند. پرسنل همین جدول هفتگی را در اپ پرسنلی خود می‌بیند.</small></div>`;
+}
+function minutesFromTimeText(timeText) { const [h,m] = String(timeText || '00:00').split(':').map(Number); return (h || 0) * 60 + (m || 0); }
+
 function renderPersonnel(customer) {
   const staffUsers = RestaurantCore.getStaffUsers(state, customer.id);
   const staffInvitations = RestaurantCore.getStaffInvitations ? RestaurantCore.getStaffInvitations(state, customer.id) : [];
@@ -1939,18 +1989,16 @@ function renderPersonnel(customer) {
   const payroll = RestaurantCore.calculateStaffPayroll ? RestaurantCore.calculateStaffPayroll(state, customer.id) : [];
   const fp = RestaurantCore.getFingerprintDeviceContract ? RestaurantCore.getFingerprintDeviceContract() : null;
   const openAttendance = attendance.filter(r => !r.clockOutAt);
-  const scheduleRows = schedules.map(s => `<div class="order-row"><b>${esc(staffUsers.find(u=>u.id===s.staffUserId)?.name || 'پرسنل')}</b><span>${weekdayLabel(s.weekday)} از ${esc(faNum(s.startTime))} تا ${esc(faNum(s.endTime))}${s.note ? ` — ${esc(s.note)}` : ''}</span></div>`).join('');
   const attendanceRows = attendance.map(r => `<div class="order-row attendance-row ${r.managerApproval === 'pending' ? 'pending-approval' : ''}"><div><b>${esc(r.staffName || staffUsers.find(u=>u.id===r.staffUserId)?.name || 'پرسنل')}</b><span>${esc(faNum(r.date))} — ورود ${esc(faNum((r.clockInAt || '').slice(11,16)))}${r.clockOutAt ? ` / خروج ${esc(faNum(r.clockOutAt.slice(11,16)))}` : ' / هنوز خارج نشده'}</span>${r.exceptionType ? `<small>خارج از برنامه: ${esc(r.exceptionType)} — توضیح: ${esc(r.reason || 'بدون توضیح')}</small>` : ''}</div><div><span class="badge">${attendanceStatusLabel(r)}</span>${r.managerApproval === 'pending' ? `<button type="button" class="secondary" data-approve-attendance="${esc(r.id)}">تایید مدیر</button><button type="button" class="danger-button" data-reject-attendance="${esc(r.id)}">رد</button>` : ''}</div></div>`).join('');
   const payrollRows = payroll.map(p => `<div class="order-row"><b>${esc(p.staffName)}</b><span>${numberText(p.hours,2)} ساعت × ${money(p.hourlyWage)} = ${money(p.wage)}</span></div>`).join('');
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
     <form class="panel wide" id="staffForm"><h2>افزودن پرسنل</h2><p>این فرم فقط پرونده پرسنلی می‌سازد؛ پین و دسترسی ورود در باکس جدا تعریف می‌شود.</p><div class="staff-profile-grid"><label>کد پرسنلی<input name="personnelCode" value="۱۰۰۱" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>نام<input name="firstName" value="علی"></label><label>نام خانوادگی<input name="lastName" value="رضایی"></label><label>نام پدر<input name="fatherName" value="حسین"></label><label>کد ملی<input name="nationalId" value="" inputmode="numeric" dir="ltr" data-national-id placeholder="۰۰۹-۶۵۷۸۴۳-۵"></label><label>شماره همراه<input name="mobile" value="" inputmode="tel" dir="ltr"></label><label><span class="field-label-inline">ایمیل <small class="field-optional">(اختیاری)</small></span><input name="email" value="" type="email" dir="ltr" autocomplete="email"></label><label>سمت شغلی<input name="jobTitle" value="صندوق‌دار"></label><label>حقوق هر ساعت${numInput('hourlyWage', '')}</label><label class="wide-field">آدرس محل سکونت<textarea name="address" rows="2"></textarea></label></div><button class="primary">ثبت پرونده پرسنلی</button></form>
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
     <form class="panel" id="invitationForm"><h2>دعوت ایمیلی نقش‌های حساس</h2><p>برای مدیر، حسابدار یا نیرویی که باید حساب کاربری کامل داشته باشد، دعوت ایمیلی بسازید؛ تا زمان پذیرش، کاربر فعال عملیاتی ساخته نمی‌شود.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت دعوت کارکنان</button></form>
-    <form class="panel" id="staffScheduleForm"><h2>برنامه کاری</h2><p>پرسنل از طریق اپی که در اختیارشان قرار می‌دهیم برنامه کاری خود را می‌بینند. ورود زودتر، خروج دیرتر یا ورود بدون برنامه باید توضیح داشته باشد و قبل از محاسبه حقوق تایید مدیر شود.</p><label>پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>روز کاری<select name="weekday"><option value="0">یکشنبه</option><option value="1">دوشنبه</option><option value="2">سه‌شنبه</option><option value="3">چهارشنبه</option><option value="4">پنجشنبه</option><option value="5">جمعه</option><option value="6">شنبه</option></select></label><label>ساعت شروع<input name="startTime" value="09:00" type="time"></label><label>ساعت پایان<input name="endTime" value="17:00" type="time"></label><label>توضیح برنامه<input name="note" placeholder="مثلا شیفت صبح"></label><button class="primary">ثبت برنامه کاری</button></form>
+    <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
     <form class="panel" id="staffClockInForm"><h2>ثبت ورود</h2><label>پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>تاریخ<input name="date" type="date" value="${new Date().toISOString().slice(0,10)}"></label><label>ساعت ورود<input name="time" type="time" value="${new Date().toTimeString().slice(0,5)}"></label><label>توضیح خارج از برنامه<textarea name="reason" rows="2" placeholder="اگر زودتر از برنامه یا بدون برنامه وارد می‌شود، دلیل را بنویسید"></textarea></label><button class="primary">ثبت ورود</button></form>
     <form class="panel" id="staffClockOutForm"><h2>ثبت خروج</h2><label>ورود باز<select name="attendanceId">${openAttendance.map(r=>`<option value="${esc(r.id)}">${esc(r.staffName)} — ${esc(faNum(r.date))} ${esc(faNum((r.clockInAt||'').slice(11,16)))}</option>`).join('')}</select></label><label>ساعت خروج<input name="time" type="time" value="${new Date().toTimeString().slice(0,5)}"></label><label>توضیح خروج دیرتر<textarea name="reason" rows="2" placeholder="اگر دیرتر از برنامه خارج می‌شود، دلیل را بنویسید"></textarea></label><button class="primary">ثبت خروج</button></form>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
-    <div class="panel wide"><h2>برنامه‌های کاری ثبت‌شده</h2>${scheduleRows || '<p>هنوز برنامه کاری ثبت نشده است.</p>'}</div>
     <div class="panel wide"><h2>ورود و خروج پرسنل</h2>${attendanceRows || '<p>هنوز ورود/خروجی ثبت نشده است.</p>'}</div>
     <div class="panel wide"><h2>محاسبه حقوق و دستمزد</h2><p>فقط رکوردهای کامل و تاییدشده در حقوق محاسبه می‌شوند؛ رکوردهای خارج از برنامه تا تایید مدیر وارد محاسبه نمی‌شوند.</p>${payrollRows || '<p>هنوز ساعت تاییدشده‌ای برای محاسبه وجود ندارد.</p>'}</div>
     <form class="panel" id="passwordResetForm"><h2>بازیابی رمز عبور</h2><p>برای حساب‌های ایمیلی، کد زمان‌دار ساخته می‌شود و پس از تغییر رمز، نشست‌های قبلی همان کاربر پاک می‌شود.</p><label>ایمیل حساب<input name="email" value="${esc(customer.email)}" type="email" dir="ltr" autocomplete="email"></label><button class="primary">ساخت کد بازیابی</button></form>
@@ -2825,7 +2873,6 @@ function bindCommon() {
     purchaseInvoiceForm: (f, form) => { updatePurchaseInvoiceAmountFromRows(form); const lines = collectPurchaseInvoiceLines(form); const draftRows = collectPurchaseInvoiceDraftRows(form); if (draftRows.length && !lines.length) throw new Error('برای ثبت آیتم فاکتور، نام آیتم و مقدار مثبت لازم است.'); const input = { title: f.get('title'), supplier: f.get('supplier'), invoiceDate: f.get('documentDate'), documentDate: f.get('documentDate'), documentNumber: f.get('documentNumber'), paymentStatus: f.get('paymentStatus'), paymentMethod: f.get('paymentMethod'), accountId: f.get('accountId'), chequeNumber: f.get('chequeNumber'), chequeDueDate: f.get('chequeDueDate'), amount: parseFaNumber(form.querySelector('[name="amount"]')?.value || f.get('amount')), lines }; const editingId = f.get('editingInvoiceId'); const invoice = editingId ? RestaurantCore.updatePurchaseInvoice(state, customer.id, editingId, input) : RestaurantCore.recordPurchaseInvoice(state, customer.id, input); editingPurchaseInvoiceId = ''; return invoice; },
     staffForm: (f) => RestaurantCore.createStaffUser(state, customer.id, { personnelCode: toEnglishDigits(f.get('personnelCode')), firstName: cleanPersianText(f.get('firstName')), lastName: cleanPersianText(f.get('lastName')), fatherName: cleanPersianText(f.get('fatherName')), nationalId: normalizeNationalIdForSave(f.get('nationalId')), mobile: toEnglishDigits(f.get('mobile')), email: f.get('email'), address: cleanPersianText(f.get('address')), jobTitle: cleanPersianText(f.get('jobTitle')), hourlyWage: parseFaNumber(f.get('hourlyWage')), role: 'cashier' }),
     staffAccessForm: (f) => RestaurantCore.updateStaffUser(state, customer.id, f.get('staffUserId'), { pin: toEnglishDigits(f.get('pin')), role: f.get('role'), accessActive: true }),
-    staffScheduleForm: (f) => RestaurantCore.createStaffSchedule(state, customer.id, { staffUserId: f.get('staffUserId'), weekday: f.get('weekday'), startTime: f.get('startTime'), endTime: f.get('endTime'), note: cleanPersianText(f.get('note')) }),
     staffClockInForm: (f) => RestaurantCore.clockInStaff(state, customer.id, { staffUserId: f.get('staffUserId'), date: f.get('date'), time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
     staffClockOutForm: (f) => RestaurantCore.clockOutStaff(state, customer.id, f.get('attendanceId'), { time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
     invitationForm: (f) => RestaurantCore.createStaffInvitation(state, customer.id, { name: cleanPersianText(f.get('name')), email: f.get('email'), role: f.get('role') }),
@@ -2853,6 +2900,11 @@ function bindCommon() {
     const form = document.querySelector('#' + id);
     if (form) form.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message); } });
   }
+  document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
+  document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    try { const f = new FormData(form); RestaurantCore.createStaffSchedule(state, customer.id, { staffUserId: f.get('staffUserId'), weekday: f.get('weekday'), date: f.get('date'), jalaliDate: f.get('jalaliDate'), startTime: f.get('startTime') || '09:00', endTime: f.get('endTime') || '17:00', note: 'برنامه هفتگی' }); saveState(); render(); } catch (err) { alert(err.message); }
+  }));
 }
 
 window.addEventListener('hashchange', render);

@@ -983,22 +983,22 @@
   function createStaffSchedule(state, customerId, input = {}) {
     requireCustomer(state, customerId); ensureStaffHrCollections(state);
     getStaffById(state, customerId, input.staffUserId);
-    const schedule = {
-      id: uid('schedule'), customerId, staffUserId: input.staffUserId,
-      weekday: Number(input.weekday || 0), startTime: input.startTime || '09:00', endTime: input.endTime || '17:00',
-      note: cleanPersianText(input.note || ''), active: input.active !== false, createdAt: new Date().toISOString(),
-    };
-    state.staffSchedules.push(schedule); return schedule;
+    const date = String(input.date || '').slice(0, 10);
+    const existing = state.staffSchedules.find((s) => s.customerId === customerId && s.staffUserId === input.staffUserId && ((date && s.date === date) || (!date && !s.date && Number(s.weekday) === Number(input.weekday || 0))));
+    const patch = { weekday: Number(input.weekday || 0), date, jalaliDate: cleanPersianText(input.jalaliDate || ''), startTime: input.startTime || '09:00', endTime: input.endTime || '17:00', note: cleanPersianText(input.note || ''), active: input.active !== false, updatedAt: new Date().toISOString() };
+    if (existing) { Object.assign(existing, patch); return cloneJson(existing); }
+    const schedule = { id: uid('schedule'), customerId, staffUserId: input.staffUserId, ...patch, createdAt: new Date().toISOString() };
+    state.staffSchedules.push(schedule); return cloneJson(schedule);
   }
 
   function getStaffSchedules(state, customerId, staffUserId = '') {
     requireCustomer(state, customerId); ensureStaffHrCollections(state);
-    return state.staffSchedules.filter((s) => s.customerId === customerId && (!staffUserId || s.staffUserId === staffUserId) && s.active !== false).map(cloneJson);
+    return state.staffSchedules.filter((s) => s.customerId === customerId && (!staffUserId || s.staffUserId === staffUserId) && s.active !== false).map(cloneJson).sort((a,b)=>String(a.date || '').localeCompare(String(b.date || '')) || Number(a.weekday)-Number(b.weekday));
   }
 
   function scheduleFor(state, customerId, staffUserId, dateText) {
     const day = weekdayOf(dateText);
-    return getStaffSchedules(state, customerId, staffUserId).find((s) => Number(s.weekday) === day) || null;
+    return getStaffSchedules(state, customerId, staffUserId).find((s) => s.date === dateText) || getStaffSchedules(state, customerId, staffUserId).find((s) => !s.date && Number(s.weekday) === day) || null;
   }
 
   function attendanceNeedsApproval(schedule, type, timeText) {
