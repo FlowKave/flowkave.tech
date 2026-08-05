@@ -466,7 +466,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.jpg?v=system-logo-user-32" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=system-logo-hq-png-33" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
