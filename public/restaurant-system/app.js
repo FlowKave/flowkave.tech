@@ -2121,16 +2121,21 @@ function attendanceExceptionParts(row) {
 function attendanceReasonParts(row) {
   return String(row?.reason || '').split(/\s*\/\s*/).map(part => part.trim()).filter(Boolean);
 }
+function attendanceManagementNoteLabel(type) {
+  const text = String(type || '');
+  if (text.includes('ورود زودتر')) return 'ورود زودتر';
+  if (text.includes('خروج دیرتر')) return 'خروج دیرتر';
+  return text;
+}
 function attendanceManagementNotes(row) {
   const exceptions = attendanceExceptionParts(row);
   if (!exceptions.length) return '';
   const reasons = attendanceReasonParts(row);
   return exceptions.map((type, index) => {
     const reason = reasons[index] || reasons[0] || '';
-    const prefix = index === 0 && type.includes('ورود زودتر') ? 'خارج از برنامه: ' : '';
-    const safeType = esc(type);
+    const safeType = esc(attendanceManagementNoteLabel(type));
     const safeReason = reason ? esc(reason) : '';
-    return `${prefix}${safeType}${safeReason ? ` — توضیح: ${safeReason}` : ''}`;
+    return `${safeType}${safeReason ? ` — توضیح: ${safeReason}` : ''}`;
   }).join('<br>');
 }
 function shiftMinutesValueFromRow(row, field) {
