@@ -477,7 +477,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-delete-action-43" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-early-late-choice-46" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1171,7 +1171,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-delete-action-43" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-early-late-choice-46" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1949,7 +1949,7 @@ function renderStaffListModal(staffUsers) {
 }
 function renderAttendanceModal() {
   if (!attendanceModalOpen) return '';
-  return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><div class="attendance-modal-actions" data-attendance-actions><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in hidden>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out hidden>خروج</button></div></form></section></div>`;
+  return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><input type="hidden" name="attendancePendingAction" data-attendance-pending-action><div class="attendance-exception-choice" data-attendance-exception-choice hidden><b data-attendance-exception-title>ثبت خارج از برنامه</b><p data-attendance-exception-help></p><div class="attendance-exception-buttons"><button type="submit" class="secondary" name="attendanceExceptionMode" value="schedule" data-attendance-use-schedule>ثبت طبق برنامه</button><label>توضیح دلیل<textarea name="attendanceReason" rows="2" placeholder="دلیل را بنویسید"></textarea></label><button type="submit" class="primary" name="attendanceExceptionMode" value="reason" data-attendance-use-reason>ثبت با توضیح</button></div></div><div class="attendance-modal-actions" data-attendance-actions><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in hidden>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out hidden>خروج</button></div></form></section></div>`;
 }
 function attendanceStaffByCode(customerId, code) {
   const normalized = toEnglishDigits(code || '').trim();
@@ -1984,6 +1984,32 @@ function setAttendanceModalActionState(openRecord, hasStaff = false) {
 function visibleAttendanceAction() {
   return document.querySelector('[data-attendance-clock-out]:not([hidden])') ? 'out' : 'in';
 }
+function shiftMinutesText(timeText) {
+  const [h, m] = String(toEnglishDigits(timeText || '')).split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+}
+function attendanceTimingException(action, schedule, timeText) {
+  if (!schedule) return null;
+  const now = shiftMinutesText(timeText);
+  const start = shiftMinutesText(schedule.startTime);
+  const end = shiftMinutesText(schedule.endTime);
+  if (action === 'in' && now !== null && start !== null && now < start) return { type: 'early-in', scheduleTime: schedule.startTime, title: 'ورود زودتر از برنامه', help: `ساعت برنامه امروز ${faNum(schedule.startTime)} است. می‌توانید ورود را طبق برنامه ثبت کنید یا دلیل ورود زودتر را بنویسید.` };
+  if (action === 'out' && now !== null && end !== null && now > end) return { type: 'late-out', scheduleTime: schedule.endTime, title: 'خروج دیرتر از برنامه', help: `ساعت پایان برنامه امروز ${faNum(schedule.endTime)} است. می‌توانید خروج را طبق برنامه ثبت کنید یا دلیل خروج دیرتر را بنویسید.` };
+  return null;
+}
+function showAttendanceExceptionChoice(form, action, exception) {
+  const panel = form.querySelector('[data-attendance-exception-choice]');
+  if (!panel) return false;
+  form.querySelector('[data-attendance-pending-action]').value = action;
+  form.querySelector('[data-attendance-exception-title]').textContent = exception.title;
+  form.querySelector('[data-attendance-exception-help]').textContent = exception.help;
+  form.querySelector('[data-attendance-use-schedule]').textContent = action === 'in' ? 'ورود طبق برنامه' : 'خروج طبق برنامه';
+  form.querySelector('[data-attendance-use-reason]').textContent = action === 'in' ? 'ثبت ورود با توضیح' : 'ثبت خروج با توضیح';
+  panel.hidden = false;
+  form.querySelector('[data-attendance-actions]').hidden = true;
+  form.querySelector('[name="attendanceReason"]')?.focus();
+  return false;
+}
 function updateAttendanceSchedulePreview(customerId) {
   const input = document.querySelector('[data-attendance-personnel-code]');
   const box = document.querySelector('[data-attendance-schedule-preview]');
@@ -2006,18 +2032,25 @@ function attendanceModalErrorMessage(err) {
 }
 function handleAttendanceModalSubmit(form, customerId, action) {
   const f = new FormData(form);
+  const submittedAction = action;
+  action = f.get('attendancePendingAction') || action;
   const staff = attendanceStaffByCode(customerId, f.get('personnelCode'));
   if (!staff) throw new Error('STAFF_NOT_FOUND');
   const date = todayDateText();
-  const time = nowTimeText();
+  const actualTime = nowTimeText();
+  const schedule = attendanceScheduleForStaff(customerId, staff.id, date);
+  const exception = attendanceTimingException(action, schedule, actualTime);
+  const exceptionMode = f.get('attendanceExceptionMode') || (submittedAction === 'schedule' || submittedAction === 'reason' ? submittedAction : '');
+  if (exception && !exceptionMode) return showAttendanceExceptionChoice(form, action, exception);
+  const time = exception && exceptionMode === 'schedule' ? exception.scheduleTime : actualTime;
+  const reason = exception && exceptionMode === 'reason' ? cleanPersianText(f.get('attendanceReason') || '') : '';
+  if (exception && exceptionMode === 'reason' && !reason) throw new Error('ATTENDANCE_REASON_REQUIRED');
   if (action === 'out') {
     const open = openAttendanceForStaff(customerId, staff.id, date);
     if (!open) throw new Error('ATTENDANCE_NOT_FOUND');
-    try { return RestaurantCore.clockOutStaff(state, customerId, open.id, { time, reason: 'ثبت خروج از پاپ‌آپ کد پرسنلی', source: 'personnel-code-popup' }); }
-    catch (err) { if (err.message === 'ATTENDANCE_REASON_REQUIRED') return RestaurantCore.clockOutStaff(state, customerId, open.id, { time, reason: 'خروج خارج از برنامه با کد پرسنلی تا اتصال اسکنر اثر انگشت', source: 'personnel-code-popup' }); throw err; }
+    return RestaurantCore.clockOutStaff(state, customerId, open.id, { time, reason, source: 'personnel-code-popup' });
   }
-  try { return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason: '', source: 'personnel-code-popup' }); }
-  catch (err) { if (err.message === 'ATTENDANCE_REASON_REQUIRED') return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason: 'ورود خارج از برنامه با کد پرسنلی تا اتصال اسکنر اثر انگشت', source: 'personnel-code-popup' }); throw err; }
+  return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason, source: 'personnel-code-popup' });
 }
 function printPersonnelModal(selector) {
   const modal = document.querySelector(selector);
@@ -2939,7 +2972,7 @@ function bindCommon() {
   document.querySelectorAll('[data-open-attendance-modal]').forEach(btn => btn.addEventListener('click', () => { attendanceModalOpen = true; render(); }));
   document.querySelector('[data-close-attendance-modal]')?.addEventListener('click', () => { attendanceModalOpen = false; render(); });
   document.querySelector('[data-attendance-personnel-code]')?.addEventListener('input', () => updateAttendanceSchedulePreview(customer.id));
-  document.querySelector('#staffAttendanceModalForm')?.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(e.target); const submitter = e.submitter; handleAttendanceModalSubmit(e.target, customer.id, submitter?.value || visibleAttendanceAction()); attendanceModalOpen = false; saveState(); render(); } catch (err) { alert(attendanceModalErrorMessage(err)); updateAttendanceSchedulePreview(customer.id); } });
+  document.querySelector('#staffAttendanceModalForm')?.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(e.target); const submitter = e.submitter; const result = handleAttendanceModalSubmit(e.target, customer.id, submitter?.value || visibleAttendanceAction()); if (result === false) return; attendanceModalOpen = false; saveState(); render(); } catch (err) { alert(attendanceModalErrorMessage(err)); updateAttendanceSchedulePreview(customer.id); } });
   document.querySelectorAll('[data-close-staff-modal]').forEach(btn => btn.addEventListener('click', () => { staffFormModalOpen = false; render(); }));
   document.querySelectorAll('[data-close-staff-list-modal]').forEach(btn => btn.addEventListener('click', () => { staffListModalOpen = false; render(); }));
   document.querySelectorAll('[data-personnel-modal-overlay]').forEach(overlay => overlay.addEventListener('click', (e) => { if (e.target !== overlay) return; staffFormModalOpen = false; staffListModalOpen = false; attendanceModalOpen = false; render(); }));
