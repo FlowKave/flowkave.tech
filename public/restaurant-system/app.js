@@ -477,7 +477,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-clockout-display-41" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-modal-single-action-42" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1171,7 +1171,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-clockout-display-41" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-modal-single-action-42" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1949,7 +1949,7 @@ function renderStaffListModal(staffUsers) {
 }
 function renderAttendanceModal() {
   if (!attendanceModalOpen) return '';
-  return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><p>فعلاً تا زمان اتصال اسکنر اثر انگشت، کد پرسنلی وارد می‌شود؛ بعداً همین پاپ‌آپ درخواست اسکن اثر انگشت می‌دهد.</p><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><div class="attendance-modal-actions"><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out>خروج</button></div><small>مرحله بعدی: بعد از نصب اسکنر، همین دکمه پاپ‌آپ را باز می‌کند و به‌جای کد، تایید اثر انگشت می‌خواهد.</small></form></section></div>`;
+  return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><div class="attendance-modal-actions" data-attendance-actions><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in hidden>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out hidden>خروج</button></div></form></section></div>`;
 }
 function attendanceStaffByCode(customerId, code) {
   const normalized = toEnglishDigits(code || '').trim();
@@ -1974,16 +1974,27 @@ function attendanceDisplayTime(row, field = 'clockInAt') {
   if (field === 'clockInAt' && row?.source === 'personnel-code-popup' && row?.createdAt) return iranClockTimeText(new Date(row.createdAt));
   return fallback;
 }
+function setAttendanceModalActionState(openRecord, hasStaff = false) {
+  const inButton = document.querySelector('[data-attendance-clock-in]');
+  const outButton = document.querySelector('[data-attendance-clock-out]');
+  if (!inButton || !outButton) return;
+  inButton.hidden = !hasStaff || Boolean(openRecord);
+  outButton.hidden = !hasStaff || !openRecord;
+}
+function visibleAttendanceAction() {
+  return document.querySelector('[data-attendance-clock-out]:not([hidden])') ? 'out' : 'in';
+}
 function updateAttendanceSchedulePreview(customerId) {
   const input = document.querySelector('[data-attendance-personnel-code]');
   const box = document.querySelector('[data-attendance-schedule-preview]');
   if (!input || !box) return;
   const staff = attendanceStaffByCode(customerId, input.value);
-  if (!staff) { box.innerHTML = '<span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span>'; return; }
+  if (!staff) { setAttendanceModalActionState(null, false); box.innerHTML = '<span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span>'; return; }
   const dateText = todayDateText();
   const schedule = attendanceScheduleForStaff(customerId, staff.id, dateText);
   const open = openAttendanceForStaff(customerId, staff.id, dateText);
-  box.innerHTML = `<b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>برنامه امروز: ${schedule ? `${esc(faNum(schedule.startTime))} تا ${esc(faNum(schedule.endTime))}` : 'برای امروز برنامه‌ای ثبت نشده'}</span><small>${open ? `وضعیت: از ساعت ${esc(faNum(attendanceDisplayTime(open, 'clockInAt')))} وارد شده و هنوز خروج نزده است.` : 'وضعیت: ورود باز برای امروز ندارد.'}</small>`;
+  setAttendanceModalActionState(open, true);
+  box.innerHTML = `<b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>برنامه امروز: ${schedule ? `${esc(faNum(schedule.startTime))} تا ${esc(faNum(schedule.endTime))}` : 'برای امروز برنامه‌ای ثبت نشده'}</span><small>${open ? `وضعیت: از ساعت ${esc(faNum(attendanceDisplayTime(open, 'clockInAt')))} وارد شده و هنوز خروج نزده است.` : 'وضعیت: آماده ثبت ورود است.'}</small>`;
 }
 function attendanceModalErrorMessage(err) {
   const msg = err?.message || '';
@@ -2928,7 +2939,7 @@ function bindCommon() {
   document.querySelectorAll('[data-open-attendance-modal]').forEach(btn => btn.addEventListener('click', () => { attendanceModalOpen = true; render(); }));
   document.querySelector('[data-close-attendance-modal]')?.addEventListener('click', () => { attendanceModalOpen = false; render(); });
   document.querySelector('[data-attendance-personnel-code]')?.addEventListener('input', () => updateAttendanceSchedulePreview(customer.id));
-  document.querySelector('#staffAttendanceModalForm')?.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(e.target); const submitter = e.submitter; handleAttendanceModalSubmit(e.target, customer.id, submitter?.value || 'in'); attendanceModalOpen = false; saveState(); render(); } catch (err) { alert(attendanceModalErrorMessage(err)); updateAttendanceSchedulePreview(customer.id); } });
+  document.querySelector('#staffAttendanceModalForm')?.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(e.target); const submitter = e.submitter; handleAttendanceModalSubmit(e.target, customer.id, submitter?.value || visibleAttendanceAction()); attendanceModalOpen = false; saveState(); render(); } catch (err) { alert(attendanceModalErrorMessage(err)); updateAttendanceSchedulePreview(customer.id); } });
   document.querySelectorAll('[data-close-staff-modal]').forEach(btn => btn.addEventListener('click', () => { staffFormModalOpen = false; render(); }));
   document.querySelectorAll('[data-close-staff-list-modal]').forEach(btn => btn.addEventListener('click', () => { staffListModalOpen = false; render(); }));
   document.querySelectorAll('[data-personnel-modal-overlay]').forEach(overlay => overlay.addEventListener('click', (e) => { if (e.target !== overlay) return; staffFormModalOpen = false; staffListModalOpen = false; attendanceModalOpen = false; render(); }));
