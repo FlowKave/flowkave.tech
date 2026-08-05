@@ -2,6 +2,18 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.RestaurantCore = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const IRAN_TIME_ZONE = 'Asia/Tehran';
+  function iranGregorianDateText(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: IRAN_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    const val = (type) => parts.find((part) => part.type === type)?.value || '';
+    return `${val('year')}-${val('month')}-${val('day')}`;
+  }
+  function iranClockTimeText(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: IRAN_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date);
+    const val = (type) => parts.find((part) => part.type === type)?.value || '';
+    return `${val('hour')}:${val('minute')}`;
+  }
+
   const packages = {
     'Menu Starter': ['digital-menu'],
     'Menu Pro': ['digital-menu', 'orders'],
@@ -1021,8 +1033,8 @@
   function clockInStaff(state, customerId, input = {}) {
     requireCustomer(state, customerId); ensureStaffHrCollections(state);
     const staff = getStaffById(state, customerId, input.staffUserId);
-    const date = input.date || new Date().toISOString().slice(0,10);
-    const time = input.time || new Date().toTimeString().slice(0,5);
+    const date = input.date || iranGregorianDateText();
+    const time = input.time || iranClockTimeText();
     if (state.staffAttendance.some((r) => r.customerId === customerId && r.staffUserId === staff.id && r.date === date && !r.clockOutAt)) throw new Error('ATTENDANCE_ALREADY_OPEN');
     const schedule = scheduleFor(state, customerId, staff.id, date);
     const exceptionType = attendanceNeedsApproval(schedule, 'in', time);
@@ -1037,7 +1049,7 @@
     if (!rec) throw new Error('ATTENDANCE_NOT_FOUND');
     if (rec.clockOutAt) throw new Error('ATTENDANCE_ALREADY_CLOSED');
     const date = rec.date;
-    const time = input.time || new Date().toTimeString().slice(0,5);
+    const time = input.time || iranClockTimeText();
     const schedule = scheduleFor(state, customerId, rec.staffUserId, date);
     const exceptionType = attendanceNeedsApproval(schedule, 'out', time);
     if (exceptionType && !cleanPersianText(input.reason || '')) throw new Error('ATTENDANCE_REASON_REQUIRED');
