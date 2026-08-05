@@ -466,16 +466,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی گرافیکی فلوکیو رستوران" role="img">
-    <svg viewBox="0 0 96 64" aria-hidden="true" focusable="false" class="restaurant-logo-svg">
-      <defs><linearGradient id="restaurantLogoGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="0.55" stop-color="#2563eb"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
-      <rect class="restaurant-logo-card" x="5" y="7" width="86" height="50" rx="16"/>
-      <path class="restaurant-logo-steam" d="M34 18c-4 4 4 6 0 10M48 15c-5 5 5 7 0 12M62 18c-4 4 4 6 0 10"/>
-      <path class="restaurant-logo-cloche" d="M24 42c2-10 12-18 24-18s22 8 24 18M20 42h56M48 24v-5"/>
-      <path class="restaurant-logo-fork" d="M20 18v28M16 18v12M20 18v12M24 18v12"/>
-      <path class="restaurant-logo-spoon" d="M77 18c5 0 7 5 7 10s-2 9-7 10v8"/>
-    </svg>
-  </div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.jpg?v=system-logo-user-32" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
