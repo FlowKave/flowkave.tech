@@ -1962,7 +1962,7 @@ function renderStaffCreateModal(staffUsers) {
 }
 function renderStaffListModal(staffUsers) {
   if (!staffListModalOpen) return '';
-  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><p>این لیست فقط نیروهایی را نشان می‌دهد که مالک تعریف کرده است؛ حساب مالک در لیست پرسنلی نمایش داده نمی‌شود.</p><div class="staff-user-list printable-staff-list">${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div></section></div>`;
+  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><div class="staff-user-list printable-staff-list">${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div></section></div>`;
 }
 function renderAttendanceModal() {
   if (!attendanceModalOpen) return '';
@@ -2069,6 +2069,20 @@ function handleAttendanceModalSubmit(form, customerId, action) {
   }
   return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason, source: 'personnel-code-popup' });
 }
+function prepareStaffListPrintClone(clone) {
+  clone.querySelector(':scope > p')?.remove();
+  const list = clone.querySelector('.printable-staff-list');
+  if (!list) return;
+  const headers = ['کد پرسنلی','نام','نام خانوادگی','سمت شغلی','حقوق هر ساعت','نقش دسترسی','وضعیت پرونده','دسترسی سامانه'];
+  const rows = [...list.querySelectorAll('.staff-user-edit-form')].map(form => {
+    const value = (name) => form.querySelector(`[name="${name}"]`)?.value || '';
+    const roleSelect = form.querySelector('[name="role"]');
+    const status = cleanPersianText(form.querySelector('.staff-user-status')?.textContent || '');
+    const [profileStatus = '', accessStatus = ''] = status.split('—').map(part => part.replace(/^.*?:\s*/, '').trim());
+    return [faNum(value('personnelCode')), value('firstName'), value('lastName'), value('jobTitle'), money(parseFaNumber(value('hourlyWage'))), roleSelect?.selectedOptions?.[0]?.textContent || '', profileStatus, accessStatus];
+  });
+  list.innerHTML = rows.length ? `<table class="staff-list-print-table"><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${esc(faNum(cell || '—'))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p>هنوز پرسنلی تعریف نشده است.</p>';
+}
 function prepareWeeklySchedulePrintClone(clone) {
   clone.querySelector(':scope > p')?.remove();
   clone.querySelector('.weekly-schedule-note')?.remove();
@@ -2097,6 +2111,7 @@ function printPersonnelModal(selector) {
   printRoot.dataset.personnelPrintTarget = printTarget;
   const clone = target.cloneNode(true);
   if (printTarget === 'weekly-schedule') prepareWeeklySchedulePrintClone(clone);
+  if (printTarget === 'staff-list') prepareStaffListPrintClone(clone);
   printRoot.appendChild(clone);
   document.body.appendChild(printRoot);
   document.body.dataset.personnelPrintTarget = printTarget;
