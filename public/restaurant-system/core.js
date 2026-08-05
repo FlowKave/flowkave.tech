@@ -991,6 +991,16 @@
     state.staffSchedules.push(schedule); return cloneJson(schedule);
   }
 
+
+  function deleteStaffSchedule(state, customerId, input = {}) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const staffUserId = input.staffUserId || '';
+    const date = String(input.date || '').slice(0, 10);
+    const before = state.staffSchedules.length;
+    state.staffSchedules = state.staffSchedules.filter((s) => !(s.customerId === customerId && (!staffUserId || s.staffUserId === staffUserId) && (!date || s.date === date)));
+    return { deletedCount: before - state.staffSchedules.length };
+  }
+
   function getStaffSchedules(state, customerId, staffUserId = '') {
     requireCustomer(state, customerId); ensureStaffHrCollections(state);
     return state.staffSchedules.filter((s) => s.customerId === customerId && (!staffUserId || s.staffUserId === staffUserId) && s.active !== false).map(cloneJson).sort((a,b)=>String(a.date || '').localeCompare(String(b.date || '')) || Number(a.weekday)-Number(b.weekday));
@@ -2430,6 +2440,7 @@
     canAccess,
     getStaffUsers,
     createStaffSchedule,
+    deleteStaffSchedule,
     getStaffSchedules,
     clockInStaff,
     clockOutStaff,

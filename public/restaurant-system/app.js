@@ -45,6 +45,7 @@ let hallOrderDrafts = {};
 let calculatorValue = '';
 let pendingAccountScrollFocus = null;
 let scheduleWeekOffset = 0;
+let weeklyScheduleSaveTimers = new Map();
 let customerBankQuery = '';
 let customerBankSegment = '';
 if (window.pdfjsLib?.GlobalWorkerOptions) {
@@ -1961,6 +1962,42 @@ function fullJalaliDate(date) {
 function staffScheduleForCell(schedules, staffUserId, dateText, weekday) {
   return schedules.find(s => s.staffUserId === staffUserId && s.date === dateText) || schedules.find(s => s.staffUserId === staffUserId && !s.date && Number(s.weekday) === Number(weekday)) || null;
 }
+
+function normalizeShiftTimeInput(value) {
+  const raw = toEnglishDigits(value).trim();
+  const colon = raw.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
+  let hh = 0, mm = 0;
+  if (colon) { hh = Number(colon[1]); mm = Number(colon[2]); }
+  else {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    if (!digits) return '';
+    if (digits.length <= 2) { hh = Number(digits); mm = 0; }
+    else if (digits.length === 3) { hh = Number(digits.slice(0, 1)); mm = Number(digits.slice(1)); }
+    else { hh = Number(digits.slice(0, 2)); mm = Number(digits.slice(2)); }
+  }
+  hh = Math.min(23, Math.max(0, hh || 0));
+  mm = Math.min(59, Math.max(0, mm || 0));
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+function saveWeeklyScheduleCell(form, customerId, { clear = false } = {}) {
+  const f = new FormData(form);
+  if (clear) {
+    RestaurantCore.deleteStaffSchedule(state, customerId, { staffUserId: f.get('staffUserId'), date: f.get('date') });
+    form.querySelector('[name="startTime"]').value = '';
+    form.querySelector('[name="endTime"]').value = '';
+    form.querySelector('[name="note"]').value = '';
+    saveState();
+    form.classList.add('schedule-cell-saved'); setTimeout(() => form.classList.remove('schedule-cell-saved'), 700);
+    return;
+  }
+  const start = form.querySelector('[name="startTime"]')?.value || '';
+  const end = form.querySelector('[name="endTime"]')?.value || '';
+  const note = cleanPersianText(f.get('note'));
+  if (!start || !end) return;
+  RestaurantCore.createStaffSchedule(state, customerId, { staffUserId: f.get('staffUserId'), weekday: f.get('weekday'), date: f.get('date'), jalaliDate: f.get('jalaliDate'), startTime: start, endTime: end, note });
+  saveState();
+  form.classList.add('schedule-cell-saved'); setTimeout(() => form.classList.remove('schedule-cell-saved'), 700);
+}
 function renderWeeklyScheduleGrid(staffUsers, schedules) {
   const weekStart = persianWeekStart(scheduleWeekOffset);
   const days = PERSIAN_WEEK_DAYS.map((day, index) => ({ ...day, date: addDays(weekStart, index) }));
@@ -1971,7 +2008,7 @@ function renderWeeklyScheduleGrid(staffUsers, schedules) {
     const cells = days.map(day => {
       const dateText = isoDateOnly(day.date);
       const schedule = staffScheduleForCell(schedules, staff.id, dateText, day.weekday);
-      return `<td><form class="weekly-schedule-cell-form" data-weekly-schedule-form><input type="hidden" name="staffUserId" value="${esc(staff.id)}"><input type="hidden" name="weekday" value="${day.weekday}"><input type="hidden" name="date" value="${dateText}"><input type="hidden" name="jalaliDate" value="${esc(fullJalaliDate(day.date))}"><label>شروع<input name="startTime" type="time" value="${esc(schedule?.startTime || '')}"></label><label>پایان<input name="endTime" type="time" value="${esc(schedule?.endTime || '')}"></label><button type="submit" class="schedule-save-button">ثبت</button></form></td>`;
+      return `<td><form class="weekly-schedule-cell-form" data-weekly-schedule-form><input type="hidden" name="staffUserId" value="${esc(staff.id)}"><input type="hidden" name="weekday" value="${day.weekday}"><input type="hidden" name="date" value="${dateText}"><input type="hidden" name="jalaliDate" value="${esc(fullJalaliDate(day.date))}"><label class="shift-start-field">شروع<input name="startTime" type="text" inputmode="numeric" autocomplete="off" data-shift-time placeholder="09:00" value="${esc(schedule?.startTime || '')}"></label><button type="button" class="schedule-clear-decal" data-clear-weekly-schedule aria-label="پاک کردن شیفت" title="پاک کردن شیفت">×</button><label class="shift-end-field">پایان<input name="endTime" type="text" inputmode="numeric" autocomplete="off" data-shift-time placeholder="17:00" value="${esc(schedule?.endTime || '')}"></label><label class="shift-note-field">توضیحات<input name="note" value="${esc(schedule?.note || '')}" placeholder="توضیح شیفت"></label></form></td>`;
     }).join('');
     const total = schedules.filter(s => s.staffUserId === staff.id && s.active !== false && days.some(day => (s.date && s.date === isoDateOnly(day.date)) || (!s.date && Number(s.weekday) === Number(day.weekday)))).reduce((sum, s) => sum + Math.max(0, minutesFromTimeText(s.endTime) - minutesFromTimeText(s.startTime)) / 60, 0);
     return `<tr><th class="staff-schedule-name"><b>${esc(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`)}</b><span>${esc(staff.personnelCode || '')}</span><em>${numberText(total,1)} ساعت</em></th>${cells}</tr>`;
@@ -2901,10 +2938,16 @@ function bindCommon() {
     if (form) form.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
-  document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    try { const f = new FormData(form); RestaurantCore.createStaffSchedule(state, customer.id, { staffUserId: f.get('staffUserId'), weekday: f.get('weekday'), date: f.get('date'), jalaliDate: f.get('jalaliDate'), startTime: f.get('startTime') || '09:00', endTime: f.get('endTime') || '17:00', note: 'برنامه هفتگی' }); saveState(); render(); } catch (err) { alert(err.message); }
-  }));
+  document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
+    form.addEventListener('submit', (e) => e.preventDefault());
+    form.querySelectorAll('[data-shift-time]').forEach(input => {
+      input.addEventListener('blur', () => { input.value = normalizeShiftTimeInput(input.value); saveWeeklyScheduleCell(form, customer.id); });
+      input.addEventListener('change', () => { input.value = normalizeShiftTimeInput(input.value); saveWeeklyScheduleCell(form, customer.id); });
+    });
+    const note = form.querySelector('[name="note"]');
+    if (note) note.addEventListener('input', () => { const key = `${form.querySelector('[name="staffUserId"]').value}:${form.querySelector('[name="date"]').value}`; clearTimeout(weeklyScheduleSaveTimers.get(key)); weeklyScheduleSaveTimers.set(key, setTimeout(() => saveWeeklyScheduleCell(form, customer.id), 450)); });
+    form.querySelector('[data-clear-weekly-schedule]')?.addEventListener('click', () => { try { saveWeeklyScheduleCell(form, customer.id, { clear: true }); } catch (err) { alert(err.message); } });
+  });
 }
 
 window.addEventListener('hashchange', render);
