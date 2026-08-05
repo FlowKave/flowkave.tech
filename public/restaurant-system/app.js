@@ -467,7 +467,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=staff-attendance-modal-36" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=header-attendance-icon-37" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1162,7 +1162,7 @@ function render() {
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
         <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong></div>
-        <div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div>
+        <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=header-attendance-icon-37" alt="ورود و خروج پرسنل"></button></div>
         ${appLogoMarkup()}
       </header>
       <aside class="sidebar">
@@ -1175,7 +1175,7 @@ function render() {
         ${renderTab(customer)}
       </main>
     </div>
-    <div id="calculatorModalRoot"></div>`;
+    <div id="calculatorModalRoot"></div>${renderAttendanceModal()}`;
   bindCommon();
   bindPersianNumberInputs();
   restoreInventoryScrollFocus();
@@ -2101,7 +2101,7 @@ function renderPersonnel(customer) {
   const attendanceRows = attendance.map(r => `<div class="order-row attendance-row ${r.managerApproval === 'pending' ? 'pending-approval' : ''}"><div><b>${esc(r.staffName || staffUsers.find(u=>u.id===r.staffUserId)?.name || 'پرسنل')}</b><span>${esc(faNum(r.date))} — ورود ${esc(faNum((r.clockInAt || '').slice(11,16)))}${r.clockOutAt ? ` / خروج ${esc(faNum(r.clockOutAt.slice(11,16)))}` : ' / هنوز خارج نشده'}</span>${r.exceptionType ? `<small>خارج از برنامه: ${esc(r.exceptionType)} — توضیح: ${esc(r.reason || 'بدون توضیح')}</small>` : ''}</div><div><span class="badge">${attendanceStatusLabel(r)}</span>${r.managerApproval === 'pending' ? `<button type="button" class="secondary" data-approve-attendance="${esc(r.id)}">تایید مدیر</button><button type="button" class="danger-button" data-reject-attendance="${esc(r.id)}">رد</button>` : ''}</div></div>`).join('');
   const payrollRows = payroll.map(p => `<div class="order-row"><b>${esc(p.staffName)}</b><span>${numberText(p.hours,2)} ساعت × ${money(p.hourlyWage)} = ${money(p.wage)}</span></div>`).join('');
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
-    <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن، لیست پرسنل و ورود/خروج از اینجا به صورت پاپ‌آپ باز می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button><button type="button" class="secondary staff-attendance-launch" data-open-attendance-modal>ورود/خروج پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}${renderAttendanceModal()}
+    <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود؛ ورود و خروج پرسنل از دکمه تصویری کنار تاریخ و ساعت بالای صفحه انجام می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
     <form class="panel" id="invitationForm"><h2>دعوت ایمیلی نقش‌های حساس</h2><p>برای مدیر، حسابدار یا نیرویی که باید حساب کاربری کامل داشته باشد، دعوت ایمیلی بسازید؛ تا زمان پذیرش، کاربر فعال عملیاتی ساخته نمی‌شود.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت دعوت کارکنان</button></form>
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
