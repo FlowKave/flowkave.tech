@@ -1282,3 +1282,6 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .attendance-exception-choice p{margin:0;color:#334155!important;font-weight:800;line-height:1.9}
 .attendance-exception-buttons{display:grid;grid-template-columns:1fr;gap:10px}.attendance-exception-buttons label{margin:0}.attendance-exception-buttons textarea{background:#fff!important;color:#172033!important;-webkit-text-fill-color:#172033!important;min-height:68px!important}
 .attendance-exception-buttons button{min-height:48px!important;font-size:16px!important;font-weight:1000!important}
+/* Attendance exception submit button must be visible without hover/touch cursor. */
+.staff-attendance-modal .attendance-exception-buttons .primary{background:linear-gradient(135deg,#0f766e 0%,#0b7f75 48%,#0f766e 100%)!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;border:0!important;box-shadow:0 14px 28px rgba(15,118,110,.30)!important;opacity:1!important;filter:none!important;text-shadow:none!important}
+.staff-attendance-modal .attendance-exception-buttons .primary:hover,.staff-attendance-modal .attendance-exception-buttons .primary:focus-visible{filter:brightness(1.03)!important;transform:translateY(-1px)!important}
