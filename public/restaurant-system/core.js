@@ -1070,6 +1070,14 @@
     rec.reviewedAt = new Date().toISOString(); return rec;
   }
 
+  function deleteStaffAttendance(state, customerId, attendanceId) {
+    requireCustomer(state, customerId); ensureStaffHrCollections(state);
+    const index = state.staffAttendance.findIndex((r) => r.id === attendanceId && r.customerId === customerId);
+    if (index === -1) throw new Error('ATTENDANCE_NOT_FOUND');
+    const [deleted] = state.staffAttendance.splice(index, 1);
+    return deleted;
+  }
+
   function getStaffAttendance(state, customerId) {
     requireCustomer(state, customerId); ensureStaffHrCollections(state);
     return state.staffAttendance.filter((r) => r.customerId === customerId).map(cloneJson).sort((a,b)=>String(b.clockInAt).localeCompare(String(a.clockInAt)));
@@ -2457,6 +2465,7 @@
     clockInStaff,
     clockOutStaff,
     approveStaffAttendance,
+    deleteStaffAttendance,
     getStaffAttendance,
     calculateStaffPayroll,
     getFingerprintDeviceContract,

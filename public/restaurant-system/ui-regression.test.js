@@ -17,7 +17,7 @@ function mustContain(source, needle, message) {
 
 
 // Header logo must use the user-provided restaurant-system image asset, not the old inline SVG or a temporary mark.
-assert(app.includes('./assets/restaurant-system-logo.png?v=attendance-modal-single-action-42') && app.includes('alt="لوگوی سامانه رستوران"'), 'لوگوی هدر باید از عکس ارسالی کاربر به عنوان لوگوی سامانه استفاده کند');
+assert(app.includes('./assets/restaurant-system-logo.png?v=attendance-delete-action-43') && app.includes('alt="لوگوی سامانه رستوران"'), 'لوگوی هدر باید از عکس ارسالی کاربر به عنوان لوگوی سامانه استفاده کند');
 assert(!app.includes('restaurant-logo-svg') && !app.includes('restaurant-logo-cloche'), 'لوگوی SVG قدیمی نباید در هدر سامانه باقی بماند');
 assert(styles.includes('.app-logo.restaurant-graphic-logo img') && styles.includes('object-fit:contain!important'), 'لوگوی تصویری باید با CSS مناسب داخل هدر نمایش داده شود');
 assert(styles.includes('border-radius:0!important') && styles.includes('box-shadow:none!important') && styles.includes('transform:none!important'), 'لوگوی PNG باید بدون کادر/قاب و بدون برش یا زوم مخرب نمایش داده شود');
@@ -43,9 +43,9 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=attendance-modal-single-action-42');
-mustContain(html, 'core.js?v=attendance-modal-single-action-42');
-mustContain(html, 'app.js?v=attendance-modal-single-action-42');
+mustContain(html, 'styles.css?v=attendance-delete-action-43');
+mustContain(html, 'core.js?v=attendance-delete-action-43');
+mustContain(html, 'app.js?v=attendance-delete-action-43');
 mustContain(app, "field === 'clockInAt'", 'Attendance display must only use createdAt for clock-in display.');
 assert(!app.includes("row?.sourceOut === 'personnel-code-popup') && row?.createdAt) return iranClockTimeText"), 'Clock-out display must not reuse the clock-in createdAt time.');
 mustContain(app, 'placeholder="--:--"', 'Start/end shift time boxes must show manager-fillable --:-- placeholders.');
@@ -90,7 +90,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=attendance-modal-single-action-42') && index.includes('core.js?v=attendance-modal-single-action-42') && index.includes('app.js?v=attendance-modal-single-action-42'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=attendance-delete-action-43') && index.includes('core.js?v=attendance-delete-action-43') && index.includes('app.js?v=attendance-delete-action-43'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
@@ -118,3 +118,6 @@ mustContain(app, 'function setAttendanceModalActionState', 'Attendance popup mus
 mustContain(app, 'inButton.hidden = !hasStaff || Boolean(openRecord)', 'Clock-in button must hide after staff already has open attendance.');
 mustContain(app, 'outButton.hidden = !hasStaff || !openRecord', 'Clock-out button must show only for an already entered staff member.');
 assert(!app.includes('فعلاً تا زمان اتصال اسکنر اثر انگشت') && !app.includes('مرحله بعدی: بعد از نصب اسکنر'), 'Extra explanatory text must be removed from attendance popup.');
+
+assert(app.includes('data-delete-attendance=') && app.includes('>حذف</button>') && !app.includes('data-reject-attendance=') && !app.includes('>رد</button>'), 'در جدول ورود و خروج پرسنل دکمه رد باید با حذف جایگزین شود.');
+assert(coreSource.includes('function deleteStaffAttendance') && app.includes('RestaurantCore.deleteStaffAttendance'), 'دکمه حذف حضور و غیاب باید رکورد را حذف کند، نه اینکه فقط رد کند.');

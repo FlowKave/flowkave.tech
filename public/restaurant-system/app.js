@@ -477,7 +477,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-modal-single-action-42" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-delete-action-43" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1171,7 +1171,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-modal-single-action-42" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-delete-action-43" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2047,7 +2047,7 @@ function renderAttendanceManagementRow(row, staffUsers = [], schedules = []) {
   const staffName = row.staffName || staffUsers.find(u => u.id === row.staffUserId)?.name || 'پرسنل';
   const schedule = scheduleForAttendanceRow(row, schedules);
   const note = [row.exceptionType ? `خارج از برنامه: ${row.exceptionType}` : '', row.reason ? `توضیح: ${row.reason}` : ''].filter(Boolean).join(' — ');
-  return `<tr class="attendance-row ${row.managerApproval === 'pending' ? 'pending-approval' : ''}" data-attendance-row="${esc(row.id)}"><td><b>${esc(staffName)}</b><small>${esc(staffUsers.find(u=>u.id===row.staffUserId)?.personnelCode || '')}</small></td><td>${esc(faNum(dateTextToJalaliDate(row.date)))}</td><td>${esc(faNum(schedule?.startTime || row.scheduledStart || '--:--'))}</td><td>${esc(faNum(schedule?.endTime || row.scheduledEnd || '--:--'))}</td><td><input name="clockInTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockInAt')))}" placeholder="--:--"></td><td><input name="clockOutTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockOutAt')))}" placeholder="--:--"></td><td><textarea name="reason" rows="2" placeholder="توضیحات مدیر">${esc(row.reason || '')}</textarea><small>${esc(note || '—')}</small></td><td><span class="badge">${attendanceStatusLabel(row)}</span></td><td><div class="staff-attendance-row-actions"><button class="primary" type="button" data-save-attendance-row="${esc(row.id)}">تایید</button><button class="danger-button" type="button" data-reject-attendance="${esc(row.id)}">رد</button></div></td></tr>`;
+  return `<tr class="attendance-row ${row.managerApproval === 'pending' ? 'pending-approval' : ''}" data-attendance-row="${esc(row.id)}"><td><b>${esc(staffName)}</b><small>${esc(staffUsers.find(u=>u.id===row.staffUserId)?.personnelCode || '')}</small></td><td>${esc(faNum(dateTextToJalaliDate(row.date)))}</td><td>${esc(faNum(schedule?.startTime || row.scheduledStart || '--:--'))}</td><td>${esc(faNum(schedule?.endTime || row.scheduledEnd || '--:--'))}</td><td><input name="clockInTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockInAt')))}" placeholder="--:--"></td><td><input name="clockOutTime" inputmode="numeric" data-shift-time value="${esc(faNum(attendanceClockValue(row, 'clockOutAt')))}" placeholder="--:--"></td><td><textarea name="reason" rows="2" placeholder="توضیحات مدیر">${esc(row.reason || '')}</textarea><small>${esc(note || '—')}</small></td><td><span class="badge">${attendanceStatusLabel(row)}</span></td><td><div class="staff-attendance-row-actions"><button class="primary" type="button" data-save-attendance-row="${esc(row.id)}">تایید</button><button class="danger-button" type="button" data-delete-attendance="${esc(row.id)}">حذف</button></div></td></tr>`;
 }
 function renderAttendanceManagementTable(attendanceRows) {
   return attendanceRows ? `<div class="attendance-management-scroll"><table class="attendance-management-table"><thead><tr><th>نام پرسنل</th><th>تاریخ</th><th>شروع طبق برنامه</th><th>پایان طبق برنامه</th><th>ساعت ورود</th><th>ساعت خروج</th><th>توضیحات</th><th>وضعیت</th><th>تایید</th></tr></thead><tbody>${attendanceRows}</tbody></table></div>` : '<p>هنوز ورود/خروجی ثبت نشده است.</p>';
@@ -2983,8 +2983,9 @@ function bindCommon() {
     try { RestaurantCore.approveStaffAttendance(state, customer.id, btn.dataset.approveAttendance, true); saveState(); render(); }
     catch (err) { alert('رکورد حضور و غیاب پیدا نشد'); }
   }));
-  document.querySelectorAll('[data-reject-attendance]').forEach(btn => btn.addEventListener('click', () => {
-    try { RestaurantCore.approveStaffAttendance(state, customer.id, btn.dataset.rejectAttendance, false); saveState(); render(); }
+  document.querySelectorAll('[data-delete-attendance]').forEach(btn => btn.addEventListener('click', () => {
+    if (!confirm('این رکورد حضور و غیاب حذف شود؟')) return;
+    try { RestaurantCore.deleteStaffAttendance(state, customer.id, btn.dataset.deleteAttendance); saveState(); render(); }
     catch (err) { alert('رکورد حضور و غیاب پیدا نشد'); }
   }));
   document.querySelectorAll('[data-cancel-invitation]').forEach(btn => btn.addEventListener('click', () => {
