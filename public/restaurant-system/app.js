@@ -477,7 +477,7 @@ function persianWeekdayName(date = new Date()) {
 function businessDateLine(date = new Date()) { return `${persianWeekdayName(date)} | ${jalaliDateText(date)} | ساعت ${iranTimeText(date)}`; }
 
 function appLogoMarkup() {
-  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-management-table-40" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
+  return `<div class="app-logo restaurant-graphic-logo" aria-label="لوگوی سامانه رستوران" role="img"><img src="./assets/restaurant-system-logo.png?v=attendance-clockout-display-41" alt="لوگوی سامانه رستوران" loading="eager" decoding="async"></div>`;
 }
 function updateBusinessDateLineDom(date = new Date()) {
   const line = document.querySelector('[data-business-date-line]');
@@ -1171,7 +1171,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-management-table-40" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-clockout-display-41" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1969,7 +1969,9 @@ function openAttendanceForStaff(customerId, staffUserId, dateText = todayDateTex
 }
 function attendanceDisplayTime(row, field = 'clockInAt') {
   const fallback = (row?.[field] || '').slice(11, 16);
-  if ((row?.source === 'personnel-code-popup' || row?.sourceOut === 'personnel-code-popup') && row?.createdAt) return iranClockTimeText(new Date(row.createdAt));
+  // `createdAt` is the moment the clock-in record was first created. Never use it
+  // for clock-out display, otherwise after خروج both ورود and خروج show the same time.
+  if (field === 'clockInAt' && row?.source === 'personnel-code-popup' && row?.createdAt) return iranClockTimeText(new Date(row.createdAt));
   return fallback;
 }
 function updateAttendanceSchedulePreview(customerId) {
