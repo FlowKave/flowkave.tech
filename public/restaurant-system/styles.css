@@ -607,9 +607,9 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
 
 
 /* Authenticated header image logo from the user-provided system mark. */
-.app-logo.restaurant-graphic-logo{width:118px!important;height:70px!important;border-radius:18px!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;display:grid!important;place-items:center!important}
+.app-logo.restaurant-graphic-logo{width:132px!important;height:78px!important;border-radius:18px!important;background:transparent!important;box-shadow:none!important;overflow:hidden!important;display:grid!important;place-items:center!important}
 .app-logo.restaurant-graphic-logo:before,.app-logo.restaurant-graphic-logo span{display:none!important;content:none!important}
-.app-logo.restaurant-graphic-logo img{width:118px!important;height:70px!important;display:block!important;object-fit:contain!important;border-radius:18px!important;filter:drop-shadow(0 16px 28px color-mix(in srgb,var(--primary) 28%,transparent));box-shadow:0 0 0 1px rgba(255,255,255,.62),0 0 18px rgba(255,255,255,.42)!important}
+.app-logo.restaurant-graphic-logo img{width:132px!important;height:78px!important;display:block!important;object-fit:cover!important;object-position:center!important;transform:scale(1.42)!important;transform-origin:center!important;border-radius:18px!important;filter:drop-shadow(0 16px 28px color-mix(in srgb,var(--primary) 28%,transparent));box-shadow:0 0 0 1px rgba(255,255,255,.62),0 0 18px rgba(255,255,255,.42)!important}
 
 
 /* Header left order: physical left خروج button, then restaurant name */
