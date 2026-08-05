@@ -24,6 +24,7 @@ export default function LoginPage() {
 
         <div className="mt-6 flex flex-wrap justify-between gap-3 text-sm font-bold text-slate-300">
           <Link className="hover:text-cyan-200" href="/forgot-password">فراموشی رمز</Link>
+          <Link className="hover:text-cyan-200" href="/app/dashboard?staffLogin=1">ورود کارکنان</Link>
         </div>
       </section>
     </main>

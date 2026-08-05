@@ -637,10 +637,14 @@
     return createLoginSession(state, legacyCustomer, legacyStaff);
   }
 
-  function loginWithStaffCode(state, personnelCode, pin) {
+  function loginWithStaffCode(state, personnelCode, pin, customerId = '') {
     migrateAuthState(state);
     const code = normalizePersonnelCode(personnelCode);
-    const user = (state.staffUsers || []).find((u) => normalizePersonnelCode(u.personnelCode) === code && u.accessActive !== false && verifyPasswordRecord(u, pin) && u.active !== false);
+    const scopedCustomerId = String(customerId || '').trim();
+    const user = (state.staffUsers || []).find((u) => {
+      if (scopedCustomerId && u.customerId !== scopedCustomerId) return false;
+      return normalizePersonnelCode(u.personnelCode) === code && u.accessActive !== false && verifyPasswordRecord(u, pin) && u.active !== false;
+    });
     const customer = user ? state.customers.find((c) => c.id === user.customerId) : null;
     if (!customer) throw new Error('INVALID_STAFF_LOGIN');
     return createLoginSession(state, customer, user);
@@ -866,7 +870,7 @@
     if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
     const personnelCode = normalizePersonnelCode(input.personnelCode || input.staffCode || input.code);
     if (!personnelCode) throw new Error('STAFF_PERSONNEL_CODE_REQUIRED');
-    if (state.staffUsers.some((u) => normalizePersonnelCode(u.personnelCode) === personnelCode)) throw new Error('STAFF_CODE_ALREADY_EXISTS');
+    if (state.staffUsers.some((u) => u.customerId === customerId && normalizePersonnelCode(u.personnelCode) === personnelCode)) throw new Error('STAFF_CODE_ALREADY_EXISTS');
     const pin = input.pin || input.password;
     const fields = normalizeStaffFields(input);
     const staffUser = {

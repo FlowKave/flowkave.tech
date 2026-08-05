@@ -13,6 +13,7 @@ let sharedLastSerialized = '';
 const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
 const portalMode = portalParams.get('portal') === '1';
+const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
 const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : '/api/state'}`;
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
@@ -106,7 +107,7 @@ function normalizePortalIdentity(input = {}) {
     phone: String(meta.phone || ''),
   };
 }
-function ensurePortalCustomerSession(identityInput = portalIdentity) {
+function ensurePortalCustomer(identityInput = portalIdentity) {
   if (!portalMode) return null;
   portalIdentity = normalizePortalIdentity(identityInput || portalIdentity || {});
   if (!Array.isArray(state.customers)) state.customers = [];
@@ -125,6 +126,15 @@ function ensurePortalCustomerSession(identityInput = portalIdentity) {
   customer.portalTenantId = portalIdentity.tenantId;
   customer.businessName = portalIdentity.businessName || customer.businessName;
   customer.ownerName = portalIdentity.ownerName || customer.ownerName;
+  return customer;
+}
+function ensurePortalCustomerSession(identityInput = portalIdentity) {
+  const customer = ensurePortalCustomer(identityInput);
+  if (!customer) return null;
+  if (portalStaffLoginMode) {
+    if (!session || session.customerId !== customer.id || !session.staffUserId || !RestaurantCore.validateSession(state, session.id)) setActiveSession(null);
+    return customer;
+  }
   if (!session || session.customerId !== customer.id || !RestaurantCore.validateSession(state, session.id)) {
     setActiveSession(RestaurantCore.login(state, customer.email, PORTAL_SESSION_PASSWORD));
   }
@@ -1198,10 +1208,17 @@ function titleFor(tab){return {dashboard:'داشبورد عملیاتی',custome
 
 function renderAuth() {
   const suffix = Date.now().toString().slice(-4);
+  const portalCustomer = portalMode ? ensurePortalCustomer(portalIdentity) : null;
+  const portalBusinessName = portalCustomer?.businessName || portalIdentity?.businessName || 'همین رستوران';
+  if (portalStaffLoginMode) {
+    app.innerHTML = `<main class="auth-page"><section class="auth-card auth-card-staff-online"><div><h1>ورود کارکنان آنلاین</h1><p>کد پرسنلی و پین فقط داخل ${esc(portalBusinessName)} بررسی می‌شود و پرسنل بعد از ورود به همان صندوق همین رستوران می‌رود.</p></div><div class="auth-grid auth-grid-staff-online"><form id="staffLoginForm" class="panel"><h2>ورود کارکنان</h2><label>کد پرسنلی<input name="personnelCode" value="" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلا ۱۰۰۱"></label><label>پین کد<input name="pin" value="" type="password" inputmode="numeric" autocomplete="off" placeholder="پین تعریف‌شده توسط مالک"></label><button class="primary">ورود کارکنان</button><small>رستوران فعلی: ${esc(portalBusinessName)}</small></form></div></section></main>`;
+    document.querySelector('#staffLoginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { const scopedCustomerId = portalCustomer?.id || ''; setActiveSession(RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)); currentTab = defaultTabForRole(); saveState(); render(); } catch { alert('کد پرسنلی یا پین برای همین رستوران نامعتبر است'); }});
+    return;
+  }
   app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>ورود مالک و کارکنان رستوران</h1><p>مالک پکیج با ایمیل، شماره تماس و مشخصات رستوران ثبت می‌شود؛ مالک در لیست کارکنان نمی‌آید و فقط کارکنانی که خودش تعریف کند با کد پرسنلی و پین وارد می‌شوند.</p></div><div class="auth-grid auth-grid-three"><form id="loginForm" class="panel"><h2>ورود مالک پکیج</h2><label>ایمیل مالک<input name="email" value="demo@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>رمز عبور مالک<input name="password" value="۱۲۳۴۵۶" type="password"></label><button class="primary">ورود مالک</button><small>حساب آماده: demo@restaurant.test / ۱۲۳۴۵۶</small></form><form id="staffLoginForm" class="panel"><h2>ورود کارکنان</h2><label>کد پرسنلی<input name="personnelCode" value="" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلا ۱۰۰۱"></label><label>پین کد<input name="pin" value="" type="password" inputmode="numeric" autocomplete="off" placeholder="پین تعریف‌شده توسط مالک"></label><button class="primary">ورود کارکنان</button><small>کد پرسنلی از بخش پرسنلی توسط مالک ساخته می‌شود.</small></form><form id="registerForm" class="panel"><h2>تعریف مالک پکیج</h2><label>نام رستوران<input name="businessName" value="رستوران مشتری تست"></label><label>نام مالک<input name="ownerName" value="مشتری تست"></label><label>شماره تلفن مالک<input name="phone" value="۰۹۱۲۱۱۱۲۲۳۳" inputmode="tel"></label><label>ایمیل مالک<input name="email" value="customer${suffix}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>رمز عبور مالک<input name="password" value="۱۲۳۴۵۶" type="password"></label><button class="primary">ساخت حساب مالک و ورود</button></form></div></section></main>`;
 
   document.querySelector('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { setActiveSession(RestaurantCore.login(state, f.get('email'), toEnglishDigits(f.get('password')))); saveState(); render(); } catch { alert('ورود مالک ناموفق است'); }});
-  document.querySelector('#staffLoginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { setActiveSession(RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')))); saveState(); render(); } catch { alert('کد پرسنلی یا پین نامعتبر است'); }});
+  document.querySelector('#staffLoginForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { setActiveSession(RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')))); currentTab = defaultTabForRole(); saveState(); render(); } catch { alert('کد پرسنلی یا پین نامعتبر است'); }});
   document.querySelector('#registerForm').addEventListener('submit', (e) => { e.preventDefault(); const f = new FormData(e.target); try { const input = Object.fromEntries(f); input.password = toEnglishDigits(input.password); input.phone = toEnglishDigits(input.phone); const loginPassword = input.password; const c = RestaurantCore.createCustomer(state, input); setActiveSession(RestaurantCore.login(state, c.email, loginPassword)); saveState(); render(); } catch (err) { alert(err.message); }});
 }
 
