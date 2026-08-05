@@ -1243,3 +1243,30 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .header-attendance-button:hover,.header-attendance-button:focus-visible{transform:translateY(-1px) scale(1.04)!important;outline:none!important;filter:drop-shadow(0 12px 18px rgba(15,118,110,.20))}
 .header-attendance-button img{width:64px!important;height:58px!important;object-fit:contain!important;display:block!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:none!important}
 @media(max-width:760px){.header-center-group{gap:8px}.header-attendance-button{width:54px!important;height:50px!important;min-width:54px!important}.header-attendance-button img{width:54px!important;height:50px!important}.business-date-line{min-width:230px!important;font-size:12px!important}}
+
+/* Header attendance icon corrected: physical left order is خروج، نام رستوران/کافه، then icon. */
+.header-actions{direction:ltr!important;justify-self:start!important;display:flex!important;align-items:center!important;gap:12px!important}
+.header-actions .header-attendance-button{width:78px!important;height:70px!important;min-width:78px!important;margin-inline-start:2px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;display:grid!important;place-items:center!important;overflow:visible!important}
+.header-actions .header-attendance-button img{width:78px!important;height:70px!important;object-fit:contain!important;display:block!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:none!important}
+.header-center-group{justify-self:center!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;direction:rtl!important;min-width:0!important}
+/* Clear readable attendance modal: no dark transparent card over a dark blurred page. */
+.attendance-modal-overlay.personnel-modal-overlay{background:rgba(15,23,42,.22)!important;backdrop-filter:blur(3px)!important}
+.staff-attendance-modal{max-width:min(620px,calc(100vw - 28px))!important;background:linear-gradient(135deg,#ffffff,#eefdfa)!important;color:#102033!important;border:1px solid rgba(20,184,166,.32)!important;box-shadow:0 28px 70px rgba(15,23,42,.26)!important;opacity:1!important}
+.staff-attendance-modal h2,.staff-attendance-modal p,.staff-attendance-modal label,.staff-attendance-modal small{color:#102033!important;-webkit-text-fill-color:#102033!important;text-shadow:none!important}
+.staff-attendance-modal h2{font-size:25px!important;font-weight:1000!important;text-align:center!important;margin-top:4px!important}
+.staff-attendance-modal p{font-size:15px!important;line-height:1.9!important;text-align:center!important;font-weight:800!important}
+.staff-attendance-modal label{font-weight:950!important;font-size:15px!important}
+.staff-attendance-modal input{background:#ffffff!important;color:#102033!important;-webkit-text-fill-color:#102033!important;border:1px solid rgba(20,184,166,.38)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 18px rgba(15,23,42,.08)!important;height:48px!important;font-size:17px!important;font-weight:900!important}
+.staff-attendance-modal input::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1!important}
+.staff-attendance-modal .modal-close-icon{background:#ffffff!important;color:#102033!important;border:1px solid rgba(15,23,42,.12)!important;box-shadow:0 10px 22px rgba(15,23,42,.16)!important}
+.staff-attendance-modal .attendance-schedule-preview{background:#e6fffb!important;border-color:rgba(20,184,166,.42)!important;color:#102033!important;box-shadow:0 10px 24px rgba(15,118,110,.10)!important}
+.staff-attendance-modal .attendance-schedule-preview b{color:#0f766e!important;-webkit-text-fill-color:#0f766e!important}
+.staff-attendance-modal .attendance-schedule-preview span{color:#0f766e!important;-webkit-text-fill-color:#0f766e!important}
+.staff-attendance-modal .attendance-schedule-preview small{color:#334155!important;-webkit-text-fill-color:#334155!important}
+.staff-attendance-modal .attendance-modal-actions button{min-height:50px!important;font-size:17px!important;font-weight:1000!important}
+@media(max-width:760px){.header-actions .header-attendance-button{width:64px!important;height:58px!important;min-width:64px!important}.header-actions .header-attendance-button img{width:64px!important;height:58px!important}}
+
+/* Attendance modal action buttons must stay high-contrast and readable in every theme. */
+.staff-attendance-modal .attendance-modal-actions .primary{background:linear-gradient(135deg,#0f766e,#14b8a6)!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;border:0!important;box-shadow:0 14px 28px rgba(15,118,110,.26)!important;opacity:1!important}
+.staff-attendance-modal .attendance-modal-actions .secondary{background:linear-gradient(135deg,#f97316,#f59e0b)!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;border:0!important;box-shadow:0 14px 28px rgba(249,115,22,.24)!important;opacity:1!important}
+.staff-attendance-modal .attendance-modal-actions .primary:hover,.staff-attendance-modal .attendance-modal-actions .secondary:hover{filter:brightness(1.03)!important;transform:translateY(-1px)!important}
