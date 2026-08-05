@@ -2069,6 +2069,21 @@ function handleAttendanceModalSubmit(form, customerId, action) {
   }
   return RestaurantCore.clockInStaff(state, customerId, { staffUserId: staff.id, date, time, reason, source: 'personnel-code-popup' });
 }
+function prepareWeeklySchedulePrintClone(clone) {
+  clone.querySelector(':scope > p')?.remove();
+  clone.querySelector('.weekly-schedule-note')?.remove();
+  clone.querySelectorAll('.schedule-clear-decal,.weekly-schedule-toolbar button').forEach(el => el.remove());
+  clone.querySelectorAll('.shift-note-field').forEach(label => {
+    const input = label.querySelector('[name="note"]');
+    const note = cleanPersianText(input?.value || '');
+    if (!note) { label.remove(); return; }
+    label.innerHTML = '';
+    const noteText = document.createElement('span');
+    noteText.className = 'weekly-print-note';
+    noteText.textContent = note;
+    label.appendChild(noteText);
+  });
+}
 function printPersonnelModal(selector) {
   const target = document.querySelector(selector);
   if (!target) return;
@@ -2081,6 +2096,7 @@ function printPersonnelModal(selector) {
   printRoot.className = 'personnel-print-root';
   printRoot.dataset.personnelPrintTarget = printTarget;
   const clone = target.cloneNode(true);
+  if (printTarget === 'weekly-schedule') prepareWeeklySchedulePrintClone(clone);
   printRoot.appendChild(clone);
   document.body.appendChild(printRoot);
   document.body.dataset.personnelPrintTarget = printTarget;
