@@ -823,8 +823,8 @@
     const fa = (v) => persianDigits(v);
     if (!digits) return '';
     if (digits.length <= 3) return fa(digits);
-    if (digits.length <= 9) return `${fa(digits.slice(3))}-${fa(digits.slice(0, 3))}`;
-    return `${fa(digits.slice(9, 10))}-${fa(digits.slice(3, 9))}-${fa(digits.slice(0, 3))}`;
+    if (digits.length <= 9) return `${fa(digits.slice(0, 3))}-${fa(digits.slice(3))}`;
+    return `${fa(digits.slice(0, 3))}-${fa(digits.slice(3, 9))}-${fa(digits.slice(9, 10))}`;
   }
 
   function normalizeStaffRole(role) {

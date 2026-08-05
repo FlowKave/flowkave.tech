@@ -1221,3 +1221,7 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 /* HR/personnel module: real personnel file, access, attendance, schedules and payroll. */
 .staff-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.staff-profile-grid .wide-field{grid-column:1/-1}.attendance-row.pending-approval{border-color:#f59e0b!important;background:color-mix(in srgb,#fff 82%,#f59e0b 12%)!important}.personnel-workspace .panel h2{line-height:1.35}.personnel-workspace .badge{white-space:nowrap}
 @media(max-width:900px){.staff-profile-grid{grid-template-columns:1fr}}
+
+
+/* Optional field micro-labels should be visible but secondary. */
+.field-optional{font-size:.78em;font-weight:700;color:var(--muted);margin-inline-start:4px;white-space:nowrap;}

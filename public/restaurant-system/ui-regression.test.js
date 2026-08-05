@@ -26,9 +26,9 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=personnel-national-id-format-25');
-mustContain(html, 'core.js?v=personnel-national-id-format-25');
-mustContain(html, 'app.js?v=personnel-national-id-format-25');
+mustContain(html, 'styles.css?v=personnel-national-id-3-6-1-26');
+mustContain(html, 'core.js?v=personnel-national-id-3-6-1-26');
+mustContain(html, 'app.js?v=personnel-national-id-3-6-1-26');
 
 // Sales/Cashier page buttons should use the glossy pill shape from the user's reference image without changing sizes.
 mustContain(app, 'data-current-tab="${esc(currentTab)}"', 'Content root must expose current tab for scoped cashier styling.');
@@ -68,7 +68,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=personnel-national-id-format-25') && index.includes('core.js?v=personnel-national-id-format-25') && index.includes('app.js?v=personnel-national-id-format-25'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=personnel-national-id-3-6-1-26') && index.includes('core.js?v=personnel-national-id-3-6-1-26') && index.includes('app.js?v=personnel-national-id-3-6-1-26'), 'cache-bust هماهنگی تم باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
@@ -87,5 +87,5 @@ assert(app.includes("['dashboard','داشبورد'],['personnel','پرسنلی']
 assert(coreSource.includes('function clockInStaff') && coreSource.includes('function calculateStaffPayroll') && coreSource.includes('getFingerprintDeviceContract'), 'Personnel HR core contract must exist.');
 assert(styles.includes('HR/personnel module: real personnel file'), 'Personnel HR CSS contract must exist.');
 
-assert(app.includes('function formatNationalIdInput') && app.includes('data-national-id') && app.includes('placeholder="۵-۶۵۷۸۴۳-۰۰۹"'), 'National ID input must format Persian visual example.');
-assert(coreSource.includes('function normalizeNationalId') && coreSource.includes('digits.slice(9, 10)'), 'Core must normalize national ID as Persian 1-6-3 visual format.');
+assert(app.includes('function formatNationalIdInput') && app.includes('data-national-id') && app.includes('placeholder="۰۰۹-۶۵۷۸۴۳-۵"'), 'National ID input must format Persian visual example.');
+assert(coreSource.includes('function normalizeNationalId') && coreSource.includes('digits.slice(0, 3)'), 'Core must normalize national ID as Persian 3-6-1 visual format.');
