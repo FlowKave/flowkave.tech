@@ -1161,14 +1161,37 @@ function bindCalculator() {
 }
 
 
-function staffInvitationTokenFromHash() {
+function staffInvitationTokenFromUrl() {
+  const queryToken = portalParams.get('inviteToken') || '';
+  if (queryToken) return queryToken;
   const match = (location.hash || '').match(/^#staff-invitation\/([^/?#]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 }
 
 function staffInvitationLink(invitation) {
-  const base = `${location.origin}${location.pathname}${portalMode ? '?portal=1' : ''}`;
-  return `${base}#staff-invitation/${encodeURIComponent(invitation.token || '')}`;
+  const token = encodeURIComponent(invitation.token || '');
+  if (portalMode) return `${location.origin}${location.pathname}?portal=1&inviteToken=${token}`;
+  const base = `${location.origin}${location.pathname}`;
+  return `${base}#staff-invitation/${token}`;
+}
+
+async function sendStaffInvitationEmail(invitation) {
+  if (!portalMode) return { skipped: true };
+  const response = await fetch('/api/staff-invite-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      email: invitation.email,
+      name: invitation.name,
+      role: invitation.role,
+      inviteToken: invitation.token,
+      inviteLink: staffInvitationLink(invitation),
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.emailSent) throw new Error(payload.error || 'STAFF_INVITE_EMAIL_FAILED');
+  return payload;
 }
 
 function copyTextToClipboard(text) {
@@ -1211,7 +1234,7 @@ function renderStaffInvitationAccept(token) {
 }
 
 function render() {
-  const inviteToken = staffInvitationTokenFromHash();
+  const inviteToken = staffInvitationTokenFromUrl();
   if (inviteToken) return renderStaffInvitationAccept(inviteToken);
   const publicId = publicCustomerId();
   if (publicId) return renderPublicMenu(publicId);
@@ -2374,7 +2397,7 @@ function renderPersonnel(customer) {
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
     <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود؛ ورود و خروج پرسنل از دکمه تصویری کنار نام رستوران در بالای صفحه انجام می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
-    <form class="panel" id="invitationForm"><h2>دعوت کارکنان با لینک پذیرش</h2><p>در این نسخه ایمیل واقعی ارسال نمی‌شود؛ دعوت ساخته می‌شود و لینک پذیرش را از لیست پایین کپی کنید و دستی برای فرد بفرستید.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت لینک دعوت</button><small>ارسال خودکار ایمیل بعد از اتصال سرویس ایمیل فعال می‌شود.</small></form>
+    <form class="panel" id="invitationForm"><h2>دعوت کارکنان با لینک پذیرش</h2><p>در نسخه آنلاین، ایمیل دعوت واقعی ارسال می‌شود؛ لینک پذیرش هم برای اطمینان در لیست پایین قابل کپی است.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت لینک دعوت</button><small>اگر ایمیل به inbox نرسید، پوشه spam/promotions را هم چک کنید.</small></form>
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
     <div class="panel staff-attendance-kiosk-panel"><h2>ثبت ورود/خروج</h2><p>برای ثبت ورود یا پایان کار، دکمه «ورود/خروج پرسنل» را بزنید؛ پاپ‌آپ کد پرسنلی را می‌گیرد، ساعت برنامه کاری همان پرسنل را نشان می‌دهد و سپس دکمه ورود یا خروج ثبت می‌کند.</p><button type="button" class="primary" data-open-attendance-modal>باز کردن پاپ‌آپ ورود/خروج</button></div>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
@@ -3276,7 +3299,7 @@ function bindCommon() {
     staffAccessForm: (f) => RestaurantCore.updateStaffUser(state, customer.id, f.get('staffUserId'), { pin: toEnglishDigits(f.get('pin')), role: f.get('role'), accessActive: true }),
     staffClockInForm: (f) => RestaurantCore.clockInStaff(state, customer.id, { staffUserId: f.get('staffUserId'), date: f.get('date'), time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
     staffClockOutForm: (f) => RestaurantCore.clockOutStaff(state, customer.id, f.get('attendanceId'), { time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
-    invitationForm: (f) => RestaurantCore.createStaffInvitation(state, customer.id, { name: cleanPersianText(f.get('name')), email: f.get('email'), role: f.get('role') }),
+    invitationForm: async (f) => { const invitation = RestaurantCore.createStaffInvitation(state, customer.id, { name: cleanPersianText(f.get('name')), email: f.get('email'), role: f.get('role') }); saveState(); if (portalMode) await sendStaffInvitationEmail(invitation); return invitation; },
     passwordResetForm: (f) => RestaurantCore.requestPasswordReset(state, f.get('email')),
     ownerProfileForm: (f) => RestaurantCore.updateCustomerProfile(state, customer.id, { businessName: cleanPersianText(f.get('businessName')), ownerName: cleanPersianText(f.get('ownerName')), phone: toEnglishDigits(f.get('phone') || ''), email: f.get('email') }),
     ownerPasswordForm: (f) => { const next = toEnglishDigits(f.get('newPassword') || ''); const confirm = toEnglishDigits(f.get('confirmPassword') || ''); if (next !== confirm) throw new Error('تکرار رمز جدید با رمز جدید یکی نیست'); const result = RestaurantCore.changeCustomerPassword(state, customer.id, toEnglishDigits(f.get('currentPassword') || ''), next); alert('رمز عبور با موفقیت تغییر کرد. لطفاً دوباره وارد شوید.'); activeSessionId = ''; return result; },
@@ -3301,7 +3324,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
