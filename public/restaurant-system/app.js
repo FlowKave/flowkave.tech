@@ -124,8 +124,8 @@ function ensurePortalCustomer(identityInput = portalIdentity) {
     });
   }
   customer.portalTenantId = portalIdentity.tenantId;
-  customer.businessName = portalIdentity.businessName || customer.businessName;
-  customer.ownerName = portalIdentity.ownerName || customer.ownerName;
+  if (!customer.businessName) customer.businessName = portalIdentity.businessName;
+  if (!customer.ownerName) customer.ownerName = portalIdentity.ownerName;
   return customer;
 }
 function ensurePortalCustomerSession(identityInput = portalIdentity) {
