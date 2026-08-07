@@ -1208,11 +1208,42 @@ function copyTextToClipboard(text) {
   return Promise.resolve();
 }
 
+function renderInvalidStaffInvitation(message = 'این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.') {
+  app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>دعوت کارکنان معتبر نیست</h1><p>${esc(message)}</p><a class="public-link" href="/login">بازگشت به ورود</a></div></section></main>`;
+}
+
+async function renderPortalStaffInvitationAccept(token) {
+  app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>در حال بررسی دعوت کارکنان</h1><p>لطفاً چند لحظه صبر کنید...</p></div></section></main>`;
+  try {
+    const response = await fetch(`/api/staff-invitation?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.invitation?.status !== 'pending') return renderInvalidStaffInvitation();
+    const invitation = payload.invitation;
+    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(invitation.roleLabel || roleLabel(invitation.role))} ثبت شده است. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴" required></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
+    document.querySelector('#staffInvitationAcceptForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      const pin = toEnglishDigits(form.get('pin'));
+      try {
+        const acceptResponse = await fetch('/api/staff-invitation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, pin }) });
+        const acceptPayload = await acceptResponse.json().catch(() => ({}));
+        if (!acceptResponse.ok || !acceptPayload.ok) throw new Error(acceptPayload.error || 'INVITATION_ACCEPT_FAILED');
+        app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>حساب کارکنان فعال شد</h1><p>کد پرسنلی شما: <b dir="ltr">${esc(faNum(acceptPayload.staff?.personnelCode || ''))}</b></p><p>از صفحه ورود کارکنان با همین کد پرسنلی و پینی که ساختی وارد شو.</p><a class="public-link" href="/login">رفتن به ورود</a></div></section></main>`;
+      } catch (err) {
+        alert(err.message === 'STAFF_LOGIN_REQUIRED' ? 'پین ورود لازم است' : 'دعوت قابل پذیرش نیست');
+      }
+    });
+  } catch {
+    renderInvalidStaffInvitation();
+  }
+}
+
 function renderStaffInvitationAccept(token) {
+  if (portalMode) return renderPortalStaffInvitationAccept(token);
   const invitation = (state.staffInvitations || []).find(item => item.token === token);
   const status = invitation ? RestaurantCore.getStaffInvitations(state, invitation.customerId).find(item => item.id === invitation.id)?.status : '';
   if (!invitation || status !== 'pending') {
-    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>دعوت کارکنان معتبر نیست</h1><p>این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.</p><a class="public-link" href="#">بازگشت به ورود</a></div></section></main>`;
+    renderInvalidStaffInvitation();
     return;
   }
   app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(roleLabel(invitation.role))} ثبت شده است. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴"></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
