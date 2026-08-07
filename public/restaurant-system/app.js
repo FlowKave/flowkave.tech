@@ -1217,7 +1217,12 @@ async function renderPortalStaffInvitationAccept(token) {
   try {
     const response = await fetch(`/api/staff-invitation?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.invitation?.status !== 'pending') return renderInvalidStaffInvitation();
+    if (!response.ok || payload.invitation?.status !== 'pending') {
+      const message = payload.error === 'SERVICE_ROLE_NOT_CONFIGURED'
+        ? 'تنظیم سرور دعوت کارکنان ناقص است: کلید SUPABASE_SERVICE_ROLE_KEY یا SUPABASE_SECRET_KEY روی Vercel تنظیم نشده است.'
+        : 'این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.';
+      return renderInvalidStaffInvitation(message);
+    }
     const invitation = payload.invitation;
     app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(invitation.roleLabel || roleLabel(invitation.role))} ثبت شده است. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴" required></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
     document.querySelector('#staffInvitationAcceptForm').addEventListener('submit', async (event) => {
