@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { createClient } from '../../../lib/supabase/server';
-import { getAppBaseUrl } from '../../../lib/supabase/config';
+import { createAdminClient } from '../../../lib/supabase/admin';
+import { getAppBaseUrl, getSupabaseEnv } from '../../../lib/supabase/config';
 
 export const dynamic = 'force-dynamic';
+const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-62';
 
 type InviteEmailBody = {
   email?: unknown;
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      return NextResponse.json({ error: 'UNAUTHENTICATED', version: STAFF_INVITE_EMAIL_VERSION }, { status: 401 });
     }
 
     const body = (await request.json()) as InviteEmailBody;
@@ -58,28 +61,61 @@ export async function POST(request: NextRequest) {
 
     const inviteLink = safeInviteLink(text(body.inviteLink, 800), inviteToken);
 
-    // Reuse Supabase Auth's configured email delivery — the same infrastructure
-    // that already sends forgot-password emails for FlowKave. The email carries
-    // a real hosted redirect back to the restaurant invitation acceptance URL.
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: inviteLink,
-        data: {
-          invited_by: userData.user.id,
-          staff_invite_token: inviteToken,
-          staff_invite_name: name,
-          staff_invite_role: role,
-        },
-      },
+    const inviteData = {
+      invited_by: userData.user.id,
+      staff_invite_token: inviteToken,
+      staff_invite_name: name,
+      staff_invite_role: role,
+    };
+
+    // Prefer Supabase Admin's real invitation email when the deployment has the
+    // service-role key. It uses the same hosted SMTP/Auth delivery as password
+    // recovery but emits an actual invite email to the staff address instead of
+    // relying on the owner's logged-in auth client to start another sign-in flow.
+    const admin = createAdminClient();
+    const adminResult = admin
+      ? await admin.auth.admin.inviteUserByEmail(email, {
+          redirectTo: inviteLink,
+          data: inviteData,
+        })
+      : null;
+
+    // If the address already exists in Supabase Auth, inviteUserByEmail may
+    // reject it. In that case fall back to an OTP/magic-link email so existing
+    // test users can still receive the staff invitation link.
+    const shouldFallbackToOtp =
+      !adminResult ||
+      (adminResult.error && /already|registered|exists/i.test(adminResult.error.message || ''));
+
+    const { url: supabaseUrl, publishableKey } = getSupabaseEnv();
+    const publicAuth = createSupabaseJsClient(supabaseUrl, publishableKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    const otpResult = shouldFallbackToOtp
+      ? await publicAuth.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: inviteLink,
+            data: inviteData,
+          },
+        })
+      : null;
+
+    const error = adminResult?.error && !shouldFallbackToOtp ? adminResult.error : otpResult?.error;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, emailSent: true, inviteLink });
+    return NextResponse.json({
+      ok: true,
+      emailSent: true,
+      inviteLink,
+      version: STAFF_INVITE_EMAIL_VERSION,
+      method: adminResult && !otpResult ? 'supabase-admin-invite' : 'supabase-otp',
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'STAFF_INVITE_EMAIL_FAILED' }, { status: 500 });
   }

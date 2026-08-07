@@ -17,6 +17,10 @@ export function isSupabaseConfigured() {
   return Boolean(env.url && env.publishableKey);
 }
 
+export function getSupabaseServiceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+}
+
 export function getAppBaseUrl() {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
