@@ -2335,9 +2335,12 @@ function renderPersonnel(customer) {
 }
 
 function renderAccount(customer) {
+  const modules = RestaurantCore.getEnabledModules(state, customer.id).map(m=>`<div><b>${esc(moduleLabel(m))}</b><span>فعال</span></div>`).join('');
   return `<section class="workspace settings-workspace">
+    <form class="panel wide owner-profile-panel" id="ownerProfileForm"><h2>مشخصات رستوران/کافه و مالک</h2><p>مالک می‌تواند اطلاعات اصلی حساب و نامی که در هدر سامانه و منوی عمومی نمایش داده می‌شود را تغییر دهد.</p><div class="owner-profile-grid"><label>نام رستوران/کافه<input name="businessName" value="${esc(customer.businessName || '')}"></label><label>نام مالک<input name="ownerName" value="${esc(customer.ownerName || '')}"></label><label>شماره تلفن مالک<input name="phone" value="${esc(faNum(customer.phone || ''))}" inputmode="tel" dir="ltr"></label><label>ایمیل مالک<input name="email" value="${esc(customer.email || '')}" type="email" dir="ltr" autocomplete="email"></label><label>نام پکیج/اشتراک<input value="${esc(customer.packageName || 'Full OS')}" readonly></label><label>تاریخ ساخت حساب<input value="${esc(formatDate(customer.createdAt || ''))}" readonly></label></div><button class="primary">ذخیره تغییرات</button></form>
+    <form class="panel owner-password-panel" id="ownerPasswordForm"><h2>تغییر رمز عبور مالک</h2><p>برای امنیت، رمز فعلی لازم است و بعد از تغییر رمز نشست‌های قبلی مالک پاک می‌شود.</p><label>رمز فعلی<input name="currentPassword" type="password" autocomplete="current-password"></label><label>رمز جدید<input name="newPassword" type="password" autocomplete="new-password"></label><label>تکرار رمز جدید<input name="confirmPassword" type="password" autocomplete="new-password"></label><button class="primary">تغییر رمز عبور</button></form>
     <div class="panel"><h2>پشتیبان‌گیری و بازیابی</h2><p>از داده‌های همین رستوران فایل پشتیبان بگیرید یا در صورت نیاز فایل پشتیبان را بازیابی کنید.</p><div class="button-row"><button type="button" class="secondary" id="backupExport">دریافت فایل پشتیبان</button><input id="backupImportInput" type="file" accept="application/json" hidden><button type="button" class="secondary" id="backupImport">بازیابی از فایل پشتیبان</button><button type="button" class="secondary" id="sampleDataExport">دریافت فایل داده نمونه</button><button type="button" class="danger-button" id="sampleDataReset">بازنشانی به داده نمونه پاک</button></div><small>بازنشانی، داده‌های فعلی همین مرورگر را با داده نمونه پاک جایگزین می‌کند؛ قبل از آن فایل پشتیبان بگیرید.</small>${backupMessage ? `<p class="success-message">${esc(backupMessage)}</p>` : ''}</div>
-    <div class="panel wide"><h2>مشخصات رستوران</h2><p><b>${esc(customer.businessName)}</b></p><p>مالک: ${esc(customer.ownerName)}</p><p>موبایل: ${esc(customer.phone)}</p><p>ایمیل: ${esc(customer.email)}</p><h3>ماژول‌های فعال</h3><div class="cards">${RestaurantCore.getEnabledModules(state, customer.id).map(m=>`<div><b>${esc(moduleLabel(m))}</b><span>فعال</span></div>`).join('')}</div></div>
+    <div class="panel wide"><h2>ماژول‌های فعال</h2><div class="cards">${modules}</div></div>
   </section>`;
 }
 
@@ -3220,6 +3223,8 @@ function bindCommon() {
     staffClockOutForm: (f) => RestaurantCore.clockOutStaff(state, customer.id, f.get('attendanceId'), { time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
     invitationForm: (f) => RestaurantCore.createStaffInvitation(state, customer.id, { name: cleanPersianText(f.get('name')), email: f.get('email'), role: f.get('role') }),
     passwordResetForm: (f) => RestaurantCore.requestPasswordReset(state, f.get('email')),
+    ownerProfileForm: (f) => RestaurantCore.updateCustomerProfile(state, customer.id, { businessName: cleanPersianText(f.get('businessName')), ownerName: cleanPersianText(f.get('ownerName')), phone: toEnglishDigits(f.get('phone') || ''), email: f.get('email') }),
+    ownerPasswordForm: (f) => { const next = toEnglishDigits(f.get('newPassword') || ''); const confirm = toEnglishDigits(f.get('confirmPassword') || ''); if (next !== confirm) throw new Error('تکرار رمز جدید با رمز جدید یکی نیست'); const result = RestaurantCore.changeCustomerPassword(state, customer.id, toEnglishDigits(f.get('currentPassword') || ''), next); alert('رمز عبور با موفقیت تغییر کرد. لطفاً دوباره وارد شوید.'); activeSessionId = ''; return result; },
     recipeForm: (f, form) => {
       const ingredients = collectRecipeIngredients(form);
       if (!ingredients.length) throw new Error('حداقل یک ماده اولیه لازم است');

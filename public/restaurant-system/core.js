@@ -617,6 +617,35 @@
     });
   }
 
+
+  function updateCustomerProfile(state, customerId, input = {}) {
+    const customer = requireCustomer(state, customerId);
+    const nextEmail = input.email !== undefined ? normalizeEmailForAuth(input.email) : customer.email;
+    if (!nextEmail) throw new Error('EMAIL_REQUIRED');
+    if (state.customers.some((c) => c.id !== customerId && normalizeEmailForAuth(c.email) === nextEmail)) throw new Error('EMAIL_ALREADY_EXISTS');
+    if (input.businessName !== undefined) customer.businessName = cleanPersianText(input.businessName) || customer.businessName || 'رستوران جدید';
+    if (input.ownerName !== undefined) customer.ownerName = cleanPersianText(input.ownerName) || customer.ownerName || 'مدیر';
+    if (input.phone !== undefined) customer.phone = String(input.phone || '').trim();
+    if (input.email !== undefined) customer.email = nextEmail;
+    customer.updatedAt = new Date().toISOString();
+    recordSecurityEvent(state, customerId, 'customer-profile-updated', { targetName: customer.ownerName, targetEmail: customer.email, detail: 'ویرایش مشخصات مالک و رستوران', sourceId: customer.id });
+    return cloneJson(customer);
+  }
+
+  function changeCustomerPassword(state, customerId, currentPassword, newPassword) {
+    const customer = requireCustomer(state, customerId);
+    if (!currentPassword || !newPassword) throw new Error('PASSWORD_REQUIRED');
+    if (!verifyPasswordRecord(customer, currentPassword)) throw new Error('CURRENT_PASSWORD_INVALID');
+    const passwordRecord = createPasswordRecord(newPassword);
+    Object.assign(customer, passwordRecord);
+    delete customer.password;
+    const ownerStaff = (state.staffUsers || []).find((user) => user.customerId === customerId && user.email === customer.email && user.role === 'manager');
+    if (ownerStaff) { Object.assign(ownerStaff, passwordRecord); delete ownerStaff.password; }
+    const invalidatedSessions = invalidateUserSessions(state, customerId, '');
+    recordSecurityEvent(state, customerId, 'password-reset-used', { targetName: customer.ownerName, targetEmail: customer.email, detail: `تغییر رمز مالک؛ نشست‌های پاک‌شده: ${invalidatedSessions}`, sourceId: customer.id });
+    return { customerId, invalidatedSessions };
+  }
+
   function createLoginSession(state, customer, user = null) {
     cleanupExpiredSessions(state);
     const createdAt = new Date().toISOString();
@@ -2451,6 +2480,8 @@
     recordSecurityEvent,
     createCustomer,
     createDemoCustomer,
+    updateCustomerProfile,
+    changeCustomerPassword,
     login,
     loginWithStaffCode,
     validateSession,

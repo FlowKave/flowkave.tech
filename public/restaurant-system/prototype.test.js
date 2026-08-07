@@ -15,3 +15,23 @@ assert(core.includes("function loginWithStaffCode(state, personnelCode, pin, cus
 assert(core.includes("u.customerId === customerId && normalizePersonnelCode(u.personnelCode) === personnelCode"), 'Personnel code uniqueness must be per restaurant, not global across tenants.');
 
 console.log('prototype.test.js: ok');
+function testOwnerCanUpdateProfileAndPassword() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'کافه قدیم', ownerName:'مالک قدیم', phone:'09120000000', email:'owner-change@test.local', password:'123456' });
+  const session = RestaurantCore.login(state, 'owner-change@test.local', '123456');
+  assert.equal(session.customerId, customer.id);
+  const updated = RestaurantCore.updateCustomerProfile(state, customer.id, { businessName:'کافه جدید', ownerName:'مالک جدید', phone:'09123334444', email:'owner-new@test.local' });
+  assert.equal(updated.businessName, 'کافه جدید');
+  assert.equal(RestaurantCore.getPublicMenu(state, customer.id).customer.businessName, 'کافه جدید');
+  assert.throws(() => RestaurantCore.login(state, 'owner-change@test.local', '123456'), /INVALID_LOGIN/);
+  assert.equal(RestaurantCore.login(state, 'owner-new@test.local', '123456').customerId, customer.id);
+  assert.throws(() => RestaurantCore.changeCustomerPassword(state, customer.id, 'wrong', '654321'), /CURRENT_PASSWORD_INVALID/);
+  const beforeSessions = state.sessions.length;
+  const changed = RestaurantCore.changeCustomerPassword(state, customer.id, '123456', '654321');
+  assert(changed.invalidatedSessions >= beforeSessions);
+  assert.throws(() => RestaurantCore.login(state, 'owner-new@test.local', '123456'), /INVALID_LOGIN/);
+  assert.equal(RestaurantCore.login(state, 'owner-new@test.local', '654321').customerId, customer.id);
+  assert(RestaurantCore.getSecurityEvents(state, customer.id).some(event => event.type === 'customer-profile-updated'));
+}
+
+
