@@ -18,7 +18,7 @@ export function isSupabaseConfigured() {
 }
 
 export function getSupabaseServiceRoleKey() {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY ?? '';
 }
 
 export function getAppBaseUrl() {
