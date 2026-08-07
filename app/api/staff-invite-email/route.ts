@@ -5,7 +5,7 @@ import { createAdminClient } from '../../../lib/supabase/admin';
 import { getAppBaseUrl, getSupabaseEnv } from '../../../lib/supabase/config';
 
 export const dynamic = 'force-dynamic';
-const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-62';
+const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-65';
 
 type InviteEmailBody = {
   email?: unknown;
@@ -42,6 +42,13 @@ function safeInviteLink(rawLink: string, rawToken: string) {
   }
 }
 
+function authRedirectLink(inviteLink: string) {
+  const appBase = getAppBaseUrl();
+  const callback = new URL('/auth/callback', appBase);
+  callback.searchParams.set('next', inviteLink);
+  return callback.toString();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -60,6 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const inviteLink = safeInviteLink(text(body.inviteLink, 800), inviteToken);
+    const redirectTo = authRedirectLink(inviteLink);
 
     const inviteData = {
       invited_by: userData.user.id,
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const adminResult = admin
       ? await admin.auth.admin.inviteUserByEmail(email, {
-          redirectTo: inviteLink,
+          redirectTo,
           data: inviteData,
         })
       : null;
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest) {
           email,
           options: {
             shouldCreateUser: true,
-            emailRedirectTo: inviteLink,
+            emailRedirectTo: redirectTo,
             data: inviteData,
           },
         })
@@ -113,6 +121,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       emailSent: true,
       inviteLink,
+      redirectTo,
       version: STAFF_INVITE_EMAIL_VERSION,
       method: adminResult && !otpResult ? 'supabase-admin-invite' : 'supabase-otp',
     });
