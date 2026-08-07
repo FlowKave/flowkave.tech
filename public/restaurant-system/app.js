@@ -1220,7 +1220,9 @@ async function renderPortalStaffInvitationAccept(token) {
     if (!response.ok || payload.invitation?.status !== 'pending') {
       const message = payload.error === 'SERVICE_ROLE_NOT_CONFIGURED'
         ? 'تنظیم سرور دعوت کارکنان ناقص است: کلید SUPABASE_SERVICE_ROLE_KEY یا SUPABASE_SECRET_KEY روی Vercel تنظیم نشده است.'
-        : 'این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.';
+        : payload.error === 'SUPABASE_SERVICE_ROLE_KEY_INVALID_OR_NO_PERMISSION'
+          ? 'کلید SUPABASE_SERVICE_ROLE_KEY اشتباه است یا دسترسی service_role ندارد. باید مقدار secret service_role از Supabase Project Settings > API وارد شود، نه anon/publishable key.'
+          : 'این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.';
       return renderInvalidStaffInvitation(message);
     }
     const invitation = payload.invitation;

@@ -57,6 +57,7 @@ mustContain(app, '/api/staff-invitation?token=', 'Portal invite links must valid
 mustContain(app, "fetch('/api/staff-invitation'", 'Portal invite acceptance must write staff accounts through the public token API.');
 mustContain(app, 'حساب کارکنان فعال شد', 'Accepted invite should show a clear staff-account activation success screen.');
 mustContain(app, 'تنظیم سرور دعوت کارکنان ناقص است', 'If Vercel lacks the server Supabase key, staff invite links must show a precise setup error instead of a fake invalid-link message.');
+mustContain(app, 'نه anon/publishable key', 'If Vercel has an anon or low-permission Supabase key, staff invite links must say to use the service_role key.');
 mustContain(app, 'placeholder="staff@example.com"', 'Staff invite email field must be empty and require a real address, not a test-domain value.');
 assert(!app.includes('name="email" value="invite'), 'Staff invite email field must not be prefilled with a black-hole test domain.');
 mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');

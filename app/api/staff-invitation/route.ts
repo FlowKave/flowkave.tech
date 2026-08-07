@@ -88,7 +88,10 @@ async function findInvitationByToken(token: string) {
     .order('updated_at', { ascending: false })
     .limit(1000);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (/permission denied/i.test(error.message || '')) throw new Error('SUPABASE_SERVICE_ROLE_KEY_INVALID_OR_NO_PERMISSION');
+    throw new Error(error.message);
+  }
 
   for (const row of (data || []) as RestaurantStateRow[]) {
     const state = row.state;
