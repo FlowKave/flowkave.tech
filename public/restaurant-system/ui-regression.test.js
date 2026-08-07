@@ -45,10 +45,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=owner-profile-settings-59');
-mustContain(html, 'core.js?v=owner-profile-settings-59');
-mustContain(html, 'app.js?v=owner-profile-settings-59');
-mustContain(html, 'core.js?v=owner-profile-settings-59');
+mustContain(html, 'styles.css?v=staff-invite-link-60');
+mustContain(html, 'core.js?v=staff-invite-link-60');
+mustContain(html, 'app.js?v=staff-invite-link-60');
+mustContain(html, 'core.js?v=staff-invite-link-60');
 mustContain(app, 'const portalStaffLoginMode = portalMode && portalParams.get(\'staffLogin\') === \'1\';', 'Online restaurant iframe must support a dedicated staff-login mode.');
 mustContain(app, 'ورود کارکنان آنلاین', 'Online staff-login mode must render a visible staff login screen.');
 mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');
@@ -56,7 +56,7 @@ mustContain(app, 'if (portalStaffLoginMode)', 'Portal auto-owner session must no
 const dashboardSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'app', 'dashboard', 'page.tsx'), 'utf8');
 const loginPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'login', 'page.tsx'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
-mustContain(dashboardSource, 'owner-profile-settings-59', 'Dashboard iframe cache-bust token must match the online staff login asset.');
+mustContain(dashboardSource, 'staff-invite-link-60', 'Dashboard iframe cache-bust token must match the online staff login asset.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 
 mustContain(app, "field === 'clockInAt'", 'Attendance display must only use createdAt for clock-in display.');
@@ -106,7 +106,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=owner-profile-settings-59') && index.includes('core.js?v=owner-profile-settings-59') && index.includes('app.js?v=owner-profile-settings-59'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=staff-invite-link-60') && index.includes('core.js?v=staff-invite-link-60') && index.includes('app.js?v=staff-invite-link-60'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
@@ -119,7 +119,7 @@ for (const banned of ['پکیج مشتری','چک‌لیست آمادگی راه
   assert(!accountSource.includes(banned), `${banned} must not be visible in customer settings UI.`);
 }
 const personnelSource = app.slice(app.indexOf('function renderPersonnel(customer)'), app.indexOf('function renderAccount(customer)'));
-assert(!accountSource.includes('staffForm') && personnelSource.includes('افزودن پرسنل') && personnelSource.includes('دعوت ایمیلی نقش‌های حساس') && personnelSource.includes('بازیابی رمز عبور') && accountSource.includes('پشتیبان‌گیری و بازیابی') && accountSource.includes('مشخصات رستوران'), 'Personnel must be a standalone module and settings must keep backup/profile only.');
+assert(!accountSource.includes('staffForm') && personnelSource.includes('افزودن پرسنل') && personnelSource.includes('دعوت کارکنان با لینک پذیرش') && personnelSource.includes('بازیابی رمز عبور') && accountSource.includes('پشتیبان‌گیری و بازیابی') && accountSource.includes('مشخصات رستوران'), 'Personnel must be a standalone module and settings must keep backup/profile only.');
 
 mustContain(app, 'function attendanceManagementNoteLabel', 'Attendance notes must shorten labels to ورود زودتر / خروج دیرتر.');
 mustContain(app, "return 'ورود زودتر'", 'Early entry note must read ورود زودتر — توضیح, not the long برنامه کاری text.');

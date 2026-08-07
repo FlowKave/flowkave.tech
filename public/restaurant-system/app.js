@@ -1160,7 +1160,59 @@ function bindCalculator() {
   });
 }
 
+
+function staffInvitationTokenFromHash() {
+  const match = (location.hash || '').match(/^#staff-invitation\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function staffInvitationLink(invitation) {
+  const base = `${location.origin}${location.pathname}${portalMode ? '?portal=1' : ''}`;
+  return `${base}#staff-invitation/${encodeURIComponent(invitation.token || '')}`;
+}
+
+function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
+  return Promise.resolve();
+}
+
+function renderStaffInvitationAccept(token) {
+  const invitation = (state.staffInvitations || []).find(item => item.token === token);
+  const status = invitation ? RestaurantCore.getStaffInvitations(state, invitation.customerId).find(item => item.id === invitation.id)?.status : '';
+  if (!invitation || status !== 'pending') {
+    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>دعوت کارکنان معتبر نیست</h1><p>این لینک پیدا نشد، منقضی شده یا قبلاً استفاده شده است.</p><a class="public-link" href="#">بازگشت به ورود</a></div></section></main>`;
+    return;
+  }
+  app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(roleLabel(invitation.role))} ثبت شده است. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴"></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
+  document.querySelector('#staffInvitationAcceptForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    try {
+      const staffUser = RestaurantCore.acceptStaffInvitation(state, token, toEnglishDigits(form.get('pin')));
+      const loginSession = RestaurantCore.loginWithStaffCode(state, staffUser.personnelCode, toEnglishDigits(form.get('pin')), staffUser.customerId);
+      setActiveSession(loginSession);
+      currentTab = defaultTabForRole();
+      location.hash = '';
+      saveState();
+      render();
+    } catch (err) {
+      alert(err.message === 'STAFF_LOGIN_REQUIRED' ? 'پین ورود لازم است' : 'دعوت قابل پذیرش نیست');
+    }
+  });
+}
+
 function render() {
+  const inviteToken = staffInvitationTokenFromHash();
+  if (inviteToken) return renderStaffInvitationAccept(inviteToken);
   const publicId = publicCustomerId();
   if (publicId) return renderPublicMenu(publicId);
   const customer = currentCustomer();
@@ -2322,7 +2374,7 @@ function renderPersonnel(customer) {
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
     <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود؛ ورود و خروج پرسنل از دکمه تصویری کنار نام رستوران در بالای صفحه انجام می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
-    <form class="panel" id="invitationForm"><h2>دعوت ایمیلی نقش‌های حساس</h2><p>برای مدیر، حسابدار یا نیرویی که باید حساب کاربری کامل داشته باشد، دعوت ایمیلی بسازید؛ تا زمان پذیرش، کاربر فعال عملیاتی ساخته نمی‌شود.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت دعوت کارکنان</button></form>
+    <form class="panel" id="invitationForm"><h2>دعوت کارکنان با لینک پذیرش</h2><p>در این نسخه ایمیل واقعی ارسال نمی‌شود؛ دعوت ساخته می‌شود و لینک پذیرش را از لیست پایین کپی کنید و دستی برای فرد بفرستید.</p><label>نام دعوت‌شونده<input name="name" value="مدیر شیفت"></label><label>ایمیل دعوت<input name="email" value="invite${Date.now().toString().slice(-4)}@restaurant.test" type="email" dir="ltr" autocomplete="email"></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت لینک دعوت</button><small>ارسال خودکار ایمیل بعد از اتصال سرویس ایمیل فعال می‌شود.</small></form>
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
     <div class="panel staff-attendance-kiosk-panel"><h2>ثبت ورود/خروج</h2><p>برای ثبت ورود یا پایان کار، دکمه «ورود/خروج پرسنل» را بزنید؛ پاپ‌آپ کد پرسنلی را می‌گیرد، ساعت برنامه کاری همان پرسنل را نشان می‌دهد و سپس دکمه ورود یا خروج ثبت می‌کند.</p><button type="button" class="primary" data-open-attendance-modal>باز کردن پاپ‌آپ ورود/خروج</button></div>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
@@ -2330,7 +2382,7 @@ function renderPersonnel(customer) {
     <div class="panel wide"><h2>محاسبه حقوق و دستمزد</h2><p>فقط رکوردهای کامل و تاییدشده در حقوق محاسبه می‌شوند؛ رکوردهای خارج از برنامه تا تایید مدیر وارد محاسبه نمی‌شوند.</p>${payrollRows || '<p>هنوز ساعت تاییدشده‌ای برای محاسبه وجود ندارد.</p>'}</div>
     <form class="panel" id="passwordResetForm"><h2>بازیابی رمز عبور</h2><p>برای حساب‌های ایمیلی، کد زمان‌دار ساخته می‌شود و پس از تغییر رمز، نشست‌های قبلی همان کاربر پاک می‌شود.</p><label>ایمیل حساب<input name="email" value="${esc(customer.email)}" type="email" dir="ltr" autocomplete="email"></label><button class="primary">ساخت کد بازیابی</button></form>
     <div class="panel wide"><h2>وضعیت بازیابی رمز</h2>${passwordResets.map(reset=>`<div class="order-row password-reset-row"><b>${esc(reset.email)}</b><span>وضعیت: ${esc(resetStatusLabel(reset.status))} — پایان اعتبار: ${formatDate(reset.expiresAt)}${reset.status === 'pending' ? ' — کد فعال است' : ''}${reset.invalidatedSessions ? ` — نشست‌های پاک‌شده: ${numberText(reset.invalidatedSessions,0)}` : ''}</span></div>`).join('') || '<p>درخواستی ثبت نشده است.</p>'}</div>
-    <div class="panel wide"><h2>دعوت‌های کارکنان</h2>${staffInvitations.map(inv=>`<div class="order-row invitation-row"><b>${esc(inv.name)}</b><span>نقش: ${esc(roleLabel(inv.role))} — ایمیل: ${esc(inv.email)} — وضعیت: ${esc(invitationStatusLabel(inv.status))} — پایان اعتبار: ${formatDate(inv.expiresAt)}</span>${inv.status === 'pending' ? `<button type="button" class="danger-button" data-cancel-invitation="${inv.id}">لغو دعوت</button>` : ''}</div>`).join('') || '<p>دعوتی ثبت نشده است.</p>'}</div>
+    <div class="panel wide"><h2>دعوت‌های کارکنان</h2>${staffInvitations.map(inv=>`<div class="order-row invitation-row"><b>${esc(inv.name)}</b><span>نقش: ${esc(roleLabel(inv.role))} — ایمیل: ${esc(inv.email)} — وضعیت: ${esc(invitationStatusLabel(inv.status))} — پایان اعتبار: ${formatDate(inv.expiresAt)}</span>${inv.status === 'pending' ? `<code dir="ltr" class="invitation-link">${esc(staffInvitationLink(inv))}</code><button type="button" class="secondary" data-copy-invitation-link="${esc(staffInvitationLink(inv))}">کپی لینک دعوت</button><button type="button" class="danger-button" data-cancel-invitation="${inv.id}">لغو دعوت</button>` : ''}</div>`).join('') || '<p>دعوتی ثبت نشده است.</p>'}</div>
   </section>`;
 }
 
@@ -3151,6 +3203,9 @@ function bindCommon() {
     if (!confirm('این دعوت کارکنان لغو شود؟')) return;
     try { RestaurantCore.cancelStaffInvitation(state, customer.id, btn.dataset.cancelInvitation); saveState(); render(); }
     catch (err) { alert(err.message === 'INVITATION_NOT_FOUND' ? 'دعوت پیدا نشد' : 'این دعوت دیگر در انتظار پذیرش نیست'); }
+  }));
+  document.querySelectorAll('[data-copy-invitation-link]').forEach(btn => btn.addEventListener('click', () => {
+    copyTextToClipboard(btn.dataset.copyInvitationLink || '').then(() => alert('لینک دعوت کپی شد؛ آن را در پیام‌رسان یا ایمیل دستی بفرستید.')).catch(() => alert('کپی نشد؛ لینک را دستی انتخاب کنید.'));
   }));
   document.querySelectorAll('[data-edit-recipe]').forEach(btn => btn.addEventListener('click', () => {
     const recipe = byCustomer(state.recipes).find(r => r.id === btn.dataset.editRecipe);
