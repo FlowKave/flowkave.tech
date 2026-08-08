@@ -746,6 +746,7 @@
       name: input.name || roleLabel(input.role),
       email,
       personnelCode: normalizePersonnelCode(input.personnelCode || ''),
+      jobTitle: cleanPersianText(input.jobTitle || ''),
       role: input.role === 'manager' ? 'manager' : 'cashier',
       token: uid('token'),
       status: 'pending',

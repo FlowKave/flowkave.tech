@@ -73,6 +73,8 @@ function publicInvitation(invitation: any) {
     email: String(invitation.email || ''),
     role: normalizeRole(invitation.role),
     roleLabel: roleLabel(invitation.role),
+    jobTitle: String(invitation.jobTitle || roleLabel(invitation.role)),
+    personnelCode: String(invitation.personnelCode || ''),
     status: invitationStatus(invitation),
     expiresAt: invitation.expiresAt || '',
   };
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest) {
       mobile: '',
       email: String(invitation.email || '').trim(),
       address: '',
-      jobTitle: roleLabel(invitation.role),
+      jobTitle: String(invitation.jobTitle || roleLabel(invitation.role)),
       hourlyWage: 0,
       personnelCode,
       role: normalizeRole(invitation.role),

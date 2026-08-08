@@ -1317,3 +1317,15 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .owner-profile-grid input[readonly]{background:color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 8%)!important;color:var(--muted)!important;-webkit-text-fill-color:var(--muted)!important;cursor:not-allowed}
 .owner-password-panel{max-width:760px;justify-self:stretch}
 @media(max-width:760px){.owner-profile-grid{grid-template-columns:1fr}}
+
+
+/* Staff list modal: searchable internal scroll + per-staff invite action */
+.staff-list-modal{width:min(1180px,96vw)!important;max-height:90vh!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;overflow:hidden!important}
+.staff-list-search{margin:0 0 12px!important;display:grid!important;gap:8px!important}
+.staff-list-search input{width:100%!important}
+.staff-user-list{max-height:62vh!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;padding-inline:4px 8px!important;scrollbar-gutter:stable both-edges!important}
+.staff-user-edit-grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important}
+.staff-user-edit-form[hidden]{display:none!important}
+.staff-user-actions{align-items:center!important}
+.staff-list-empty{margin:8px 0 0!important;text-align:center!important;font-weight:900!important;color:var(--muted)!important}
+@media(max-width:760px){.staff-list-modal{width:96vw!important}.staff-user-list{max-height:68vh!important}.staff-user-actions button{width:100%!important}}

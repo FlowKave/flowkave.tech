@@ -45,10 +45,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=manager-multi-restaurant-email-68');
-mustContain(html, 'core.js?v=manager-multi-restaurant-email-68');
-mustContain(html, 'app.js?v=manager-multi-restaurant-email-68');
-mustContain(html, 'core.js?v=manager-multi-restaurant-email-68');
+mustContain(html, 'styles.css?v=staff-row-invite-search-69');
+mustContain(html, 'core.js?v=staff-row-invite-search-69');
+mustContain(html, 'app.js?v=staff-row-invite-search-69');
+mustContain(html, 'core.js?v=staff-row-invite-search-69');
 mustContain(app, 'if (!customer.businessName) customer.businessName = portalIdentity.businessName;', 'Portal identity must seed a new account only; it must not overwrite saved owner profile edits on every sync pull.');
 mustContain(app, 'if (!customer.ownerName) customer.ownerName = portalIdentity.ownerName;', 'Portal identity must not revert edited owner name after remote sync refresh.');
 assert(!app.includes('customer.businessName = portalIdentity.businessName || customer.businessName'), 'Owner profile edits must not be overwritten by stale tenant identity.');
@@ -65,14 +65,20 @@ mustContain(app, 'نه anon/publishable key', 'If Vercel has an anon or low-perm
 const staffInviteEmailRoute = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'staff-invite-email', 'route.ts'), 'utf8');
 mustContain(staffInviteEmailRoute, "new URL('/auth/callback'", 'Supabase invite emails must authenticate through the hosted callback, not redirect to localhost or a raw static page.');
 mustContain(staffInviteEmailRoute, "callback.searchParams.set('next', inviteLink)", 'Staff invite auth callback must preserve the portal invite token destination.');
-mustContain(staffInviteEmailRoute, 'staff-invite-email-67', 'Staff invite email API version must reflect existing-manager multi-restaurant fallback fix.');
+mustContain(staffInviteEmailRoute, 'staff-invite-email-69', 'Staff invite email API version must reflect staff row invite details fix.');
 mustContain(staffInviteEmailRoute, 'const existingAuthUser = Boolean', 'Inviting an existing manager email into another restaurant must detect the already-registered auth user.');
 mustContain(staffInviteEmailRoute, 'shouldCreateUser: !existingAuthUser', 'Existing manager emails must receive a magic-link invite without trying to create a duplicate Supabase Auth user.');
 mustContain(coreSource, "const email = normalizeEmailForAuth(input.email || '')", 'Staff invitations must normalize email per restaurant before duplicate checks.');
 mustContain(coreSource, "existingStaff && existingStaff.role === 'manager'", 'The same manager email may exist in another restaurant but should only be blocked if already active in this restaurant.');
 assert(!coreSource.includes('u.customerId === customerId && u.email === input.email'), 'Staff invitation duplicate checks must not use raw same-email comparison that breaks existing cross-restaurant manager emails.');
-mustContain(app, 'placeholder="staff@example.com"', 'Staff invite email field must be empty and require a real address, not a test-domain value.');
-assert(!app.includes('name="email" value="invite'), 'Staff invite email field must not be prefilled with a black-hole test domain.');
+mustContain(app, 'data-send-staff-invitation', 'Staff invite action must live beside each staff row, not in a separate invite box.');
+mustContain(app, 'data-staff-list-search', 'Staff list must have an internal search field.');
+mustContain(styles, '.staff-user-list{max-height:62vh!important;overflow-y:auto!important', 'Staff list modal must have internal up/down scrolling.');
+mustContain(app, 'personnelCode: invitation.personnelCode', 'Staff invite emails must receive personnel code metadata.');
+mustContain(app, 'jobTitle: invitation.jobTitle', 'Staff invite emails must receive job title metadata.');
+mustContain(staffInviteEmailRoute, 'staff_invite_personnel_code', 'Staff invite email metadata must include personnel code.');
+mustContain(staffInviteEmailRoute, 'staff_invite_job_title', 'Staff invite email metadata must include job title.');
+assert(!app.includes('id="invitationForm"'), 'Standalone invite-link creation box must be removed from personnel page.');
 mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');
 mustContain(app, 'if (portalStaffLoginMode)', 'Portal auto-owner session must not hide the staff login screen in staff-login mode.');
 const dashboardSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'app', 'dashboard', 'page.tsx'), 'utf8');
@@ -81,7 +87,7 @@ const authActionsSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'au
 const managerSessionSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'manager-session.ts'), 'utf8');
 const restaurantStateApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'restaurant-state', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
-mustContain(dashboardSource, 'manager-multi-restaurant-email-68', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
+mustContain(dashboardSource, 'staff-row-invite-search-69', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If a manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -138,7 +144,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=manager-multi-restaurant-email-68') && index.includes('core.js?v=manager-multi-restaurant-email-68') && index.includes('app.js?v=manager-multi-restaurant-email-68'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=staff-row-invite-search-69') && index.includes('core.js?v=staff-row-invite-search-69') && index.includes('app.js?v=staff-row-invite-search-69'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
@@ -151,7 +157,7 @@ for (const banned of ['پکیج مشتری','چک‌لیست آمادگی راه
   assert(!accountSource.includes(banned), `${banned} must not be visible in customer settings UI.`);
 }
 const personnelSource = app.slice(app.indexOf('function renderPersonnel(customer)'), app.indexOf('function renderAccount(customer)'));
-assert(!accountSource.includes('staffForm') && personnelSource.includes('افزودن پرسنل') && personnelSource.includes('دعوت کارکنان با لینک پذیرش') && personnelSource.includes('بازیابی رمز عبور') && accountSource.includes('پشتیبان‌گیری و بازیابی') && accountSource.includes('مشخصات رستوران'), 'Personnel must be a standalone module and settings must keep backup/profile only.');
+assert(!accountSource.includes('staffForm') && personnelSource.includes('افزودن پرسنل') && app.includes('data-send-staff-invitation') && accountSource.includes('پشتیبان‌گیری و بازیابی') && accountSource.includes('مشخصات رستوران'), 'Personnel must be a standalone module and staff invites must live on personnel rows.');
 
 mustContain(app, 'function attendanceManagementNoteLabel', 'Attendance notes must shorten labels to ورود زودتر / خروج دیرتر.');
 mustContain(app, "return 'ورود زودتر'", 'Early entry note must read ورود زودتر — توضیح, not the long برنامه کاری text.');

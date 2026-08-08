@@ -5,7 +5,7 @@ import { createAdminClient } from '../../../lib/supabase/admin';
 import { getAppBaseUrl, getSupabaseEnv } from '../../../lib/supabase/config';
 
 export const dynamic = 'force-dynamic';
-const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-67';
+const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-69';
 
 type InviteEmailBody = {
   email?: unknown;
@@ -13,6 +13,8 @@ type InviteEmailBody = {
   role?: unknown;
   inviteToken?: unknown;
   inviteLink?: unknown;
+  personnelCode?: unknown;
+  jobTitle?: unknown;
 };
 
 function text(value: unknown, max = 240) {
@@ -61,6 +63,8 @@ export async function POST(request: NextRequest) {
     const email = text(body.email, 320).toLowerCase();
     const name = text(body.name, 120);
     const role = text(body.role, 80);
+    const personnelCode = text(body.personnelCode, 80);
+    const jobTitle = text(body.jobTitle, 160);
     const inviteToken = text(body.inviteToken, 180);
     if (!validEmail(email) || !inviteToken) {
       return NextResponse.json({ error: 'INVALID_INVITATION_EMAIL' }, { status: 400 });
@@ -74,6 +78,8 @@ export async function POST(request: NextRequest) {
       staff_invite_token: inviteToken,
       staff_invite_name: name,
       staff_invite_role: role,
+      staff_invite_personnel_code: personnelCode,
+      staff_invite_job_title: jobTitle,
     };
 
     // Prefer Supabase Admin's real invitation email when the deployment has the

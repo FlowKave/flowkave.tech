@@ -1185,6 +1185,8 @@ async function sendStaffInvitationEmail(invitation) {
       email: invitation.email,
       name: invitation.name,
       role: invitation.role,
+      personnelCode: invitation.personnelCode,
+      jobTitle: invitation.jobTitle,
       inviteToken: invitation.token,
       inviteLink: staffInvitationLink(invitation),
     }),
@@ -1226,7 +1228,7 @@ async function renderPortalStaffInvitationAccept(token) {
       return renderInvalidStaffInvitation(message);
     }
     const invitation = payload.invitation;
-    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(invitation.roleLabel || roleLabel(invitation.role))} ثبت شده است. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴" required></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
+    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div><h1>پذیرش دعوت کارکنان</h1><p>دعوت برای ${esc(invitation.name)} با نقش ${esc(invitation.roleLabel || roleLabel(invitation.role))} ثبت شده است. کد پرسنلی: <b dir="ltr">${esc(faNum(invitation.personnelCode || ''))}</b> — سمت شغلی: <b>${esc(invitation.jobTitle || invitation.roleLabel || roleLabel(invitation.role))}</b>. پین ورود خودت را بساز تا حساب فعال شود.</p></div><form id="staffInvitationAcceptForm" class="panel"><label>ایمیل<input value="${esc(invitation.email)}" type="email" dir="ltr" readonly></label><label>پین ورود<input name="pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="مثلا ۱۲۳۴" required></label><button class="primary">فعال‌سازی حساب کارکنان</button></form></section></main>`;
     document.querySelector('#staffInvitationAcceptForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const form = new FormData(event.target);
@@ -2057,9 +2059,14 @@ function renderOnboardingChecklist(customer) {
   return `<div class="panel wide onboarding-panel"><div class="section-title"><h2>چک‌لیست آمادگی راه‌اندازی</h2><span class="badge">${statusText}</span></div><p>این چک‌لیست نشان می‌دهد برای رسیدن رستوران به نمونه قابل بهره‌برداری، کدام بخش‌های کلیدی هنوز ناقص هستند.</p><div class="onboarding-progress"><span style="width:${(checklist.doneCount / checklist.total) * 100}%"></span></div><div class="onboarding-list">${checklist.items.map(item => `<div class="onboarding-item ${item.done ? 'done' : 'missing'}"><div><b>${item.done ? 'تکمیل‌شده' : 'نیازمند اقدام'}: ${esc(item.title)}</b><span>${esc(faNum(item.detail))}</span></div>${item.key === 'backup-export' ? `<button type="button" class="secondary" data-onboarding-backup>${esc(item.action)}</button>` : `<button type="button" class="secondary" data-onboarding-tab="${esc(item.tab)}">${esc(item.action)}</button>`}</div>`).join('')}</div></div>`;
 }
 
+function staffUserSearchText(user) {
+  return [user.personnelCode, user.firstName, user.lastName, user.name, user.jobTitle, user.email, roleLabel(user.role)].map(x => cleanPersianText(faNum(x || '')).toLowerCase()).join(' ');
+}
 function renderStaffUserManagementRow(user) {
   const isInactive = user.active === false;
-  return `<form class="staff-user-edit-form order-row" data-staff-user-id="${esc(user.id)}"><div class="staff-user-edit-grid"><label>کد پرسنلی<input name="personnelCode" value="${esc(faNum(user.personnelCode || ''))}" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>نام<input name="firstName" value="${esc(user.firstName || '')}"></label><label>نام خانوادگی<input name="lastName" value="${esc(user.lastName || '')}"></label><label>سمت شغلی<input name="jobTitle" value="${esc(user.jobTitle || '')}"></label><label>حقوق هر ساعت${numInput('hourlyWage', user.hourlyWage || '')}</label><label>نقش دسترسی<select name="role"><option value="cashier" ${user.role === 'cashier' ? 'selected' : ''}>صندوق‌دار</option><option value="manager" ${user.role === 'manager' ? 'selected' : ''}>مدیر</option><option value="kitchen" ${user.role === 'kitchen' ? 'selected' : ''}>آشپزخانه</option><option value="inventory" ${user.role === 'inventory' ? 'selected' : ''}>انباردار</option><option value="accountant" ${user.role === 'accountant' ? 'selected' : ''}>حسابدار</option></select></label></div><span class="staff-user-status">وضعیت پرونده: ${isInactive ? 'غیرفعال' : 'فعال'} — دسترسی سامانه: ${user.accessActive === false ? 'بدون پین فعال' : 'فعال'}</span><div class="row-action-buttons staff-user-actions"><button type="submit" class="secondary">ذخیره پرونده</button><button type="button" class="secondary" data-toggle-staff="${esc(user.id)}">${isInactive ? 'فعال‌سازی' : 'غیرفعال‌سازی'}</button>${actionDecalButton('delete', `data-delete-staff="${esc(user.id)}"`, 'staff-user-decal', 'حذف پرسنل')}</div></form>`;
+  const fullName = cleanPersianText(user.name || `${user.firstName || ''} ${user.lastName || ''}`) || 'پرسنل';
+  const inviteDisabled = user.email ? '' : 'disabled title="برای ارسال دعوت، اول ایمیل را در پرونده ذخیره کنید"';
+  return `<form class="staff-user-edit-form order-row" data-staff-user-id="${esc(user.id)}" data-staff-search="${esc(staffUserSearchText(user))}"><div class="staff-user-edit-grid"><label>کد پرسنلی<input name="personnelCode" value="${esc(faNum(user.personnelCode || ''))}" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>نام<input name="firstName" value="${esc(user.firstName || '')}"></label><label>نام خانوادگی<input name="lastName" value="${esc(user.lastName || '')}"></label><label>ایمیل<input name="email" value="${esc(user.email || '')}" type="email" dir="ltr" autocomplete="email" placeholder="staff@example.com"></label><label>سمت شغلی<input name="jobTitle" value="${esc(user.jobTitle || '')}"></label><label>حقوق هر ساعت${numInput('hourlyWage', user.hourlyWage || '')}</label><label>نقش دسترسی<select name="role"><option value="cashier" ${user.role === 'cashier' ? 'selected' : ''}>صندوق‌دار</option><option value="manager" ${user.role === 'manager' ? 'selected' : ''}>مدیر</option><option value="kitchen" ${user.role === 'kitchen' ? 'selected' : ''}>آشپزخانه</option><option value="inventory" ${user.role === 'inventory' ? 'selected' : ''}>انباردار</option><option value="accountant" ${user.role === 'accountant' ? 'selected' : ''}>حسابدار</option></select></label></div><span class="staff-user-status">وضعیت پرونده: ${isInactive ? 'غیرفعال' : 'فعال'} — دسترسی سامانه: ${user.accessActive === false ? 'بدون پین فعال' : 'فعال'}</span><div class="row-action-buttons staff-user-actions"><button type="submit" class="secondary">ذخیره پرونده</button><button type="button" class="secondary" data-toggle-staff="${esc(user.id)}">${isInactive ? 'فعال‌سازی' : 'غیرفعال‌سازی'}</button><button type="button" class="secondary" data-send-staff-invitation="${esc(user.id)}" ${inviteDisabled}>ارسال لینک دعوت</button>${actionDecalButton('delete', `data-delete-staff="${esc(user.id)}"`, 'staff-user-decal', 'حذف پرسنل')}</div><small>دعوت برای ${esc(fullName)} با کد ${esc(faNum(user.personnelCode || ''))} و سمت ${esc(user.jobTitle || roleLabel(user.role))} ارسال می‌شود.</small></form>`;
 }
 
 function nextPersonnelCode(staffUsers = state.staffUsers || []) {
@@ -2075,12 +2082,13 @@ function renderStaffCreateModal(staffUsers) {
 }
 function renderStaffListModal(staffUsers) {
   if (!staffListModalOpen) return '';
-  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><div class="staff-user-list printable-staff-list">${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div></section></div>`;
+  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><label class="staff-list-search">جستجوی پرسنل<input data-staff-list-search placeholder="نام، کد پرسنلی، سمت یا ایمیل را بنویسید"></label><div class="staff-user-list printable-staff-list" data-staff-user-list>${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div><p class="staff-list-empty" data-staff-list-empty hidden>پرسنلی با این جستجو پیدا نشد.</p></section></div>`;
 }
 function renderAttendanceModal() {
   if (!attendanceModalOpen) return '';
   return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><input type="hidden" name="attendancePendingAction" data-attendance-pending-action><div class="attendance-exception-choice" data-attendance-exception-choice hidden><b data-attendance-exception-title>ثبت خارج از برنامه</b><p data-attendance-exception-help></p><div class="attendance-exception-buttons"><button type="submit" class="secondary" name="attendanceExceptionMode" value="schedule" data-attendance-use-schedule>ثبت طبق برنامه</button><label>توضیح دلیل<textarea name="attendanceReason" rows="2" placeholder="دلیل را بنویسید"></textarea></label><button type="submit" class="primary" name="attendanceExceptionMode" value="reason" data-attendance-use-reason>ثبت با توضیح</button></div></div><div class="attendance-modal-actions" data-attendance-actions><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in hidden>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out hidden>خروج</button></div></form></section></div>`;
 }
+
 function attendanceStaffByCode(customerId, code) {
   const normalized = toEnglishDigits(code || '').trim();
   if (!normalized) return null;
@@ -2435,7 +2443,6 @@ function renderPersonnel(customer) {
   return `<section class="workspace personnel-workspace"><div class="panel wide personnel-hero"><div class="section-title"><h2>پرسنلی</h2><span class="badge">پرونده پرسنلی، دسترسی، حضور و غیاب، حقوق</span></div><p>هر نیرو اول یک پرونده پرسنلی دارد؛ دسترسی ورود، پین، برنامه کاری، ثبت ورود/خروج و محاسبه حقوق روی همان پرونده انجام می‌شود.</p><div class="cards personnel-model-cards"><div><b>پرونده پرسنلی</b><span>کد پرسنلی، مشخصات هویتی، سمت و حقوق ساعتی</span></div><div><b>دسترسی سامانه</b><span>پرسنل را انتخاب کنید و جداگانه پین/نقش ورود بدهید</span></div><div><b>حضور و حقوق</b><span>ورود/خروج طبق برنامه؛ موارد خارج از برنامه قبل از محاسبه باید تایید مدیر شوند</span></div></div></div>
     <div class="panel personnel-actions-panel"><h2>مدیریت پرسنل</h2><p>افزودن و لیست پرسنل از اینجا به صورت پاپ‌آپ باز می‌شود؛ ورود و خروج پرسنل از دکمه تصویری کنار نام رستوران در بالای صفحه انجام می‌شود.</p><div class="personnel-action-buttons"><button type="button" class="primary" data-open-staff-modal>افزودن پرسنل</button><button type="button" class="secondary" data-open-staff-list-modal>لیست پرسنل</button></div></div>${renderStaffCreateModal(staffUsers)}${renderStaffListModal(staffUsers)}
     <form class="panel" id="staffAccessForm"><h2>ایجاد پین و دسترسی ورود</h2><p>برای ورود به سامانه، اول پرسنل را انتخاب کنید؛ سپس نقش و پین را جداگانه فعال کنید.</p><label>انتخاب پرسنل<select name="staffUserId">${staffOptions(staffUsers)}</select></label><label>پین ورود سریع<input name="pin" value="۱۲۳۴" type="password" inputmode="numeric"></label><label>نقش دسترسی<select name="role"><option value="cashier">صندوق‌دار</option><option value="manager">مدیر</option><option value="kitchen">آشپزخانه</option><option value="inventory">انباردار</option><option value="accountant">حسابدار</option></select></label><button class="primary">فعال‌سازی دسترسی</button></form>
-    <form class="panel" id="invitationForm"><h2>دعوت کارکنان با لینک پذیرش</h2><p>در نسخه آنلاین، ایمیل دعوت واقعی ارسال می‌شود؛ لینک پذیرش هم برای اطمینان در لیست پایین قابل کپی است.</p><label>نام دعوت‌شونده<input name="name" placeholder="نام کارکنان"></label><label>ایمیل دعوت<input name="email" value="" placeholder="staff@example.com" type="email" dir="ltr" autocomplete="email" required></label><label>نقش<select name="role"><option value="manager">مدیر</option><option value="accountant">حسابدار</option><option value="cashier">صندوق‌دار</option></select></label><button class="primary">ساخت لینک دعوت</button><small>اگر ایمیل به inbox نرسید، پوشه spam/promotions را هم چک کنید.</small></form>
     <div class="panel wide staff-schedule-weekly-panel"><h2>برنامه کاری هفتگی</h2><p>این بخش باید مثل تقویم واقعی رستوران کار کند: لیست پرسنل در ردیف‌ها، روزهای هفته شمسی در ستون‌ها، و امکان جابه‌جایی بین هفته‌ها. هر سلول ساعت شروع و پایان شیفت همان روز را ذخیره می‌کند.</p>${renderWeeklyScheduleGrid(staffUsers, schedules)}</div>
     <div class="panel staff-attendance-kiosk-panel"><h2>ثبت ورود/خروج</h2><p>برای ثبت ورود یا پایان کار، دکمه «ورود/خروج پرسنل» را بزنید؛ پاپ‌آپ کد پرسنلی را می‌گیرد، ساعت برنامه کاری همان پرسنل را نشان می‌دهد و سپس دکمه ورود یا خروج ثبت می‌کند.</p><button type="button" class="primary" data-open-attendance-modal>باز کردن پاپ‌آپ ورود/خروج</button></div>
     <div class="panel"><h2>اثر انگشت و اسکنر اکسترنال</h2><p>ثبت ورود/خروج باید بتواند از اسکنر کوچک اکسترنال انجام شود. در نسخه واقعی، Bridge دستگاه فقط نتیجه تایید و شناسه template را می‌فرستد؛ اثر خام ذخیره نمی‌شود.</p><div class="cards"><div><b>نوع اتصال</b><span>${esc(fp?.mode || 'external-usb-scanner')}</span></div><div><b>رویدادها</b><span>ثبت اثر، ورود، خروج</span></div><div><b>نیاز فنی</b><span>deviceId + staffUserId + verification result</span></div></div></div>
@@ -3225,6 +3232,7 @@ function bindCommon() {
         firstName: cleanPersianText(f.get('firstName')),
         lastName: cleanPersianText(f.get('lastName')),
         personnelCode: toEnglishDigits(f.get('personnelCode')),
+        email: f.get('email'),
         jobTitle: cleanPersianText(f.get('jobTitle')),
         hourlyWage: parseFaNumber(f.get('hourlyWage')),
         role: f.get('role'),
@@ -3233,6 +3241,32 @@ function bindCommon() {
       render();
     } catch (err) {
       alert(err.message === 'STAFF_CODE_ALREADY_EXISTS' ? 'این کد پرسنلی برای کارمند دیگری ثبت شده است' : err.message === 'STAFF_NOT_FOUND' ? 'کارمند پیدا نشد' : 'اطلاعات کارمند کامل نیست');
+    }
+  }));
+  document.querySelector('[data-staff-list-search]')?.addEventListener('input', (event) => {
+    const query = cleanPersianText(faNum(event.target.value || '')).toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.staff-user-edit-form[data-staff-search]').forEach(row => {
+      const match = !query || (row.dataset.staffSearch || '').includes(query);
+      row.hidden = !match;
+      if (match) visible += 1;
+    });
+    const empty = document.querySelector('[data-staff-list-empty]');
+    if (empty) empty.hidden = visible !== 0;
+  });
+  document.querySelectorAll('[data-send-staff-invitation]').forEach(btn => btn.addEventListener('click', async () => {
+    const staffUser = RestaurantCore.getStaffUsers(state, customer.id).find(u => u.id === btn.dataset.sendStaffInvitation);
+    if (!staffUser) return alert('کارمند پیدا نشد');
+    if (!staffUser.email) return alert('برای ارسال لینک دعوت، اول ایمیل را در پرونده پرسنل ذخیره کنید.');
+    try {
+      const invitation = RestaurantCore.createStaffInvitation(state, customer.id, { name: staffUser.name || `${staffUser.firstName || ''} ${staffUser.lastName || ''}`, email: staffUser.email, role: staffUser.role, personnelCode: staffUser.personnelCode, jobTitle: staffUser.jobTitle });
+      saveState();
+      if (portalMode) await sendStaffInvitationEmail(invitation);
+      alert('لینک دعوت برای این پرسنل ساخته و ارسال شد. کد پرسنلی و سمت شغلی هم داخل اطلاعات دعوت ایمیل قرار گرفت.');
+      render();
+    } catch (err) {
+      const message = err.message === 'INVITATION_ALREADY_PENDING' ? 'برای این پرسنل یک دعوت فعال وجود دارد؛ از بخش دعوت‌های کارکنان لینک را کپی کنید یا دعوت قبلی را لغو کنید.' : err.message === 'INVITATION_EMAIL_REQUIRED' ? 'ایمیل پرسنل در پرونده ثبت نشده است.' : err.message === 'MANAGER_EMAIL_ALREADY_ACTIVE_IN_RESTAURANT' ? 'این مدیر همین حالا در این رستوران فعال است.' : err.message === 'STAFF_EMAIL_ALREADY_EXISTS' ? 'این ایمیل برای یک پرسنل فعال همین رستوران ثبت شده است.' : err.message;
+      alert(message || 'ارسال دعوت انجام نشد');
     }
   }));
   document.querySelectorAll('[data-toggle-staff]').forEach(btn => btn.addEventListener('click', () => {
@@ -3337,7 +3371,6 @@ function bindCommon() {
     staffAccessForm: (f) => RestaurantCore.updateStaffUser(state, customer.id, f.get('staffUserId'), { pin: toEnglishDigits(f.get('pin')), role: f.get('role'), accessActive: true }),
     staffClockInForm: (f) => RestaurantCore.clockInStaff(state, customer.id, { staffUserId: f.get('staffUserId'), date: f.get('date'), time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
     staffClockOutForm: (f) => RestaurantCore.clockOutStaff(state, customer.id, f.get('attendanceId'), { time: f.get('time'), reason: cleanPersianText(f.get('reason')), source: 'manual' }),
-    invitationForm: async (f) => { const invitation = RestaurantCore.createStaffInvitation(state, customer.id, { name: cleanPersianText(f.get('name')), email: f.get('email'), role: f.get('role') }); saveState(); if (portalMode) await sendStaffInvitationEmail(invitation); return invitation; },
     passwordResetForm: (f) => RestaurantCore.requestPasswordReset(state, f.get('email')),
     ownerProfileForm: (f) => RestaurantCore.updateCustomerProfile(state, customer.id, { businessName: cleanPersianText(f.get('businessName')), ownerName: cleanPersianText(f.get('ownerName')), phone: toEnglishDigits(f.get('phone') || ''), email: f.get('email') }),
     ownerPasswordForm: (f) => { const next = toEnglishDigits(f.get('newPassword') || ''); const confirm = toEnglishDigits(f.get('confirmPassword') || ''); if (next !== confirm) throw new Error('تکرار رمز جدید با رمز جدید یکی نیست'); const result = RestaurantCore.changeCustomerPassword(state, customer.id, toEnglishDigits(f.get('currentPassword') || ''), next); alert('رمز عبور با موفقیت تغییر کرد. لطفاً دوباره وارد شوید.'); activeSessionId = ''; return result; },
