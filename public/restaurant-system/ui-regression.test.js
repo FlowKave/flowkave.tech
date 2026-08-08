@@ -72,9 +72,19 @@ mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get
 mustContain(app, 'if (portalStaffLoginMode)', 'Portal auto-owner session must not hide the staff login screen in staff-login mode.');
 const dashboardSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'app', 'dashboard', 'page.tsx'), 'utf8');
 const loginPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'login', 'page.tsx'), 'utf8');
+const authActionsSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'auth', 'actions.ts'), 'utf8');
+const managerSessionSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'manager-session.ts'), 'utf8');
+const restaurantStateApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'restaurant-state', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, 'owner-profile-persist-66', 'Dashboard iframe cache-bust token must match the online owner profile persistence fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
+mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
+mustContain(loginPageSource, 'انتخاب رستوران', 'If a manager belongs to multiple restaurants, login must show a restaurant chooser.');
+mustContain(authActionsSource, 'findManagerRestaurantChoices(email, password)', 'Failed owner-password login must fall back to manager email+PIN lookup.');
+mustContain(authActionsSource, 'setPendingManagerChoices(choices)', 'Multiple manager-restaurant matches must be stored temporarily for explicit choice.');
+mustContain(managerSessionSource, "user?.role === 'manager'", 'Remote email+PIN login must be allowed only for staff users with manager role.');
+mustContain(managerSessionSource, "normalizeEmail(staff.email) !== normalizedEmail", 'Manager remote login must use the invited manager email, not personnel code.');
+mustContain(restaurantStateApiSource, 'getManagerSession()', 'Restaurant state API must accept signed manager sessions without owner Supabase login.');
 
 mustContain(app, "field === 'clockInAt'", 'Attendance display must only use createdAt for clock-in display.');
 assert(!app.includes("row?.sourceOut === 'personnel-code-popup') && row?.createdAt) return iranClockTimeText"), 'Clock-out display must not reuse the clock-in createdAt time.');

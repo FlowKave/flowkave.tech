@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
+import { createAdminClient } from '../../../lib/supabase/admin';
+import { getManagerSession } from '../../../lib/restaurant/manager-session';
 import { ensureTenantForUser, portalIdentityFor } from '../../../lib/restaurant/tenant';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +18,28 @@ type RestaurantStateRow = {
 async function authContext() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
+  const manager = await getManagerSession();
+  if ((error || !data.user) && manager) {
+    const admin = createAdminClient();
+    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
+    return {
+      supabase: admin,
+      user: { id: manager.staffUserId },
+      tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId, owner_id: manager.staffUserId },
+      identity: {
+        tenantId: manager.tenantId,
+        tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId },
+        businessName: manager.restaurantName,
+        ownerName: manager.managerName,
+        ownerEmail: manager.email,
+        phone: '',
+      },
+      manager,
+    };
+  }
   if (error || !data.user) return { supabase, user: null, tenant: null, identity: null };
   const tenant = await ensureTenantForUser(supabase, data.user);
-  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant) };
+  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant), manager: null };
 }
 
 function unauthorized() {

@@ -4,10 +4,12 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '../../lib/supabase/server';
 import { getAppBaseUrl } from '../../lib/supabase/config';
+import { choosePendingManagerRestaurant, clearManagerSession, findManagerRestaurantChoices, setManagerSession, setPendingManagerChoices } from '../../lib/restaurant/manager-session';
 
 type ActionState = {
   ok?: boolean;
   message?: string;
+  managerChoices?: { tenantId: string; restaurantName: string; managerName: string; email: string }[];
 };
 
 function value(formData: FormData, key: string) {
@@ -20,19 +22,51 @@ function authError(error: unknown) {
 }
 
 export async function signInAction(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const email = value(formData, 'email');
+  const password = value(formData, 'password');
   try {
     const supabase = await createClient();
-    const email = value(formData, 'email');
-    const password = value(formData, 'password');
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { ok: false, message: error.message };
+    if (!error) {
+      await clearManagerSession();
+      revalidatePath('/app/dashboard');
+      redirect('/app/dashboard');
+    }
   } catch (error) {
-    return { ok: false, message: authError(error) };
+    const message = authError(error);
+    if (!message.includes('NEXT_REDIRECT')) return { ok: false, message };
+    throw error;
   }
 
+  try {
+    const choices = await findManagerRestaurantChoices(email, password);
+    if (!choices.length) return { ok: false, message: 'ایمیل یا رمز/پین معتبر نیست.' };
+    if (choices.length === 1) {
+      await setManagerSession(choices[0]);
+      revalidatePath('/app/dashboard');
+      redirect('/app/dashboard?manager=1');
+    }
+    await setPendingManagerChoices(choices);
+    return {
+      ok: true,
+      message: 'این مدیر در چند رستوران دسترسی دارد؛ رستوران مقصد را انتخاب کن.',
+      managerChoices: choices.map(({ tenantId, restaurantName, managerName, email }) => ({ tenantId, restaurantName, managerName, email })),
+    };
+  } catch (error) {
+    const message = authError(error);
+    if (!message.includes('NEXT_REDIRECT')) return { ok: false, message };
+    throw error;
+  }
+}
+
+export async function chooseManagerRestaurantAction(formData: FormData) {
+  const tenantId = value(formData, 'tenantId');
+  const choice = await choosePendingManagerRestaurant(tenantId);
+  if (!choice) redirect('/login?manager=expired');
+  await setManagerSession(choice);
   revalidatePath('/app/dashboard');
-  redirect('/app/dashboard');
+  redirect('/app/dashboard?manager=1');
 }
 
 export async function signUpAction(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -95,6 +129,7 @@ export async function resetPasswordAction(_state: ActionState, formData: FormDat
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  await clearManagerSession();
   redirect('/login');
 }
 
