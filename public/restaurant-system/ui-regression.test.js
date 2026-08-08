@@ -65,7 +65,9 @@ mustContain(app, 'نه anon/publishable key', 'If Vercel has an anon or low-perm
 const staffInviteEmailRoute = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'staff-invite-email', 'route.ts'), 'utf8');
 mustContain(staffInviteEmailRoute, "new URL('/auth/callback'", 'Supabase invite emails must authenticate through the hosted callback, not redirect to localhost or a raw static page.');
 mustContain(staffInviteEmailRoute, "callback.searchParams.set('next', inviteLink)", 'Staff invite auth callback must preserve the portal invite token destination.');
-mustContain(staffInviteEmailRoute, 'staff-invite-email-65', 'Staff invite email API version must reflect the hosted callback redirect fix.');
+mustContain(staffInviteEmailRoute, 'staff-invite-email-67', 'Staff invite email API version must reflect existing-manager multi-restaurant fallback fix.');
+mustContain(staffInviteEmailRoute, 'const existingAuthUser = Boolean', 'Inviting an existing manager email into another restaurant must detect the already-registered auth user.');
+mustContain(staffInviteEmailRoute, 'shouldCreateUser: !existingAuthUser', 'Existing manager emails must receive a magic-link invite without trying to create a duplicate Supabase Auth user.');
 mustContain(app, 'placeholder="staff@example.com"', 'Staff invite email field must be empty and require a real address, not a test-domain value.');
 assert(!app.includes('name="email" value="invite'), 'Staff invite email field must not be prefilled with a black-hole test domain.');
 mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');

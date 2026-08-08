@@ -5,7 +5,7 @@ import { createAdminClient } from '../../../lib/supabase/admin';
 import { getAppBaseUrl, getSupabaseEnv } from '../../../lib/supabase/config';
 
 export const dynamic = 'force-dynamic';
-const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-65';
+const STAFF_INVITE_EMAIL_VERSION = 'staff-invite-email-67';
 
 type InviteEmailBody = {
   email?: unknown;
@@ -91,9 +91,10 @@ export async function POST(request: NextRequest) {
     // If the address already exists in Supabase Auth, inviteUserByEmail may
     // reject it. In that case fall back to an OTP/magic-link email so existing
     // test users can still receive the staff invitation link.
+    const existingAuthUser = Boolean(adminResult?.error && /already|registered|exists/i.test(adminResult.error.message || ''));
     const shouldFallbackToOtp =
       !adminResult ||
-      (adminResult.error && /already|registered|exists/i.test(adminResult.error.message || ''));
+      existingAuthUser;
 
     const { url: supabaseUrl, publishableKey } = getSupabaseEnv();
     const publicAuth = createSupabaseJsClient(supabaseUrl, publishableKey, {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       ? await publicAuth.auth.signInWithOtp({
           email,
           options: {
-            shouldCreateUser: true,
+            shouldCreateUser: !existingAuthUser,
             emailRedirectTo: redirectTo,
             data: inviteData,
           },
