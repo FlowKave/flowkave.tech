@@ -731,9 +731,12 @@
     requireCustomer(state, customerId);
     if (!Array.isArray(state.staffInvitations)) state.staffInvitations = [];
     if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
-    if (!input.email) throw new Error('INVITATION_EMAIL_REQUIRED');
-    if (state.staffUsers.some((u) => u.customerId === customerId && u.email === input.email)) throw new Error('STAFF_EMAIL_ALREADY_EXISTS');
-    const activePending = state.staffInvitations.some((invitation) => invitation.customerId === customerId && invitation.email === input.email && invitationStatus(invitation) === 'pending');
+    const email = normalizeEmailForAuth(input.email || '');
+    if (!email) throw new Error('INVITATION_EMAIL_REQUIRED');
+    const existingStaff = state.staffUsers.find((u) => u.customerId === customerId && normalizeEmailForAuth(u.email) === email);
+    if (existingStaff && existingStaff.role !== 'manager') throw new Error('STAFF_EMAIL_ALREADY_EXISTS');
+    if (existingStaff && existingStaff.role === 'manager') throw new Error('MANAGER_EMAIL_ALREADY_ACTIVE_IN_RESTAURANT');
+    const activePending = state.staffInvitations.some((invitation) => invitation.customerId === customerId && normalizeEmailForAuth(invitation.email) === email && invitationStatus(invitation) === 'pending');
     if (activePending) throw new Error('INVITATION_ALREADY_PENDING');
     const createdAt = new Date().toISOString();
     const expiresAt = input.expiresAt || new Date(new Date(createdAt).getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString();
@@ -741,7 +744,7 @@
       id: uid('invitation'),
       customerId,
       name: input.name || roleLabel(input.role),
-      email: input.email,
+      email,
       personnelCode: normalizePersonnelCode(input.personnelCode || ''),
       role: input.role === 'manager' ? 'manager' : 'cashier',
       token: uid('token'),
