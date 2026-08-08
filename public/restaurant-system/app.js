@@ -48,6 +48,8 @@ let pendingAccountScrollFocus = null;
 let scheduleWeekOffset = 0;
 let staffFormModalOpen = false;
 let staffListModalOpen = false;
+let staffListSearchQuery = '';
+let selectedStaffListUserId = '';
 let attendanceModalOpen = false;
 let weeklyScheduleSaveTimers = new Map();
 let customerBankQuery = '';
@@ -2059,14 +2061,29 @@ function renderOnboardingChecklist(customer) {
   return `<div class="panel wide onboarding-panel"><div class="section-title"><h2>چک‌لیست آمادگی راه‌اندازی</h2><span class="badge">${statusText}</span></div><p>این چک‌لیست نشان می‌دهد برای رسیدن رستوران به نمونه قابل بهره‌برداری، کدام بخش‌های کلیدی هنوز ناقص هستند.</p><div class="onboarding-progress"><span style="width:${(checklist.doneCount / checklist.total) * 100}%"></span></div><div class="onboarding-list">${checklist.items.map(item => `<div class="onboarding-item ${item.done ? 'done' : 'missing'}"><div><b>${item.done ? 'تکمیل‌شده' : 'نیازمند اقدام'}: ${esc(item.title)}</b><span>${esc(faNum(item.detail))}</span></div>${item.key === 'backup-export' ? `<button type="button" class="secondary" data-onboarding-backup>${esc(item.action)}</button>` : `<button type="button" class="secondary" data-onboarding-tab="${esc(item.tab)}">${esc(item.action)}</button>`}</div>`).join('')}</div></div>`;
 }
 
+function staffDisplayName(user) {
+  return cleanPersianText(user.name || `${user.firstName || ''} ${user.lastName || ''}`) || 'بدون نام';
+}
 function staffUserSearchText(user) {
   return [user.personnelCode, user.firstName, user.lastName, user.name, user.jobTitle, user.email, roleLabel(user.role)].map(x => cleanPersianText(faNum(x || '')).toLowerCase()).join(' ');
 }
+function sortStaffUsersByName(staffUsers = []) {
+  return [...staffUsers].sort((a, b) => {
+    const nameCompare = staffDisplayName(a).localeCompare(staffDisplayName(b), 'fa', { sensitivity: 'base' });
+    if (nameCompare) return nameCompare;
+    return String(a.personnelCode || '').localeCompare(String(b.personnelCode || ''), 'fa', { numeric: true });
+  });
+}
+function renderStaffListOption(user) {
+  const selected = selectedStaffListUserId === user.id;
+  return `<button type="button" class="staff-list-option ${selected ? 'active' : ''}" data-select-staff-user="${esc(user.id)}" data-staff-search="${esc(staffUserSearchText(user))}" data-staff-print-name="${esc(staffDisplayName(user))}" data-staff-print-code="${esc(user.personnelCode || '')}" data-staff-print-role="${esc(roleLabel(user.role))}" data-staff-print-job="${esc(user.jobTitle || '')}" data-staff-print-email="${esc(user.email || '')}"><span><b>${esc(staffDisplayName(user))}</b><small>${esc(user.jobTitle || roleLabel(user.role))}</small></span><em dir="ltr">${esc(faNum(user.personnelCode || '—'))}</em></button>`;
+}
 function renderStaffUserManagementRow(user) {
+  if (!user) return `<div class="staff-detail-placeholder"><b>یک پرسنل را انتخاب کنید</b><span>از لیست سمت راست/بالا، نام کارمند را بزنید تا پرونده، ذخیره، غیرفعال‌سازی و ارسال لینک دعوت باز شود.</span></div>`;
   const isInactive = user.active === false;
-  const fullName = cleanPersianText(user.name || `${user.firstName || ''} ${user.lastName || ''}`) || 'پرسنل';
+  const fullName = staffDisplayName(user);
   const inviteDisabled = user.email ? '' : 'disabled title="برای ارسال دعوت، اول ایمیل را در پرونده ذخیره کنید"';
-  return `<form class="staff-user-edit-form order-row" data-staff-user-id="${esc(user.id)}" data-staff-search="${esc(staffUserSearchText(user))}"><div class="staff-user-edit-grid"><label>کد پرسنلی<input name="personnelCode" value="${esc(faNum(user.personnelCode || ''))}" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>نام<input name="firstName" value="${esc(user.firstName || '')}"></label><label>نام خانوادگی<input name="lastName" value="${esc(user.lastName || '')}"></label><label>ایمیل<input name="email" value="${esc(user.email || '')}" type="email" dir="ltr" autocomplete="email" placeholder="staff@example.com"></label><label>سمت شغلی<input name="jobTitle" value="${esc(user.jobTitle || '')}"></label><label>حقوق هر ساعت${numInput('hourlyWage', user.hourlyWage || '')}</label><label>نقش دسترسی<select name="role"><option value="cashier" ${user.role === 'cashier' ? 'selected' : ''}>صندوق‌دار</option><option value="manager" ${user.role === 'manager' ? 'selected' : ''}>مدیر</option><option value="kitchen" ${user.role === 'kitchen' ? 'selected' : ''}>آشپزخانه</option><option value="inventory" ${user.role === 'inventory' ? 'selected' : ''}>انباردار</option><option value="accountant" ${user.role === 'accountant' ? 'selected' : ''}>حسابدار</option></select></label></div><span class="staff-user-status">وضعیت پرونده: ${isInactive ? 'غیرفعال' : 'فعال'} — دسترسی سامانه: ${user.accessActive === false ? 'بدون پین فعال' : 'فعال'}</span><div class="row-action-buttons staff-user-actions"><button type="submit" class="secondary">ذخیره پرونده</button><button type="button" class="secondary" data-toggle-staff="${esc(user.id)}">${isInactive ? 'فعال‌سازی' : 'غیرفعال‌سازی'}</button><button type="button" class="secondary" data-send-staff-invitation="${esc(user.id)}" ${inviteDisabled}>ارسال لینک دعوت</button>${actionDecalButton('delete', `data-delete-staff="${esc(user.id)}"`, 'staff-user-decal', 'حذف پرسنل')}</div><small>دعوت برای ${esc(fullName)} با کد ${esc(faNum(user.personnelCode || ''))} و سمت ${esc(user.jobTitle || roleLabel(user.role))} ارسال می‌شود.</small></form>`;
+  return `<form class="staff-user-edit-form order-row" data-staff-user-id="${esc(user.id)}"><div class="staff-user-edit-grid"><label>کد پرسنلی<input name="personnelCode" value="${esc(faNum(user.personnelCode || ''))}" inputmode="numeric" dir="ltr" autocomplete="off"></label><label>نام<input name="firstName" value="${esc(user.firstName || '')}"></label><label>نام خانوادگی<input name="lastName" value="${esc(user.lastName || '')}"></label><label>ایمیل<input name="email" value="${esc(user.email || '')}" type="email" dir="ltr" autocomplete="email" placeholder="staff@example.com"></label><label>سمت شغلی<input name="jobTitle" value="${esc(user.jobTitle || '')}"></label><label>حقوق هر ساعت${numInput('hourlyWage', user.hourlyWage || '')}</label><label>نقش دسترسی<select name="role"><option value="cashier" ${user.role === 'cashier' ? 'selected' : ''}>صندوق‌دار</option><option value="manager" ${user.role === 'manager' ? 'selected' : ''}>مدیر</option><option value="kitchen" ${user.role === 'kitchen' ? 'selected' : ''}>آشپزخانه</option><option value="inventory" ${user.role === 'inventory' ? 'selected' : ''}>انباردار</option><option value="accountant" ${user.role === 'accountant' ? 'selected' : ''}>حسابدار</option></select></label></div><span class="staff-user-status">وضعیت پرونده: ${isInactive ? 'غیرفعال' : 'فعال'} — دسترسی سامانه: ${user.accessActive === false ? 'بدون پین فعال' : 'فعال'}</span><div class="row-action-buttons staff-user-actions"><button type="submit" class="secondary">ذخیره پرونده</button><button type="button" class="secondary" data-toggle-staff="${esc(user.id)}">${isInactive ? 'فعال‌سازی' : 'غیرفعال‌سازی'}</button><button type="button" class="secondary" data-send-staff-invitation="${esc(user.id)}" ${inviteDisabled}>ارسال لینک دعوت</button>${actionDecalButton('delete', `data-delete-staff="${esc(user.id)}"`, 'staff-user-decal', 'حذف پرسنل')}</div><small>دعوت برای ${esc(fullName)} با کد ${esc(faNum(user.personnelCode || ''))} و سمت ${esc(user.jobTitle || roleLabel(user.role))} ارسال می‌شود.</small></form>`;
 }
 
 function nextPersonnelCode(staffUsers = state.staffUsers || []) {
@@ -2082,8 +2099,11 @@ function renderStaffCreateModal(staffUsers) {
 }
 function renderStaffListModal(staffUsers) {
   if (!staffListModalOpen) return '';
-  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><label class="staff-list-search">جستجوی پرسنل<input data-staff-list-search placeholder="نام، کد پرسنلی، سمت یا ایمیل را بنویسید"></label><div class="staff-user-list printable-staff-list" data-staff-user-list>${staffUsers.map(renderStaffUserManagementRow).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div><p class="staff-list-empty" data-staff-list-empty hidden>پرسنلی با این جستجو پیدا نشد.</p></section></div>`;
+  const sortedStaff = sortStaffUsersByName(staffUsers);
+  const selectedUser = sortedStaff.find(user => user.id === selectedStaffListUserId) || null;
+  return `<div class="personnel-modal-overlay" data-personnel-modal-overlay><section class="panel personnel-modal-card staff-list-modal" role="dialog" aria-modal="true" aria-label="لیست پرسنل"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-staff-list-modal aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-staff-list', 'modal-print-decal', 'پرینت لیست پرسنل')}</div><h2>لیست پرسنل</h2><label class="staff-list-search">جستجوی پرسنل<input data-staff-list-search value="${esc(staffListSearchQuery)}" placeholder="با نام یا نام خانوادگی جستجو کنید"></label><div class="staff-list-master-detail"><div class="staff-user-list printable-staff-list" data-staff-user-list>${sortedStaff.map(renderStaffListOption).join('') || '<p>هنوز پرسنلی تعریف نشده است.</p>'}</div><div class="staff-detail-panel" data-staff-detail-panel>${renderStaffUserManagementRow(selectedUser)}</div></div><p class="staff-list-empty" data-staff-list-empty hidden>پرسنلی با این جستجو پیدا نشد.</p></section></div>`;
 }
+
 function renderAttendanceModal() {
   if (!attendanceModalOpen) return '';
   return `<div class="personnel-modal-overlay attendance-modal-overlay" data-attendance-modal-overlay><section class="panel personnel-modal-card staff-attendance-modal" role="dialog" aria-modal="true" aria-label="ورود و خروج پرسنل"><button type="button" class="modal-close-icon" data-close-attendance-modal aria-label="بستن">×</button><h2>ورود و خروج پرسنل</h2><form id="staffAttendanceModalForm" class="staff-attendance-modal-form"><label>کد پرسنلی<input name="personnelCode" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۰۰۱" data-attendance-personnel-code></label><div class="attendance-schedule-preview" data-attendance-schedule-preview><span>کد پرسنلی را وارد کنید تا ساعت برنامه کاری امروز نمایش داده شود.</span></div><input type="hidden" name="attendancePendingAction" data-attendance-pending-action><div class="attendance-exception-choice" data-attendance-exception-choice hidden><b data-attendance-exception-title>ثبت خارج از برنامه</b><p data-attendance-exception-help></p><div class="attendance-exception-buttons"><button type="submit" class="secondary" name="attendanceExceptionMode" value="schedule" data-attendance-use-schedule>ثبت طبق برنامه</button><label>توضیح دلیل<textarea name="attendanceReason" rows="2" placeholder="دلیل را بنویسید"></textarea></label><button type="submit" class="primary" name="attendanceExceptionMode" value="reason" data-attendance-use-reason>ثبت با توضیح</button></div></div><div class="attendance-modal-actions" data-attendance-actions><button type="submit" class="primary" name="attendanceAction" value="in" data-attendance-clock-in hidden>ورود</button><button type="submit" class="secondary" name="attendanceAction" value="out" data-attendance-clock-out hidden>خروج</button></div></form></section></div>`;
@@ -2195,13 +2215,16 @@ function prepareStaffListPrintClone(clone) {
   const list = clone.querySelector('.printable-staff-list');
   if (!list) return;
   const headers = ['کد پرسنلی','نام','نام خانوادگی','سمت شغلی','حقوق هر ساعت','نقش دسترسی','وضعیت پرونده','دسترسی سامانه'];
-  const rows = [...list.querySelectorAll('.staff-user-edit-form')].map(form => {
-    const value = (name) => form.querySelector(`[name="${name}"]`)?.value || '';
-    const roleSelect = form.querySelector('[name="role"]');
-    const status = cleanPersianText(form.querySelector('.staff-user-status')?.textContent || '');
-    const [profileStatus = '', accessStatus = ''] = status.split('—').map(part => part.replace(/^.*?:\s*/, '').trim());
-    return [faNum(value('personnelCode')), value('firstName'), value('lastName'), value('jobTitle'), money(parseFaNumber(value('hourlyWage'))), roleSelect?.selectedOptions?.[0]?.textContent || '', profileStatus, accessStatus];
-  });
+  const rows = [...list.querySelectorAll('.staff-list-option')].map(btn => [
+    faNum(btn.dataset.staffPrintCode || ''),
+    btn.dataset.staffPrintName || '',
+    '',
+    btn.dataset.staffPrintJob || '',
+    '',
+    btn.dataset.staffPrintRole || '',
+    '',
+    btn.dataset.staffPrintEmail || '',
+  ]);
   list.innerHTML = rows.length ? `<table class="staff-list-print-table"><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${esc(faNum(cell || '—'))}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p>هنوز پرسنلی تعریف نشده است.</p>';
 }
 function prepareWeeklySchedulePrintClone(clone) {
@@ -3214,7 +3237,7 @@ function bindCommon() {
     catch (err) { alert(err.message === 'ORDER_NOT_FOUND' ? 'سفارش پیدا نشد' : 'وضعیت سفارش معتبر نیست'); }
   }));
   document.querySelector('[data-open-staff-modal]')?.addEventListener('click', () => { staffFormModalOpen = true; render(); });
-  document.querySelector('[data-open-staff-list-modal]')?.addEventListener('click', () => { staffListModalOpen = true; render(); });
+  document.querySelector('[data-open-staff-list-modal]')?.addEventListener('click', () => { staffListModalOpen = true; staffListSearchQuery = ''; selectedStaffListUserId = ''; render(); });
   document.querySelectorAll('[data-open-attendance-modal]').forEach(btn => btn.addEventListener('click', () => { attendanceModalOpen = true; render(); }));
   document.querySelector('[data-close-attendance-modal]')?.addEventListener('click', () => { attendanceModalOpen = false; render(); });
   document.querySelector('[data-attendance-personnel-code]')?.addEventListener('input', () => updateAttendanceSchedulePreview(customer.id));
@@ -3245,8 +3268,9 @@ function bindCommon() {
   }));
   document.querySelector('[data-staff-list-search]')?.addEventListener('input', (event) => {
     const query = cleanPersianText(faNum(event.target.value || '')).toLowerCase();
+    staffListSearchQuery = event.target.value || '';
     let visible = 0;
-    document.querySelectorAll('.staff-user-edit-form[data-staff-search]').forEach(row => {
+    document.querySelectorAll('.staff-list-option[data-staff-search]').forEach(row => {
       const match = !query || (row.dataset.staffSearch || '').includes(query);
       row.hidden = !match;
       if (match) visible += 1;
@@ -3254,6 +3278,7 @@ function bindCommon() {
     const empty = document.querySelector('[data-staff-list-empty]');
     if (empty) empty.hidden = visible !== 0;
   });
+  document.querySelectorAll('[data-select-staff-user]').forEach(btn => btn.addEventListener('click', () => { selectedStaffListUserId = btn.dataset.selectStaffUser || ''; render(); }));
   document.querySelectorAll('[data-send-staff-invitation]').forEach(btn => btn.addEventListener('click', async () => {
     const staffUser = RestaurantCore.getStaffUsers(state, customer.id).find(u => u.id === btn.dataset.sendStaffInvitation);
     if (!staffUser) return alert('کارمند پیدا نشد');
@@ -3277,7 +3302,7 @@ function bindCommon() {
   }));
   document.querySelectorAll('[data-delete-staff]').forEach(btn => btn.addEventListener('click', () => {
     if (!confirm('این کاربر کارکنان حذف شود؟')) return;
-    try { RestaurantCore.deleteStaffUser(state, customer.id, btn.dataset.deleteStaff); saveState(); render(); }
+    try { RestaurantCore.deleteStaffUser(state, customer.id, btn.dataset.deleteStaff); if (selectedStaffListUserId === btn.dataset.deleteStaff) selectedStaffListUserId = ''; saveState(); render(); }
     catch (err) { alert(err.message === 'STAFF_NOT_FOUND' ? 'کاربر پیدا نشد' : err.message); }
   }));
   document.querySelectorAll('[data-save-attendance-row]').forEach(btn => btn.addEventListener('click', () => {
