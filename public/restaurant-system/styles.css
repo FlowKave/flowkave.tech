@@ -1329,3 +1329,26 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.active{
 .staff-user-actions{align-items:center!important}
 .staff-list-empty{margin:8px 0 0!important;text-align:center!important;font-weight:900!important;color:var(--muted)!important}
 @media(max-width:760px){.staff-list-modal{width:96vw!important}.staff-user-list{max-height:68vh!important}.staff-user-actions button{width:100%!important}}
+
+
+/* Mobile staff list modal fix: full-width, safe viewport, visible search, one-column cards. */
+@media(max-width:760px),(pointer:coarse){
+  .personnel-modal-overlay{place-items:stretch!important;align-items:start!important;justify-items:stretch!important;padding:max(10px,env(safe-area-inset-top)) 8px max(86px,calc(env(safe-area-inset-bottom) + 78px))!important;overflow:hidden!important}
+  .staff-list-modal{width:100%!important;max-width:100%!important;height:calc(100dvh - max(96px,calc(env(safe-area-inset-bottom) + 96px)))!important;max-height:calc(100dvh - max(96px,calc(env(safe-area-inset-bottom) + 96px)))!important;border-radius:22px!important;padding:14px 10px 12px!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;overflow:hidden!important}
+  .staff-list-modal .print-actions{position:static!important;min-height:46px!important;margin:0 0 6px!important;padding:0 4px!important;background:transparent!important;justify-content:flex-start!important;align-items:center!important}
+  .staff-list-modal .modal-close-icon{position:static!important;order:2!important;margin-inline-start:auto!important;width:42px!important;height:42px!important;min-width:42px!important}
+  .staff-list-modal .modal-print-decal{order:1!important;width:42px!important;height:42px!important;min-width:42px!important}
+  .staff-list-modal h2{margin:2px 0 10px!important;text-align:center!important;font-size:24px!important;line-height:1.35!important}
+  .staff-list-search{display:grid!important;width:100%!important;margin:0 0 10px!important;gap:6px!important;font-size:14px!important;color:var(--muted)!important;min-width:0!important}
+  .staff-list-search input{display:block!important;width:100%!important;min-width:0!important;height:46px!important;padding:10px 13px!important;border-radius:15px!important;background:#fff!important;color:#102033!important;-webkit-text-fill-color:#102033!important;opacity:1!important}
+  .staff-user-list{height:auto!important;max-height:none!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:2px 2px 16px!important;scrollbar-gutter:auto!important;-webkit-overflow-scrolling:touch!important}
+  .staff-user-edit-form.order-row{padding:12px 10px!important;margin:0 0 10px!important;border-radius:18px!important;overflow:visible!important;width:100%!important;max-width:100%!important}
+  .staff-user-edit-grid{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important;min-width:0!important}
+  .staff-user-edit-grid label{width:100%!important;min-width:0!important;font-size:14px!important;text-align:right!important}
+  .staff-user-edit-grid input,.staff-user-edit-grid select{width:100%!important;max-width:100%!important;min-width:0!important;height:44px!important;font-size:15px!important;padding:9px 11px!important;border-radius:14px!important}
+  .staff-user-status{white-space:normal!important;line-height:1.8!important;text-align:right!important;font-size:13px!important;justify-self:stretch!important}
+  .staff-user-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important;max-width:100%!important}
+  .staff-user-actions button,.staff-user-actions .secondary,.staff-user-actions .danger-button{width:100%!important;min-width:0!important;height:46px!important;min-height:46px!important;padding:10px 12px!important;font-size:15px!important;text-align:center!important;justify-content:center!important}
+  .staff-user-decal{width:100%!important;min-width:0!important;height:46px!important;border-radius:15px!important}
+  .staff-user-edit-form small{display:block!important;line-height:1.7!important;font-size:12px!important;text-align:right!important;overflow-wrap:anywhere!important}
+}
