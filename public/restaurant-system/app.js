@@ -211,7 +211,7 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
   if (!sharedSyncEnabled || !serialized) return;
   try {
     const updatedAt = Date.now() / 1000;
-    const response = await fetchWithTimeout(SHARED_STATE_API, {
+    const response = await fetch(SHARED_STATE_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ updatedAt, data: sharedStatePayload(JSON.parse(serialized)) }),
@@ -277,10 +277,9 @@ async function pullSharedState({ initial = false } = {}) {
         state = RestaurantCore.createInitialState();
         ensurePortalCustomerSession(portalIdentity);
         saveState(state);
-        portalInitialStateLoaded = true;
+        await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
         render();
-        pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
-      } else if (initial && shouldSeedSharedStateFromLocal()) pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+      } else if (initial && shouldSeedSharedStateFromLocal()) await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
       return;
     }
     const updatedAt = Number(result.updatedAt || 0);
