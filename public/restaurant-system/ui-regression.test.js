@@ -134,13 +134,12 @@ mustContain(authActionsSourceForSignup, 'این ایمیل قبلاً حساب �
 mustContain(tenantSwitchRouteSource, 'chooseOwnerTenantForUser', 'Tenant switch API must allow owners to switch only to restaurants they own.');
 mustContain(tenantSwitchRouteSource, 'switchManagerRestaurant', 'Tenant switch API must allow managers to switch among their signed restaurant choices.');
 mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must render an in-app restaurant switcher when portal identity has multiple tenant choices.');
-mustContain(app, 'فقط همین رستوران', 'Online header must still visibly show the restaurant switcher area even before additional tenant choices are available.');
+assert(!app.includes('فقط همین رستوران'), 'Single-restaurant header must not show فقط همین رستوران.');
 mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must change restaurant without logout/login.');
 mustContain(styles, '.header-tenant-switcher', 'Restaurant switcher must have dedicated header styling.');
 mustContain(app, 'function activeRestaurantHeaderName(customer)', 'Authenticated header must compute restaurant context separately from owner/manager identity.');
 mustContain(app, '${renderRestaurantSwitcher(customer)}', 'Authenticated header must render the restaurant switcher where the restaurant name used to be.');
 mustContain(app, 'header-restaurant-select', 'Restaurant dropdown must sit inline beside the logout button as the restaurant context.');
-mustContain(app, 'tenant-switcher-caption">رستوران', 'Switcher caption must identify restaurant, not show owner/manager name.');
 mustContain(app, 'if (!customer && !portalIdentity.tenantId)', 'Portal tenant lookup must not match an old customer only by manager/owner email when a tenant id exists.');
 assert(!app.includes('<strong class="header-restaurant-name">${esc(customer.businessName)}</strong>${renderRestaurantSwitcher'), 'Header must not show a separate stale customer/owner name before the restaurant dropdown.');
 
@@ -250,3 +249,6 @@ assert(styles.includes('Weekly schedule print center alignment'), 'Weekly schedu
 assert(app.includes('faNum(schedule?.startTime') && app.includes('faNum(staff.personnelCode') && styles.includes('Weekly schedule print table contract'), 'Weekly schedule print must be table style and Persian digits.');
 
 assert(app.includes('function prepareStaffListPrintClone') && styles.includes('Staff list print table contract'), 'Staff list print must be landscape table.');
+
+mustContain(app, "if (visibleChoices.length < 2) return `<strong class=\"header-restaurant-name\">", 'Single-restaurant accounts must show only the plain restaurant name without a disabled dropdown or frame.');
+assert(!app.includes('tenant-switcher-caption') && !app.includes('فقط همین رستوران'), 'Header must not show extra رستوران/fallback captions around the restaurant name.');

@@ -1341,9 +1341,8 @@ function renderRestaurantSwitcher(customer) {
     restaurantName: String(choice.restaurantName || '').trim() || (choice.tenantId === portalIdentity?.tenantId ? activeName : 'رستوران')
   }));
   const visibleChoices = normalizedChoices.length ? normalizedChoices : [{ tenantId: portalIdentity?.tenantId || '', restaurantName: activeName }];
-  const disabled = visibleChoices.length < 2 ? 'disabled aria-disabled="true"' : '';
-  const title = visibleChoices.length < 2 ? 'برای این حساب فعلاً رستوران دیگری پیدا نشده است' : 'انتخاب رستوران فعال بدون خروج';
-  return `<label class="header-tenant-switcher header-restaurant-select" title="${esc(title)}"><span class="tenant-switcher-caption">رستوران</span><select data-tenant-switcher aria-label="تغییر رستوران" ${disabled}>${visibleChoices.map(choice => `<option value="${esc(choice.tenantId)}" ${choice.tenantId === portalIdentity?.tenantId ? 'selected' : ''}>${esc(choice.restaurantName || activeName)}</option>`).join('')}</select>${visibleChoices.length < 2 ? '<small>فقط همین رستوران</small>' : ''}</label>`;
+  if (visibleChoices.length < 2) return `<strong class="header-restaurant-name">${esc(visibleChoices[0]?.restaurantName || activeName)}</strong>`;
+  return `<label class="header-tenant-switcher header-restaurant-select" title="انتخاب رستوران فعال بدون خروج"><select data-tenant-switcher aria-label="تغییر رستوران">${visibleChoices.map(choice => `<option value="${esc(choice.tenantId)}" ${choice.tenantId === portalIdentity?.tenantId ? 'selected' : ''}>${esc(choice.restaurantName || activeName)}</option>`).join('')}</select></label>`;
 }
 async function switchPortalTenant(tenantId) {
   if (!portalMode || !tenantId || tenantId === portalIdentity?.tenantId) return;
