@@ -18,6 +18,7 @@ const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaura
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
 let portalInitialStateLoaded = !portalMode;
+let portalInitialLoadError = '';
 let state = loadState();
 let session = loadLocalSession(state);
 let currentTab = portalParams.get('tab') || 'dashboard';
@@ -259,10 +260,15 @@ function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
 function shouldSeedSharedStateFromLocal() {
   return Array.isArray(state.customers) && state.customers.some(c => c.email && c.email !== 'demo@restaurant.test');
 }
+function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 async function pullSharedState({ initial = false } = {}) {
   if (!sharedSyncEnabled && !initial) return;
   try {
-    const response = await fetch(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+    const response = await fetchWithTimeout(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) throw new Error('SYNC_LOAD_FAILED');
     const result = await response.json();
     if (portalMode) portalIdentity = normalizePortalIdentity(result);
@@ -281,7 +287,7 @@ async function pullSharedState({ initial = false } = {}) {
     if (!initial && shouldDelayRemoteApply()) return;
     applyRemoteState(result.data, updatedAt, portalIdentity);
   } catch (error) {
-    if (portalMode && initial) { ensurePortalCustomerSession(portalIdentity); saveState(state); render(); }
+    if (portalMode && initial) portalInitialLoadError = 'اطلاعات رستوران از سرور خوانده نشد. لطفاً صفحه را رفرش کنید یا دوباره وارد شوید.';
     if (initial) console.warn('shared state unavailable; using browser-local data', error);
   }
 }
@@ -290,10 +296,13 @@ async function initSharedStateSync() {
   sharedSyncStarted = true;
   sharedSyncEnabled = true;
   sharedLastSerialized = localStorage.getItem(STORAGE_KEY) || JSON.stringify(state);
-  await pullSharedState({ initial: true });
-  if (portalMode) {
-    portalInitialStateLoaded = true;
-    if (!staffInvitationTokenFromUrl() && !publicCustomerId()) render();
+  try {
+    await pullSharedState({ initial: true });
+  } finally {
+    if (portalMode) {
+      portalInitialStateLoaded = true;
+      if (!staffInvitationTokenFromUrl() && !publicCustomerId()) render();
+    }
   }
   setInterval(() => pullSharedState(), SHARED_SYNC_INTERVAL_MS);
 }
@@ -1310,6 +1319,10 @@ function render() {
   if (publicId) return renderPublicMenu(publicId);
   if (portalMode && !portalInitialStateLoaded) {
     app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>در حال بارگذاری رستوران</h1><p>اطلاعات رستوران از سرور خوانده می‌شود...</p></div></section></main>`;
+    return;
+  }
+  if (portalMode && (!portalIdentity || !portalIdentity.tenantId)) {
+    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>خطا در بارگذاری رستوران</h1><p>${esc(portalInitialLoadError || 'نشست مالک یا انتخاب رستوران معتبر نیست.')}</p><button class="primary" onclick="window.location.reload()">تلاش دوباره</button><a class="secondary" href="/login">ورود دوباره</a></div></section></main>`;
     return;
   }
   const customer = currentCustomer();
