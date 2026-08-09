@@ -87,12 +87,16 @@ function normalizeEmail(email: string) {
   return String(email || '').trim().toLowerCase();
 }
 
+function hasManagerCredential(user: any) {
+  return Boolean(user?.passwordHash || user?.password);
+}
+
 function isManager(user: any) {
-  return user?.role === 'manager' && user.active !== false && user.accessActive === true;
+  return user?.role === 'manager' && user.active !== false && user.accessActive === true && hasManagerCredential(user);
 }
 
 function hasUsableManagerLogin(user: any) {
-  return isManager(user) && Boolean(user?.passwordHash || user?.password);
+  return isManager(user);
 }
 
 async function collectManagerRestaurantChoices(email: string, pin = ''): Promise<ManagerRestaurantChoice[]> {
