@@ -220,6 +220,15 @@ function shouldDelayRemoteApply() {
   const active = document.activeElement;
   return !!active && active.matches?.('input, textarea, select');
 }
+function preserveLocalBrowserSessions(remoteState) {
+  if (!remoteState || !Array.isArray(remoteState.sessions)) remoteState.sessions = [];
+  const localSessionId = localStorage.getItem(SESSION_KEY) || '';
+  const localSessions = Array.isArray(state?.sessions) ? state.sessions : [];
+  const keep = localSessions.filter(local => local?.id && (local.id === localSessionId || session?.id === local.id));
+  keep.forEach(local => {
+    if (!remoteState.sessions.some(remote => remote?.id === local.id)) remoteState.sessions.push({ ...local });
+  });
+}
 function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   if (!remoteState || !Array.isArray(remoteState.customers)) return;
   const serialized = JSON.stringify(remoteState);
@@ -228,6 +237,7 @@ function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
     return;
   }
   sharedApplyingRemote = true;
+  preserveLocalBrowserSessions(remoteState);
   migrateDisplayState(remoteState);
   state = remoteState;
   if (portalMode) ensurePortalCustomerSession(identity || portalIdentity);
