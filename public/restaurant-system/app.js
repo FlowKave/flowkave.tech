@@ -132,7 +132,9 @@ function ensurePortalCustomer(identityInput = portalIdentity) {
     });
   }
   customer.portalTenantId = portalIdentity.tenantId;
-  if (!customer.businessName) customer.businessName = portalIdentity.businessName;
+  const serverBusinessName = String(portalIdentity.businessName || '').trim();
+  if (serverBusinessName && serverBusinessName !== 'رستوران جدید') customer.businessName = serverBusinessName;
+  else if (!customer.businessName) customer.businessName = portalIdentity.businessName;
   if (!customer.ownerName) customer.ownerName = portalIdentity.ownerName;
   return customer;
 }
