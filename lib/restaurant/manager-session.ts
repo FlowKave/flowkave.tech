@@ -104,6 +104,20 @@ export async function findManagerRestaurantChoices(email: string, pin: string): 
     .limit(1000);
   if (error) throw new Error(error.message);
 
+  const tenantIds = [...new Set(((data || []) as RestaurantStateRow[]).map((row) => row.tenant_id).filter(Boolean))];
+  const tenantNames = new Map<string, string>();
+  const restaurantNames = new Map<string, string>();
+  if (tenantIds.length) {
+    const tenants = await admin.from('tenants').select('id,name').in('id', tenantIds);
+    if (!tenants.error) {
+      for (const tenant of tenants.data || []) tenantNames.set(String(tenant.id), String(tenant.name || '').trim());
+    }
+    const restaurants = await admin.from('restaurants').select('tenant_id,name').in('tenant_id', tenantIds);
+    if (!restaurants.error) {
+      for (const restaurant of restaurants.data || []) restaurantNames.set(String(restaurant.tenant_id), String(restaurant.name || '').trim());
+    }
+  }
+
   const choices: ManagerRestaurantChoice[] = [];
   for (const row of (data || []) as RestaurantStateRow[]) {
     const state = row.state;
@@ -119,7 +133,7 @@ export async function findManagerRestaurantChoices(email: string, pin: string): 
         tenantId: row.tenant_id,
         customerId: String(staff.customerId || customer.id || ''),
         staffUserId: String(staff.id || ''),
-        restaurantName: String(customer.businessName || customer.name || 'رستوران'),
+        restaurantName: String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer.businessName || customer.name || 'رستوران'),
         managerName: String(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'مدیر'),
         email: normalizedEmail,
       });
