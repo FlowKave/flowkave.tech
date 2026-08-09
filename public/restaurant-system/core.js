@@ -733,7 +733,8 @@
     if (!Array.isArray(state.staffUsers)) state.staffUsers = [];
     const email = normalizeEmailForAuth(input.email || '');
     if (!email) throw new Error('INVITATION_EMAIL_REQUIRED');
-    const existingStaff = state.staffUsers.find((u) => u.customerId === customerId && normalizeEmailForAuth(u.email) === email);
+    const sourceStaffUserId = String(input.staffUserId || input.sourceStaffUserId || '');
+    const existingStaff = state.staffUsers.find((u) => u.customerId === customerId && u.id !== sourceStaffUserId && normalizeEmailForAuth(u.email) === email);
     if (existingStaff && existingStaff.role !== 'manager') throw new Error('STAFF_EMAIL_ALREADY_EXISTS');
     if (existingStaff && existingStaff.role === 'manager') throw new Error('MANAGER_EMAIL_ALREADY_ACTIVE_IN_RESTAURANT');
     const activePending = state.staffInvitations.some((invitation) => invitation.customerId === customerId && normalizeEmailForAuth(invitation.email) === email && invitationStatus(invitation) === 'pending');

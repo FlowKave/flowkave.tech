@@ -3313,7 +3313,7 @@ function bindCommon() {
     if (!staffUser) return alert('کارمند پیدا نشد');
     if (!staffUser.email) return alert('برای ارسال لینک دعوت، اول ایمیل را در پرونده پرسنل ذخیره کنید.');
     try {
-      const invitation = RestaurantCore.createStaffInvitation(state, customer.id, { name: staffUser.name || `${staffUser.firstName || ''} ${staffUser.lastName || ''}`, email: staffUser.email, role: staffUser.role, personnelCode: staffUser.personnelCode, jobTitle: staffUser.jobTitle });
+      const invitation = RestaurantCore.createStaffInvitation(state, customer.id, { staffUserId: staffUser.id, name: staffUser.name || `${staffUser.firstName || ''} ${staffUser.lastName || ''}`, email: staffUser.email, role: staffUser.role, personnelCode: staffUser.personnelCode, jobTitle: staffUser.jobTitle });
       saveState();
       if (portalMode) await sendStaffInvitationEmail(invitation);
       alert('لینک دعوت برای این پرسنل ساخته و ارسال شد. کد پرسنلی و سمت شغلی هم داخل اطلاعات دعوت ایمیل قرار گرفت.');
