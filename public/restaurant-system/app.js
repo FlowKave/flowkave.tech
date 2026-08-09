@@ -193,6 +193,11 @@ function saveState(next = state) {
   sharedLastSerialized = serialized;
   if (sharedSyncEnabled && !sharedApplyingRemote) scheduleSharedStateSave(serialized);
 }
+function sharedStatePayload(nextState) {
+  const payload = JSON.parse(JSON.stringify(nextState || {}));
+  delete payload.sessions;
+  return payload;
+}
 function scheduleSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
   if (!serialized) return;
   clearTimeout(sharedSaveTimer);
@@ -205,7 +210,7 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
     const response = await fetch(SHARED_STATE_API, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updatedAt, data: JSON.parse(serialized) }),
+      body: JSON.stringify({ updatedAt, data: sharedStatePayload(JSON.parse(serialized)) }),
       cache: 'no-store',
       credentials: 'same-origin',
     });

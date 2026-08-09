@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
     });
 
     const version = Date.now() / 1000;
+    delete state.sessions;
     const { error } = await admin
       .from('restaurant_states')
       .upsert({

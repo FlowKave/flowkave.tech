@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 
+assert(app.includes('function sharedStatePayload(nextState)'), 'Shared restaurant sync must serialize operational data separately from browser sessions.');
+assert(app.includes('delete payload.sessions'), 'Shared restaurant sync must never upload browser sessions to server state.');
 assert(app.includes('function preserveLocalBrowserSessions(remoteState)'), 'Remote sync must preserve this browser session before replacing state.');
 assert(app.includes('const localSessionId = localStorage.getItem(SESSION_KEY)'), 'Session preservation must read the current browser session id.');
 assert(app.includes('remoteState.sessions.push({ ...local })'), 'Remote sync must merge the current local session into incoming state.');

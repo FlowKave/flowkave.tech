@@ -89,12 +89,14 @@ export async function PUT(request: NextRequest) {
     const requestedVersion = Number(body?.updatedAt || Date.now() / 1000);
     const version = Number.isFinite(requestedVersion) && requestedVersion > 0 ? requestedVersion : Date.now() / 1000;
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.slice(0, 120) : null;
+    const sharedState = { ...state };
+    delete (sharedState as any).sessions;
 
     const { data, error } = await supabase
       .from('restaurant_states')
       .upsert({
         tenant_id: tenant.id,
-        state,
+        state: sharedState,
         version,
         updated_by: user.id,
         device_id: deviceId,
