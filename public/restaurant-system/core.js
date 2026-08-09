@@ -749,6 +749,8 @@
       personnelCode: normalizePersonnelCode(input.personnelCode || ''),
       jobTitle: cleanPersianText(input.jobTitle || ''),
       role: input.role === 'manager' ? 'manager' : 'cashier',
+      sourceStaffUserId: sourceStaffUserId,
+      staffUserId: sourceStaffUserId,
       token: uid('token'),
       status: 'pending',
       createdAt,
@@ -779,7 +781,25 @@
     if (!invitation) throw new Error('INVITATION_NOT_FOUND');
     if (invitationStatus(invitation, now) !== 'pending') throw new Error('INVITATION_NOT_PENDING');
     if (!password) throw new Error('STAFF_LOGIN_REQUIRED');
-    const staffUser = createStaffUser(state, invitation.customerId, { name: invitation.name, email: invitation.email, personnelCode: invitation.personnelCode || String(Date.now()).slice(-6), pin: password, role: invitation.role });
+    const customerId = String(invitation.customerId || '');
+    const invitationEmail = normalizeEmailForAuth(invitation.email || '');
+    const invitationCode = normalizePersonnelCode(invitation.personnelCode || '');
+    let staffUser = state.staffUsers.find((user) => user.customerId === customerId && invitation.staffUserId && user.id === invitation.staffUserId);
+    if (!staffUser && invitationCode) staffUser = state.staffUsers.find((user) => user.customerId === customerId && normalizePersonnelCode(user.personnelCode) === invitationCode);
+    if (!staffUser && invitationEmail) staffUser = state.staffUsers.find((user) => user.customerId === customerId && normalizeEmailForAuth(user.email) === invitationEmail);
+    if (staffUser) {
+      Object.assign(staffUser, createPasswordRecord(password));
+      staffUser.email = invitationEmail || staffUser.email || '';
+      staffUser.personnelCode = invitationCode || normalizePersonnelCode(staffUser.personnelCode || '') || String(Date.now()).slice(-6);
+      staffUser.role = invitation.role === 'manager' ? 'manager' : staffUser.role || 'cashier';
+      staffUser.jobTitle = invitation.jobTitle || staffUser.jobTitle || roleLabel(staffUser.role);
+      staffUser.active = true;
+      staffUser.accessActive = true;
+      delete staffUser.password;
+      delete staffUser.pin;
+    } else {
+      staffUser = createStaffUser(state, customerId, { name: invitation.name, email: invitation.email, personnelCode: invitation.personnelCode || String(Date.now()).slice(-6), pin: password, role: invitation.role, jobTitle: invitation.jobTitle });
+    }
     invitation.acceptedAt = new Date(now).toISOString();
     invitation.status = 'accepted';
     invitation.staffUserId = staffUser.id;

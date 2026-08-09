@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '../../../lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
-const STAFF_INVITATION_VERSION = 'staff-invite-accept-63';
+const STAFF_INVITATION_VERSION = 'staff-invite-existing-staff-64';
 
 type RestaurantStateRow = {
   tenant_id: string;
@@ -133,35 +133,48 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(state.securityEvents)) state.securityEvents = [];
     if (!Array.isArray(state.sessions)) state.sessions = [];
     const customerId = String(invitation.customerId || '');
+    const invitationEmail = String(invitation.email || '').trim().toLowerCase();
     const personnelCode = normalizePersonnelCode(invitation.personnelCode || '') || nextPersonnelCode(state, customerId);
-    if (state.staffUsers.some((user: any) => user.customerId === customerId && normalizePersonnelCode(user.personnelCode) === personnelCode)) {
-      return jsonError('STAFF_CODE_ALREADY_EXISTS');
-    }
-
     const nowIso = new Date().toISOString();
     const passwordRecord = createPasswordRecord(pin);
-    const staffUser = {
-      id: uid('usr'),
-      customerId,
-      name: String(invitation.name || roleLabel(invitation.role)),
-      firstName: String(invitation.name || roleLabel(invitation.role)),
-      lastName: '',
-      fatherName: '',
-      nationalId: '',
-      mobile: '',
-      email: String(invitation.email || '').trim(),
-      address: '',
-      jobTitle: String(invitation.jobTitle || roleLabel(invitation.role)),
-      hourlyWage: 0,
-      personnelCode,
-      role: normalizeRole(invitation.role),
-      active: true,
-      accessActive: true,
-      createdAt: nowIso,
-      ...passwordRecord,
-    };
+    let staffUser = state.staffUsers.find((user: any) => user.customerId === customerId && invitation.staffUserId && user.id === invitation.staffUserId);
+    if (!staffUser && personnelCode) staffUser = state.staffUsers.find((user: any) => user.customerId === customerId && normalizePersonnelCode(user.personnelCode) === personnelCode);
+    if (!staffUser && invitationEmail) staffUser = state.staffUsers.find((user: any) => user.customerId === customerId && String(user.email || '').trim().toLowerCase() === invitationEmail);
 
-    state.staffUsers.push(staffUser);
+    if (staffUser) {
+      Object.assign(staffUser, passwordRecord);
+      staffUser.email = invitationEmail || String(staffUser.email || '').trim();
+      staffUser.personnelCode = personnelCode;
+      staffUser.role = normalizeRole(invitation.role);
+      staffUser.jobTitle = String(invitation.jobTitle || staffUser.jobTitle || roleLabel(staffUser.role));
+      staffUser.active = true;
+      staffUser.accessActive = true;
+      delete staffUser.password;
+      delete staffUser.pin;
+    } else {
+      staffUser = {
+        id: uid('usr'),
+        customerId,
+        name: String(invitation.name || roleLabel(invitation.role)),
+        firstName: String(invitation.name || roleLabel(invitation.role)),
+        lastName: '',
+        fatherName: '',
+        nationalId: '',
+        mobile: '',
+        email: invitationEmail,
+        address: '',
+        jobTitle: String(invitation.jobTitle || roleLabel(invitation.role)),
+        hourlyWage: 0,
+        personnelCode,
+        role: normalizeRole(invitation.role),
+        active: true,
+        accessActive: true,
+        createdAt: nowIso,
+        ...passwordRecord,
+      };
+      state.staffUsers.push(staffUser);
+    }
+
     invitation.acceptedAt = nowIso;
     invitation.status = 'accepted';
     invitation.staffUserId = staffUser.id;

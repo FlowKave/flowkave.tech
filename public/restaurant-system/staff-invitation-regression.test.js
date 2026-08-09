@@ -21,6 +21,14 @@ assert.equal(invitation.customerId, restaurantB.id);
 assert.equal(invitation.email, email);
 assert.equal(invitation.role, 'manager');
 assert.equal(core.getStaffInvitations(state, restaurantB.id).length, 1);
+const staffCountBeforeAccept = state.staffUsers.filter((user) => user.customerId === restaurantB.id).length;
+const acceptedStaff = core.acceptStaffInvitation(state, invitation.token, '7788');
+assert.equal(acceptedStaff.id, staffInNewRestaurant.id);
+assert.equal(acceptedStaff.accessActive, true);
+assert.equal(acceptedStaff.active, true);
+assert.equal(core.loginWithStaffCode(state, acceptedStaff.personnelCode, '7788', restaurantB.id).staffUserId, acceptedStaff.id);
+assert.equal(state.staffUsers.filter((user) => user.customerId === restaurantB.id).length, staffCountBeforeAccept);
+assert.throws(() => core.acceptStaffInvitation(state, invitation.token, '9999'), /INVITATION_NOT_PENDING/);
 
 core.createStaffUser(state, restaurantB.id, { firstName: 'کپی', lastName: 'ایمیل', personnelCode: '1002', email: 'copy@test.local', role: 'cashier' });
 assert.throws(
