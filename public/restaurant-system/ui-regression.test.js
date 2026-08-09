@@ -122,6 +122,15 @@ mustContain(restaurantStateApiSource, 'ownerTenantChoicesFor(ownerTenants)', 'Re
 mustContain(managerSessionSource, 'tenantChoices: publicManagerChoices(availableChoices)', 'Manager session must keep all allowed restaurants so managers can switch without logout.');
 mustContain(managerSessionSource, "admin.from('restaurants').select('tenant_id,name').in('tenant_id', tenantIds)", 'Manager multi-restaurant choices must prefer the real restaurant table name over a stale customer/owner name.');
 mustContain(managerSessionSource, 'restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id)', 'Manager header/dropdown must use restaurant names before customer businessName fallback.');
+mustContain(managerSessionSource, 'async function collectManagerRestaurantChoices', 'Manager restaurant lookup must be reusable for login and existing signed-session refresh.');
+mustContain(managerSessionSource, 'export async function refreshManagerRestaurantChoices', 'Existing manager cookies must refresh all allowed restaurants from server state.');
+mustContain(managerSessionSource, 'const refreshedChoices = await refreshManagerRestaurantChoices(session)', 'getManagerSession must not trust stale one-restaurant cookie choices.');
+mustContain(managerSessionSource, 'setManagerSession(activeChoice, refreshedChoices)', 'Refreshed manager choices must be written back into the signed session cookie.');
+const authActionsSourceForSignup = authActionsSource;
+mustContain(authActionsSourceForSignup, 'signInWithPassword({ email, password })', 'Signup with an existing owner email must first verify the old password instead of pretending a new auth user was created.');
+mustContain(authActionsSourceForSignup, 'createTenantForOwner(supabase, existingLogin.data.user, businessName)', 'Existing owner signup path must create a second restaurant/tenant under the same owner account.');
+mustContain(authActionsSourceForSignup, 'signUpData.user.identities.length === 0', 'Supabase existing-email concealed signup response must not show a fake success message.');
+mustContain(authActionsSourceForSignup, 'این ایمیل قبلاً حساب مالک دارد', 'Existing owner email must get a clear Persian message, not a misleading email-confirmation success.');
 mustContain(tenantSwitchRouteSource, 'chooseOwnerTenantForUser', 'Tenant switch API must allow owners to switch only to restaurants they own.');
 mustContain(tenantSwitchRouteSource, 'switchManagerRestaurant', 'Tenant switch API must allow managers to switch among their signed restaurant choices.');
 mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must render an in-app restaurant switcher when portal identity has multiple tenant choices.');

@@ -91,11 +91,11 @@ function isManager(user: any) {
   return user?.role === 'manager' && user.active !== false && user.accessActive !== false;
 }
 
-export async function findManagerRestaurantChoices(email: string, pin: string): Promise<ManagerRestaurantChoice[]> {
+async function collectManagerRestaurantChoices(email: string, pin = ''): Promise<ManagerRestaurantChoice[]> {
   const admin = createAdminClient();
   if (!admin) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
   const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail || !pin) return [];
+  if (!normalizedEmail) return [];
 
   const { data, error } = await admin
     .from('restaurant_states')
@@ -126,14 +126,14 @@ export async function findManagerRestaurantChoices(email: string, pin: string): 
     for (const staff of staffUsers) {
       if (normalizeEmail(staff.email) !== normalizedEmail) continue;
       if (!isManager(staff)) continue;
-      if (!verifyPasswordRecord(staff, pin)) continue;
-      const customer = customers.find((item: any) => item.id === staff.customerId) || customers.find((item: any) => item.portalTenantId === row.tenant_id);
-      if (!customer) continue;
+      if (pin && !verifyPasswordRecord(staff, pin)) continue;
+      const customer = customers.find((item: any) => item.id === staff.customerId) || customers.find((item: any) => item.portalTenantId === row.tenant_id) || customers[0];
+      const restaurantName = String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.businessName || customer?.name || 'رستوران').trim() || 'رستوران';
       choices.push({
         tenantId: row.tenant_id,
-        customerId: String(staff.customerId || customer.id || ''),
+        customerId: String(staff.customerId || customer?.id || ''),
         staffUserId: String(staff.id || ''),
-        restaurantName: String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer.businessName || customer.name || 'رستوران'),
+        restaurantName,
         managerName: String(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'مدیر'),
         email: normalizedEmail,
       });
@@ -143,6 +143,15 @@ export async function findManagerRestaurantChoices(email: string, pin: string): 
   const unique = new Map<string, ManagerRestaurantChoice>();
   for (const choice of choices) unique.set(`${choice.tenantId}:${choice.staffUserId}`, choice);
   return [...unique.values()];
+}
+
+export async function findManagerRestaurantChoices(email: string, pin: string): Promise<ManagerRestaurantChoice[]> {
+  if (!pin) return [];
+  return collectManagerRestaurantChoices(email, pin);
+}
+
+export async function refreshManagerRestaurantChoices(session: ManagerSession): Promise<ManagerRestaurantChoice[]> {
+  return collectManagerRestaurantChoices(session.email);
 }
 
 function publicManagerChoices(choices: ManagerRestaurantChoice[]): ManagerTenantChoice[] {
@@ -202,6 +211,27 @@ export async function getManagerSession() {
   const raw = cookieStore.get(MANAGER_SESSION_COOKIE)?.value || '';
   const session = decodeSigned<ManagerSession>(raw);
   if (!session || session.role !== 'manager' || Date.now() - session.createdAt > COOKIE_TTL_SECONDS * 1000) return null;
+  try {
+    const refreshedChoices = await refreshManagerRestaurantChoices(session);
+    if (refreshedChoices.length) {
+      const activeChoice = refreshedChoices.find((choice) => choice.tenantId === session.tenantId && choice.staffUserId === session.staffUserId)
+        || refreshedChoices.find((choice) => choice.tenantId === session.tenantId)
+        || refreshedChoices[0];
+      const refreshedSession: ManagerSession = {
+        ...activeChoice,
+        role: 'manager',
+        createdAt: session.createdAt,
+        tenantChoices: publicManagerChoices(refreshedChoices),
+        availableChoices: refreshedChoices,
+      };
+      if (JSON.stringify(refreshedSession.tenantChoices) !== JSON.stringify(session.tenantChoices || []) || refreshedSession.restaurantName !== session.restaurantName) {
+        await setManagerSession(activeChoice, refreshedChoices);
+      }
+      return refreshedSession;
+    }
+  } catch {
+    // Keep the signed session usable if Supabase is temporarily unavailable.
+  }
   return session;
 }
 

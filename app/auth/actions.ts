@@ -23,6 +23,46 @@ function authError(error: unknown) {
   return 'مشکلی پیش آمد. دوباره امتحان کن.';
 }
 
+async function createTenantForOwner(supabase: Awaited<ReturnType<typeof createClient>>, user: any, restaurantNameInput: string, cityInput = '') {
+  const restaurantName = restaurantNameInput.trim();
+  if (!restaurantName) throw new Error('نام رستوران/کافه را وارد کن.');
+  const city = cityInput.trim() || 'Test';
+  const slugBase = restaurantName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'test-restaurant';
+  const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
+
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .insert({ name: restaurantName, slug, owner_id: user.id })
+    .select('id')
+    .single();
+  if (tenantError) throw new Error(tenantError.message);
+
+  const { error: memberError } = await supabase
+    .from('tenant_members')
+    .insert({ tenant_id: tenant.id, user_id: user.id, role: 'owner' });
+  if (memberError) throw new Error(memberError.message);
+
+  const { error: restaurantError } = await supabase
+    .from('restaurants')
+    .insert({ tenant_id: tenant.id, name: restaurantName, city });
+  if (restaurantError) throw new Error(restaurantError.message);
+
+  const { error: subscriptionError } = await supabase.from('subscriptions').insert({
+    tenant_id: tenant.id,
+    plan_code: 'restaurant_full_test',
+    status: 'active',
+    coupon_code: 'FLOWKAVE100',
+    discount_percent: 100,
+    amount_toman: 0,
+  });
+  if (subscriptionError) throw new Error(subscriptionError.message);
+  await setOwnerTenantSelection(tenant.id);
+  return tenant;
+}
+
 export async function signInAction(_state: ActionState, formData: FormData): Promise<ActionState> {
   const email = value(formData, 'email');
   const password = value(formData, 'password');
@@ -100,7 +140,15 @@ export async function signUpAction(_state: ActionState, formData: FormData): Pro
     const fullName = value(formData, 'fullName');
     const businessName = value(formData, 'businessName');
 
-    const { error } = await supabase.auth.signUp({
+    const existingLogin = await supabase.auth.signInWithPassword({ email, password });
+    if (!existingLogin.error && existingLogin.data.user) {
+      await clearManagerSession();
+      await createTenantForOwner(supabase, existingLogin.data.user, businessName);
+      revalidatePath('/app/dashboard');
+      redirect('/app/dashboard');
+    }
+
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -109,14 +157,23 @@ export async function signUpAction(_state: ActionState, formData: FormData): Pro
       }
     });
 
-    if (error) return { ok: false, message: error.message };
+    if (error) {
+      const alreadyExists = error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('registered');
+      return { ok: false, message: alreadyExists ? 'این ایمیل قبلاً حساب مالک دارد. با همان رمز قبلی وارد شو؛ اگر می‌خواهی رستوران دوم بسازی، همین فرم را با رمز همان حساب قبلی بفرست تا رستوران جدید زیر همان مالک ساخته شود.' : error.message };
+    }
+
+    if (signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      return { ok: false, message: 'این ایمیل قبلاً حساب مالک دارد. ثبت‌نام جدید برای همان ایمیل ایمیل تأیید جدا نمی‌فرستد. رمز همان حساب قبلی را وارد کن تا رستوران جدید زیر همان مالک ساخته شود.' };
+    }
 
     return {
       ok: true,
       message: 'ثبت‌نام انجام شد. اگر تأیید ایمیل فعال باشد، لینک تأیید به ایمیلت می‌آید؛ بعد وارد شو.'
     };
   } catch (error) {
-    return { ok: false, message: authError(error) };
+    const message = authError(error);
+    if (!message.includes('NEXT_REDIRECT')) return { ok: false, message };
+    throw error;
   }
 }
 
@@ -162,43 +219,7 @@ export async function createTenantAction(formData: FormData) {
     const supabase = await createClient();
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) redirect('/login');
-
-    const restaurantName = value(formData, 'restaurantName');
-    const city = value(formData, 'city') || 'Test';
-    const slugBase = restaurantName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'test-restaurant';
-    const slug = `${slugBase}-${crypto.randomUUID().slice(0, 8)}`;
-
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .insert({ name: restaurantName, slug, owner_id: userData.user.id })
-      .select('id')
-      .single();
-
-    if (tenantError) throw new Error(tenantError.message);
-
-    const { error: memberError } = await supabase
-      .from('tenant_members')
-      .insert({ tenant_id: tenant.id, user_id: userData.user.id, role: 'owner' });
-    if (memberError) throw new Error(memberError.message);
-
-    const { error: restaurantError } = await supabase
-      .from('restaurants')
-      .insert({ tenant_id: tenant.id, name: restaurantName, city });
-    if (restaurantError) throw new Error(restaurantError.message);
-
-    const { error: subscriptionError } = await supabase.from('subscriptions').insert({
-      tenant_id: tenant.id,
-      plan_code: 'restaurant_full_test',
-      status: 'active',
-      coupon_code: 'FLOWKAVE100',
-      discount_percent: 100,
-      amount_toman: 0
-    });
-    if (subscriptionError) throw new Error(subscriptionError.message);
-    await setOwnerTenantSelection(tenant.id);
+    await createTenantForOwner(supabase, userData.user, value(formData, 'restaurantName'), value(formData, 'city'));
   } catch (error) {
     redirect(`/app/dashboard?error=${encodeURIComponent(authError(error))}`);
   }
