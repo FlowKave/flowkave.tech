@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { createAdminClient } from '../../../lib/supabase/admin';
 import { getManagerSession } from '../../../lib/restaurant/manager-session';
-import { ensureTenantForUser, portalIdentityFor } from '../../../lib/restaurant/tenant';
+import { ensureTenantForUser, getOwnerTenantChoices, ownerTenantChoicesFor, portalIdentityFor } from '../../../lib/restaurant/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,13 +33,15 @@ async function authContext() {
         ownerName: manager.managerName,
         ownerEmail: manager.email,
         phone: '',
+        tenantChoices: manager.tenantChoices || [],
       },
       manager,
     };
   }
   if (error || !data.user) return { supabase, user: null, tenant: null, identity: null };
   const tenant = await ensureTenantForUser(supabase, data.user);
-  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant), manager: null };
+  const ownerTenants = await getOwnerTenantChoices(supabase, data.user);
+  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant, ownerTenantChoicesFor(ownerTenants)), manager: null };
 }
 
 function unauthorized() {

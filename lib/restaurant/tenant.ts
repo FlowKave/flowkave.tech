@@ -1,6 +1,10 @@
+import { cookies } from 'next/headers';
 import { SupabaseClient, User } from '@supabase/supabase-js';
 
-type TenantRow = { id: string; name: string; slug: string; owner_id: string };
+export type TenantRow = { id: string; name: string; slug: string; owner_id: string };
+export type TenantChoice = { tenantId: string; restaurantName: string; role: 'owner' | 'manager' };
+
+export const OWNER_TENANT_COOKIE = 'flowkave_owner_tenant';
 
 function cleanSlug(value: string) {
   const ascii = value
@@ -20,17 +24,49 @@ function userOwnerName(user: User) {
   return String(meta.full_name || user.email || 'مالک پکیج').trim();
 }
 
-export async function ensureTenantForUser(supabase: SupabaseClient, user: User) {
+async function selectedOwnerTenantId() {
+  const cookieStore = await cookies();
+  return cookieStore.get(OWNER_TENANT_COOKIE)?.value || '';
+}
+
+export async function setOwnerTenantSelection(tenantId: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(OWNER_TENANT_COOKIE, tenantId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: true,
+    path: '/',
+    maxAge: 60 * 60 * 24 * 180,
+  });
+}
+
+export async function clearOwnerTenantSelection() {
+  const cookieStore = await cookies();
+  cookieStore.delete(OWNER_TENANT_COOKIE);
+}
+
+export async function getOwnerTenantChoices(supabase: SupabaseClient, user: User): Promise<TenantRow[]> {
   const owned = await supabase
     .from('tenants')
     .select('id,name,slug,owner_id')
     .eq('owner_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<TenantRow>();
-
+    .order('created_at', { ascending: true });
   if (owned.error) throw new Error(owned.error.message);
-  if (owned.data) return owned.data;
+  return (owned.data || []) as TenantRow[];
+}
+
+export function ownerTenantChoicesFor(tenants: TenantRow[]): TenantChoice[] {
+  return tenants.map((tenant) => ({ tenantId: tenant.id, restaurantName: tenant.name || 'رستوران', role: 'owner' as const }));
+}
+
+export async function ensureTenantForUser(supabase: SupabaseClient, user: User) {
+  const ownedTenants = await getOwnerTenantChoices(supabase, user);
+  if (ownedTenants.length) {
+    const selectedId = await selectedOwnerTenantId();
+    const selected = ownedTenants.find((tenant) => tenant.id === selectedId) || ownedTenants[0];
+    await setOwnerTenantSelection(selected.id);
+    return selected;
+  }
 
   const businessName = userBusinessName(user);
   const slug = `${cleanSlug(businessName)}-${crypto.randomUUID().slice(0, 8)}`;
@@ -63,10 +99,19 @@ export async function ensureTenantForUser(supabase: SupabaseClient, user: User) 
   });
   if (subscription.error) throw new Error(subscription.error.message);
 
+  await setOwnerTenantSelection(tenant.id);
   return tenant;
 }
 
-export function portalIdentityFor(user: User, tenant: TenantRow) {
+export async function chooseOwnerTenantForUser(supabase: SupabaseClient, user: User, tenantId: string) {
+  const choices = await getOwnerTenantChoices(supabase, user);
+  const selected = choices.find((tenant) => tenant.id === tenantId);
+  if (!selected) return null;
+  await setOwnerTenantSelection(selected.id);
+  return selected;
+}
+
+export function portalIdentityFor(user: User, tenant: TenantRow, tenantChoices: TenantChoice[] = []) {
   return {
     tenantId: tenant.id,
     tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
@@ -74,5 +119,6 @@ export function portalIdentityFor(user: User, tenant: TenantRow) {
     ownerName: userOwnerName(user),
     ownerEmail: user.email || '',
     phone: String(user.user_metadata?.phone || ''),
+    tenantChoices,
   };
 }

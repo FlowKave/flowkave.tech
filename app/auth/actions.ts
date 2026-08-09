@@ -5,11 +5,13 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '../../lib/supabase/server';
 import { getAppBaseUrl } from '../../lib/supabase/config';
 import { choosePendingManagerRestaurant, clearManagerSession, findManagerRestaurantChoices, setManagerSession, setPendingManagerChoices } from '../../lib/restaurant/manager-session';
+import { chooseOwnerTenantForUser, clearOwnerTenantSelection, getOwnerTenantChoices, ownerTenantChoicesFor, setOwnerTenantSelection } from '../../lib/restaurant/tenant';
 
 type ActionState = {
   ok?: boolean;
   message?: string;
   managerChoices?: { tenantId: string; restaurantName: string; managerName: string; email: string }[];
+  ownerChoices?: { tenantId: string; restaurantName: string; role: 'owner' | 'manager' }[];
 };
 
 function value(formData: FormData, key: string) {
@@ -27,9 +29,18 @@ export async function signInAction(_state: ActionState, formData: FormData): Pro
   try {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error && data.user) {
       await clearManagerSession();
+      const ownerTenants = await getOwnerTenantChoices(supabase, data.user);
+      if (ownerTenants.length > 1) {
+        return {
+          ok: true,
+          message: 'این مالک چند رستوران دارد؛ رستوران مقصد را انتخاب کن.',
+          ownerChoices: ownerTenantChoicesFor(ownerTenants),
+        };
+      }
+      if (ownerTenants[0]) await setOwnerTenantSelection(ownerTenants[0].id);
       revalidatePath('/app/dashboard');
       redirect('/app/dashboard');
     }
@@ -43,7 +54,7 @@ export async function signInAction(_state: ActionState, formData: FormData): Pro
     const choices = await findManagerRestaurantChoices(email, password);
     if (!choices.length) return { ok: false, message: 'ایمیل یا رمز/پین معتبر نیست.' };
     if (choices.length === 1) {
-      await setManagerSession(choices[0]);
+      await setManagerSession(choices[0], choices);
       revalidatePath('/app/dashboard');
       redirect('/app/dashboard?manager=1');
     }
@@ -60,11 +71,23 @@ export async function signInAction(_state: ActionState, formData: FormData): Pro
   }
 }
 
+export async function chooseOwnerRestaurantAction(formData: FormData) {
+  const tenantId = value(formData, 'tenantId');
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) redirect('/login');
+  const selected = await chooseOwnerTenantForUser(supabase, data.user, tenantId);
+  if (!selected) redirect('/login?owner=invalid-tenant');
+  await clearManagerSession();
+  revalidatePath('/app/dashboard');
+  redirect('/app/dashboard');
+}
+
 export async function chooseManagerRestaurantAction(formData: FormData) {
   const tenantId = value(formData, 'tenantId');
-  const choice = await choosePendingManagerRestaurant(tenantId);
-  if (!choice) redirect('/login?manager=expired');
-  await setManagerSession(choice);
+  const pending = await choosePendingManagerRestaurant(tenantId);
+  if (!pending) redirect('/login?manager=expired');
+  await setManagerSession(pending.choice, pending.choices);
   revalidatePath('/app/dashboard');
   redirect('/app/dashboard?manager=1');
 }
@@ -130,6 +153,7 @@ export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   await clearManagerSession();
+  await clearOwnerTenantSelection();
   redirect('/login');
 }
 
@@ -174,6 +198,7 @@ export async function createTenantAction(formData: FormData) {
       amount_toman: 0
     });
     if (subscriptionError) throw new Error(subscriptionError.message);
+    await setOwnerTenantSelection(tenant.id);
   } catch (error) {
     redirect(`/app/dashboard?error=${encodeURIComponent(authError(error))}`);
   }

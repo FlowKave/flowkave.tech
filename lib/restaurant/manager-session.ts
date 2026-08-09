@@ -23,9 +23,13 @@ export type ManagerRestaurantChoice = {
   email: string;
 };
 
+export type ManagerTenantChoice = { tenantId: string; restaurantName: string; managerName: string; email: string };
+
 export type ManagerSession = ManagerRestaurantChoice & {
   role: 'manager';
   createdAt: number;
+  tenantChoices: ManagerTenantChoice[];
+  availableChoices: ManagerRestaurantChoice[];
 };
 
 function signingSecret() {
@@ -127,9 +131,13 @@ export async function findManagerRestaurantChoices(email: string, pin: string): 
   return [...unique.values()];
 }
 
-export async function setManagerSession(choice: ManagerRestaurantChoice) {
+function publicManagerChoices(choices: ManagerRestaurantChoice[]): ManagerTenantChoice[] {
+  return choices.map(({ tenantId, restaurantName, managerName, email }) => ({ tenantId, restaurantName, managerName, email }));
+}
+
+export async function setManagerSession(choice: ManagerRestaurantChoice, availableChoices: ManagerRestaurantChoice[] = [choice]) {
   const cookieStore = await cookies();
-  const session: ManagerSession = { ...choice, role: 'manager', createdAt: Date.now() };
+  const session: ManagerSession = { ...choice, role: 'manager', createdAt: Date.now(), tenantChoices: publicManagerChoices(availableChoices), availableChoices };
   cookieStore.set(MANAGER_SESSION_COOKIE, encodeSigned(session), {
     httpOnly: true,
     sameSite: 'lax',
@@ -161,7 +169,18 @@ export async function getPendingManagerChoices() {
 
 export async function choosePendingManagerRestaurant(tenantId: string) {
   const choices = await getPendingManagerChoices();
-  return choices.find((choice) => choice.tenantId === tenantId) || null;
+  const choice = choices.find((item) => item.tenantId === tenantId) || null;
+  return choice ? { choice, choices } : null;
+}
+
+export async function switchManagerRestaurant(tenantId: string) {
+  const session = await getManagerSession();
+  if (!session) return false;
+  const availableChoices = Array.isArray(session.availableChoices) ? session.availableChoices : [];
+  const next = availableChoices.find((choice) => choice.tenantId === tenantId);
+  if (!next) return false;
+  await setManagerSession(next, availableChoices);
+  return true;
 }
 
 export async function getManagerSession() {

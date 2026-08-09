@@ -107,6 +107,12 @@ function normalizePortalIdentity(input = {}) {
     ownerName: String(meta.ownerName || 'مالک پکیج'),
     email: String(meta.ownerEmail || meta.email || `owner-${tenant.id || Date.now()}@flowkave.local`),
     phone: String(meta.phone || ''),
+    tenantChoices: Array.isArray(meta.tenantChoices) ? meta.tenantChoices.map(choice => ({
+      tenantId: String(choice.tenantId || choice.id || ''),
+      restaurantName: String(choice.restaurantName || choice.name || 'رستوران'),
+      managerName: String(choice.managerName || ''),
+      role: String(choice.role || ''),
+    })).filter(choice => choice.tenantId) : [],
   };
 }
 function ensurePortalCustomer(identityInput = portalIdentity) {
@@ -1298,7 +1304,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong><button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-early-late-choice-46" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button><strong class="header-restaurant-name">${esc(customer.businessName)}</strong>${renderRestaurantSwitcher()}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-early-late-choice-46" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1322,6 +1328,17 @@ function render() {
 }
 
 function titleFor(tab){return {dashboard:'داشبورد عملیاتی',customerBank:'باشگاه مشتریان و بازگشت مشتری',aiAssistant:'هوش مصنوعی عملیاتی',menu:'ساخت و مدیریت منوی دیجیتال',sales:'صندوق و ثبت سفارش',recipes:'رسپی و قیمت تمام‌شده',inventory:'انبارگردانی',accounting:'حسابداری پایه',personnel:'پرسنلی',account:'تنظیمات رستوران'}[tab] || 'داشبورد'}
+
+function renderRestaurantSwitcher() {
+  if (!portalMode || !Array.isArray(portalIdentity?.tenantChoices) || portalIdentity.tenantChoices.length < 2) return '';
+  return `<label class="header-tenant-switcher">تغییر رستوران<select data-tenant-switcher aria-label="تغییر رستوران">${portalIdentity.tenantChoices.map(choice => `<option value="${esc(choice.tenantId)}" ${choice.tenantId === portalIdentity.tenantId ? 'selected' : ''}>${esc(choice.restaurantName)}</option>`).join('')}</select></label>`;
+}
+async function switchPortalTenant(tenantId) {
+  if (!portalMode || !tenantId || tenantId === portalIdentity?.tenantId) return;
+  const response = await fetch('/api/tenant-switch', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify({ tenantId }) });
+  if (!response.ok) { alert('امکان تغییر رستوران وجود ندارد'); return; }
+  window.location.reload();
+}
 
 function renderAuth() {
   const suffix = Date.now().toString().slice(-4);
@@ -2764,6 +2781,7 @@ function bindCommon() {
   document.querySelectorAll('[data-recipe-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentRecipeCategoryTab = btn.dataset.recipeCategoryTab; render(); }));
   document.querySelectorAll('[data-menu-preview-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentMenuPreviewCategoryTab = btn.dataset.menuPreviewCategoryTab; render(); }));
   document.querySelectorAll('[data-menu-edit-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentMenuEditCategoryTab = btn.dataset.menuEditCategoryTab; render(); }));
+  document.querySelector('[data-tenant-switcher]')?.addEventListener('change', (e) => switchPortalTenant(e.target.value));
   document.querySelector('#logout').addEventListener('click', () => { if (session?.id && RestaurantCore.logout) RestaurantCore.logout(state, session.id); setActiveSession(null); saveState(); if (portalMode && window.location.hostname === 'app.flowkave.tech') { window.location.href = 'https://flowkave.tech/'; return; } render(); });
   const seedSale = document.querySelector('#seedSale');
   if (seedSale) seedSale.addEventListener('click', () => { const items = customerMenuItems(); if (!items[0]) return alert('اول آیتم منو بساز'); const order = RestaurantCore.createSale(state, currentCustomer().id, [{ itemId: items[0].id, qty: 1 }], 'card'); saveState(); render(); notifyLowStock(order); });
