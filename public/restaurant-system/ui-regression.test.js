@@ -150,6 +150,8 @@ mustContain(app, 'finally {', 'Portal initial sync must release the loading scre
 mustContain(app, 'portalInitialStateLoaded = true', 'Portal initial sync must mark the initial load as complete after the first attempt.');
 mustContain(app, 'خطا در بارگذاری رستوران', 'Portal dashboard must show an actionable error instead of an infinite loading screen.');
 mustContain(app, 'fetchWithTimeout', 'Portal initial state fetch must time out instead of hanging forever.');
+assert(!app.includes('await pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state))'), 'Portal bootstrap for a tenant without restaurant_state must not block the UI while seeding server state.');
+assert(app.includes('portalInitialStateLoaded = true;') && app.includes('pushSharedState(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));'), 'A brand-new tenant like زرین must render immediately, then seed shared state in the background.');
 assert(!app.includes("if (portalMode) {\n  ensurePortalCustomerSession(portalIdentity);\n  saveState(state);\n}"), 'Portal bootstrap must not create a placeholder رستوران جدید customer before server identity loads.');
 mustContain(app, 'customer.businessName = serverBusinessName', 'Portal customer name must be overwritten from the server tenant name so زرین does not stay رستوران جدید.');
 mustContain(app, 'header-restaurant-select', 'Restaurant dropdown must sit inline beside the logout button as the restaurant context.');
