@@ -11,15 +11,15 @@ export async function POST(request: NextRequest) {
     const tenantId = String(body?.tenantId || '').trim();
     if (!tenantId) return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 400 });
 
+    const managerSwitched = await switchManagerRestaurant(tenantId);
+    if (managerSwitched) return NextResponse.json({ ok: true, role: 'manager', tenantId });
+
     const supabase = await createClient();
     const { data, error } = await supabase.auth.getUser();
     if (!error && data.user) {
       const selected = await chooseOwnerTenantForUser(supabase, data.user, tenantId);
       if (selected) return NextResponse.json({ ok: true, role: 'owner', tenantId: selected.id });
     }
-
-    const managerSwitched = await switchManagerRestaurant(tenantId);
-    if (managerSwitched) return NextResponse.json({ ok: true, role: 'manager', tenantId });
 
     return NextResponse.json({ error: 'TENANT_NOT_ALLOWED' }, { status: 403 });
   } catch (error) {

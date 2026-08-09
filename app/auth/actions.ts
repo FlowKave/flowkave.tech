@@ -91,13 +91,18 @@ export async function signInAction(_state: ActionState, formData: FormData): Pro
   }
 
   try {
+    const supabase = await createClient();
     const choices = await findManagerRestaurantChoices(email, password);
     if (!choices.length) return { ok: false, message: 'ایمیل یا رمز/پین معتبر نیست.' };
     if (choices.length === 1) {
+      await supabase.auth.signOut();
+      await clearOwnerTenantSelection();
       await setManagerSession(choices[0], choices);
       revalidatePath('/app/dashboard');
       redirect('/app/dashboard?manager=1');
     }
+    await supabase.auth.signOut();
+    await clearOwnerTenantSelection();
     await setPendingManagerChoices(choices);
     return {
       ok: true,

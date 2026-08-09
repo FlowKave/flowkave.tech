@@ -149,7 +149,9 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
 
 export async function findManagerRestaurantChoices(email: string, pin: string): Promise<ManagerRestaurantChoice[]> {
   if (!pin) return [];
-  return collectManagerRestaurantChoices(email, pin);
+  const authenticatedChoices = await collectManagerRestaurantChoices(email, pin);
+  if (!authenticatedChoices.length) return [];
+  return collectManagerRestaurantChoices(email);
 }
 
 export async function refreshManagerRestaurantChoices(session: ManagerSession): Promise<ManagerRestaurantChoice[]> {
@@ -171,6 +173,7 @@ export async function setManagerSession(choice: ManagerRestaurantChoice, availab
     maxAge: COOKIE_TTL_SECONDS,
   });
   cookieStore.delete(MANAGER_PENDING_COOKIE);
+  cookieStore.delete('flowkave_owner_tenant');
 }
 
 export async function setPendingManagerChoices(choices: ManagerRestaurantChoice[]) {

@@ -109,10 +109,14 @@ mustContain(authActionsSource, 'findManagerRestaurantChoices(email, password)', 
 mustContain(authActionsSource, 'setPendingManagerChoices(choices)', 'Multiple manager-restaurant matches must be stored temporarily for explicit choice.');
 mustContain(managerSessionSource, "user?.role === 'manager'", 'Remote email+PIN login must be allowed only for staff users with manager role.');
 mustContain(managerSessionSource, "normalizeEmail(staff.email) !== normalizedEmail", 'Manager remote login must use the invited manager email, not personnel code.');
-mustContain(restaurantStateApiSource, 'getManagerSession()', 'Restaurant state API must accept signed manager sessions without owner Supabase login.');
+assert(restaurantStateApiSource.indexOf('const manager = await getManagerSession();') < restaurantStateApiSource.indexOf('const { data, error } = await supabase.auth.getUser();'), 'Restaurant state API must prioritize signed manager sessions over stale owner Supabase auth.');
+assert(authActionsSource.includes('await supabase.auth.signOut();') && authActionsSource.includes('await clearOwnerTenantSelection();') && authActionsSource.includes('await setManagerSession(choices[0], choices);'), 'Manager login must clear stale owner Supabase auth/cookie before setting manager session.');
+mustContain(managerSessionSource, 'const authenticatedChoices = await collectManagerRestaurantChoices(email, pin)', 'Manager PIN should authenticate the email once before listing all active manager restaurants.');
+mustContain(managerSessionSource, 'return collectManagerRestaurantChoices(email);', 'After manager authentication, all active manager restaurants across owners must be shown.');
 
 const tenantSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'tenant.ts'), 'utf8');
 const tenantSwitchRouteSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'tenant-switch', 'route.ts'), 'utf8');
+assert(tenantSwitchRouteSource.indexOf('const managerSwitched = await switchManagerRestaurant(tenantId);') < tenantSwitchRouteSource.indexOf('const supabase = await createClient();'), 'Tenant switch API must try manager memberships before owner tenants so stale owner auth cannot leak owner restaurants into a manager session.');
 mustContain(loginPageSource, 'ownerChoices', 'Owner login must show a restaurant chooser when one owner account owns multiple restaurants.');
 mustContain(authActionsSource, 'getOwnerTenantChoices(supabase, data.user)', 'Owner password login must inspect all owned restaurants before entering the dashboard.');
 mustContain(authActionsSource, 'chooseOwnerRestaurantAction', 'Owner restaurant chooser must set the selected tenant explicitly.');

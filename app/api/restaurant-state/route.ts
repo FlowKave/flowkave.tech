@@ -17,9 +17,8 @@ type RestaurantStateRow = {
 
 async function authContext() {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
   const manager = await getManagerSession();
-  if ((error || !data.user) && manager) {
+  if (manager) {
     const admin = createAdminClient();
     if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
     return {
@@ -38,6 +37,7 @@ async function authContext() {
       manager,
     };
   }
+  const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return { supabase, user: null, tenant: null, identity: null };
   const tenant = await ensureTenantForUser(supabase, data.user);
   const ownerTenants = await getOwnerTenantChoices(supabase, data.user);
