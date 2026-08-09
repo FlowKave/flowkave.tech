@@ -17,6 +17,7 @@ const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1
 const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : '/api/state'}`;
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
+let portalInitialStateLoaded = !portalMode;
 let state = loadState();
 let session = loadLocalSession(state);
 let currentTab = portalParams.get('tab') || 'dashboard';
@@ -132,7 +133,9 @@ function ensurePortalCustomer(identityInput = portalIdentity) {
     });
   }
   customer.portalTenantId = portalIdentity.tenantId;
-  if (!customer.businessName) customer.businessName = portalIdentity.businessName;
+  const serverBusinessName = String(portalIdentity.businessName || '').trim();
+  if (serverBusinessName && serverBusinessName !== 'رستوران جدید') customer.businessName = serverBusinessName;
+  else if (!customer.businessName) customer.businessName = portalIdentity.businessName;
   if (!customer.ownerName) customer.ownerName = portalIdentity.ownerName;
   return customer;
 }
@@ -288,6 +291,10 @@ async function initSharedStateSync() {
   sharedSyncEnabled = true;
   sharedLastSerialized = localStorage.getItem(STORAGE_KEY) || JSON.stringify(state);
   await pullSharedState({ initial: true });
+  if (portalMode) {
+    portalInitialStateLoaded = true;
+    if (!staffInvitationTokenFromUrl() && !publicCustomerId()) render();
+  }
   setInterval(() => pullSharedState(), SHARED_SYNC_INTERVAL_MS);
 }
 function normalizeKitchenFilterValue(value) { return ['all', 'delayed', 'ready'].includes(value) ? value : 'all'; }
@@ -1301,6 +1308,10 @@ function render() {
   if (inviteToken) return renderStaffInvitationAccept(inviteToken);
   const publicId = publicCustomerId();
   if (publicId) return renderPublicMenu(publicId);
+  if (portalMode && !portalInitialStateLoaded) {
+    app.innerHTML = `<main class="auth-page"><section class="auth-card"><div class="panel"><h1>در حال بارگذاری رستوران</h1><p>اطلاعات رستوران از سرور خوانده می‌شود...</p></div></section></main>`;
+    return;
+  }
   const customer = currentCustomer();
   if (!customer) return renderAuth();
   if (!canAccessTab(currentTab)) currentTab = defaultTabForRole();
@@ -3482,9 +3493,10 @@ function bindCommon() {
 
 window.addEventListener('hashchange', render);
 if (portalMode) {
-  ensurePortalCustomerSession(portalIdentity);
-  saveState(state);
+  render();
+  initSharedStateSync();
+} else {
+  render();
+  initSharedStateSync();
 }
-render();
 setInterval(updateBusinessDateLineDom, 15000);
-initSharedStateSync();
