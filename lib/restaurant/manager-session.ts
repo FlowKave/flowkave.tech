@@ -130,7 +130,7 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
       const tenantCustomer = customers.find((item: any) => item.portalTenantId === row.tenant_id);
       const staffCustomer = customers.find((item: any) => item.id === staff.customerId);
       const customer = tenantCustomer || staffCustomer || customers[0];
-      const restaurantName = String(customer?.businessName || restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.name || 'رستوران').trim() || 'رستوران';
+      const restaurantName = String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.businessName || customer?.name || 'رستوران').trim() || 'رستوران';
       choices.push({
         tenantId: row.tenant_id,
         customerId: String(staff.customerId || customer?.id || ''),

@@ -121,7 +121,7 @@ mustContain(tenantSource, 'getOwnerTenantChoices', 'Owner tenant lookup must ret
 mustContain(restaurantStateApiSource, 'ownerTenantChoicesFor(ownerTenants)', 'Restaurant state API must expose tenant choices to the embedded app for in-panel switching.');
 mustContain(managerSessionSource, 'tenantChoices: publicManagerChoices(availableChoices)', 'Manager session must keep all allowed restaurants so managers can switch without logout.');
 mustContain(managerSessionSource, "admin.from('restaurants').select('tenant_id,name').in('tenant_id', tenantIds)", 'Manager multi-restaurant choices must prefer the real restaurant table name over a stale customer/owner name.');
-mustContain(managerSessionSource, 'customer?.businessName || restaurantNames.get(row.tenant_id)', 'Manager header/dropdown must prefer the active portal restaurant businessName before stale tenants/restaurants fallback.');
+mustContain(managerSessionSource, 'restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id)', 'Manager header/dropdown must use server restaurant/tenant names before falling back to mutable customer businessName.');
 mustContain(managerSessionSource, 'async function collectManagerRestaurantChoices', 'Manager restaurant lookup must be reusable for login and existing signed-session refresh.');
 mustContain(managerSessionSource, 'export async function refreshManagerRestaurantChoices', 'Existing manager cookies must refresh all allowed restaurants from server state.');
 mustContain(managerSessionSource, 'const refreshedChoices = await refreshManagerRestaurantChoices(session)', 'getManagerSession must not trust stale one-restaurant cookie choices.');
