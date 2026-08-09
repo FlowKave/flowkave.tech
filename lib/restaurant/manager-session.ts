@@ -88,11 +88,7 @@ function normalizeEmail(email: string) {
 }
 
 function isManager(user: any) {
-  return user?.role === 'manager' && user.active !== false && user.accessActive === true;
-}
-
-function hasUsableManagerLogin(user: any) {
-  return isManager(user) && Boolean(user?.passwordHash || user?.password);
+  return user?.role === 'manager' && user.active !== false && user.accessActive !== false;
 }
 
 async function collectManagerRestaurantChoices(email: string, pin = ''): Promise<ManagerRestaurantChoice[]> {
@@ -123,7 +119,6 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
   }
 
   const choices: ManagerRestaurantChoice[] = [];
-  let authenticatedByPin = !pin;
   for (const row of (data || []) as RestaurantStateRow[]) {
     const state = row.state;
     const staffUsers = Array.isArray(state?.staffUsers) ? state.staffUsers : [];
@@ -131,7 +126,7 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
     for (const staff of staffUsers) {
       if (normalizeEmail(staff.email) !== normalizedEmail) continue;
       if (!isManager(staff)) continue;
-      if (pin && hasUsableManagerLogin(staff) && verifyPasswordRecord(staff, pin)) authenticatedByPin = true;
+      if (pin && !verifyPasswordRecord(staff, pin)) continue;
       const tenantCustomer = customers.find((item: any) => item.portalTenantId === row.tenant_id);
       const staffCustomer = customers.find((item: any) => item.id === staff.customerId);
       const customer = tenantCustomer || staffCustomer || customers[0];
@@ -147,7 +142,6 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
     }
   }
 
-  if (!authenticatedByPin) return [];
   const unique = new Map<string, ManagerRestaurantChoice>();
   for (const choice of choices) unique.set(`${choice.tenantId}:${choice.staffUserId}`, choice);
   return [...unique.values()];
