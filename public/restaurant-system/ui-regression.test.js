@@ -104,7 +104,10 @@ mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashbo
 mustContain(dashboardSource, 'restaurant-switcher-inline-75', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
-mustContain(loginPageSource, 'انتخاب رستوران', 'If a manager belongs to multiple restaurants, login must show a restaurant chooser.');
+mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
+mustContain(loginPageSource, 'isRestaurantChoiceStep ? (', 'When restaurant choices are shown, the login page must switch to a chooser-only step.');
+mustContain(loginPageSource, ') : (', 'Restaurant chooser step must be separate from the email/password login form.');
+assert(!loginPageSource.includes('{choice.restaurantName} — {choice.managerName}'), 'Manager restaurant chooser options must show only restaurant name, not manager name.');
 mustContain(authActionsSource, 'findManagerRestaurantChoices(email, password)', 'Failed owner-password login must fall back to manager email+PIN lookup.');
 mustContain(authActionsSource, 'setPendingManagerChoices(choices)', 'Multiple manager-restaurant matches must be stored temporarily for explicit choice.');
 mustContain(managerSessionSource, "user?.role === 'manager'", 'Remote email+PIN login must be allowed only for staff users with manager role.');
