@@ -1330,8 +1330,12 @@ function render() {
 function titleFor(tab){return {dashboard:'داشبورد عملیاتی',customerBank:'باشگاه مشتریان و بازگشت مشتری',aiAssistant:'هوش مصنوعی عملیاتی',menu:'ساخت و مدیریت منوی دیجیتال',sales:'صندوق و ثبت سفارش',recipes:'رسپی و قیمت تمام‌شده',inventory:'انبارگردانی',accounting:'حسابداری پایه',personnel:'پرسنلی',account:'تنظیمات رستوران'}[tab] || 'داشبورد'}
 
 function renderRestaurantSwitcher() {
-  if (!portalMode || !Array.isArray(portalIdentity?.tenantChoices) || portalIdentity.tenantChoices.length < 2) return '';
-  return `<label class="header-tenant-switcher">تغییر رستوران<select data-tenant-switcher aria-label="تغییر رستوران">${portalIdentity.tenantChoices.map(choice => `<option value="${esc(choice.tenantId)}" ${choice.tenantId === portalIdentity.tenantId ? 'selected' : ''}>${esc(choice.restaurantName)}</option>`).join('')}</select></label>`;
+  if (!portalMode) return '';
+  const choices = Array.isArray(portalIdentity?.tenantChoices) ? portalIdentity.tenantChoices : [];
+  const visibleChoices = choices.length ? choices : [{ tenantId: portalIdentity?.tenantId || '', restaurantName: portalIdentity?.businessName || 'همین رستوران' }];
+  const disabled = visibleChoices.length < 2 ? 'disabled aria-disabled="true"' : '';
+  const title = visibleChoices.length < 2 ? 'برای این حساب فعلاً رستوران دیگری پیدا نشده است' : 'تغییر رستوران بدون خروج';
+  return `<label class="header-tenant-switcher" title="${esc(title)}"><span>تغییر رستوران</span><select data-tenant-switcher aria-label="تغییر رستوران" ${disabled}>${visibleChoices.map(choice => `<option value="${esc(choice.tenantId)}" ${choice.tenantId === portalIdentity?.tenantId ? 'selected' : ''}>${esc(choice.restaurantName || 'همین رستوران')}</option>`).join('')}</select>${visibleChoices.length < 2 ? '<small>فقط همین رستوران</small>' : ''}</label>`;
 }
 async function switchPortalTenant(tenantId) {
   if (!portalMode || !tenantId || tenantId === portalIdentity?.tenantId) return;

@@ -45,10 +45,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=owner-manager-tenant-switch-73');
-mustContain(html, 'core.js?v=owner-manager-tenant-switch-73');
-mustContain(html, 'app.js?v=owner-manager-tenant-switch-73');
-mustContain(html, 'core.js?v=owner-manager-tenant-switch-73');
+mustContain(html, 'styles.css?v=owner-manager-tenant-switch-visible-74');
+mustContain(html, 'core.js?v=owner-manager-tenant-switch-visible-74');
+mustContain(html, 'app.js?v=owner-manager-tenant-switch-visible-74');
+mustContain(html, 'core.js?v=owner-manager-tenant-switch-visible-74');
 mustContain(app, 'if (!customer.businessName) customer.businessName = portalIdentity.businessName;', 'Portal identity must seed a new account only; it must not overwrite saved owner profile edits on every sync pull.');
 mustContain(app, 'if (!customer.ownerName) customer.ownerName = portalIdentity.ownerName;', 'Portal identity must not revert edited owner name after remote sync refresh.');
 assert(!app.includes('customer.businessName = portalIdentity.businessName || customer.businessName'), 'Owner profile edits must not be overwritten by stale tenant identity.');
@@ -101,7 +101,7 @@ const authActionsSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'au
 const managerSessionSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'manager-session.ts'), 'utf8');
 const restaurantStateApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'restaurant-state', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
-mustContain(dashboardSource, 'owner-manager-tenant-switch-73', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
+mustContain(dashboardSource, 'owner-manager-tenant-switch-visible-74', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If a manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -123,6 +123,7 @@ mustContain(managerSessionSource, 'tenantChoices: publicManagerChoices(available
 mustContain(tenantSwitchRouteSource, 'chooseOwnerTenantForUser', 'Tenant switch API must allow owners to switch only to restaurants they own.');
 mustContain(tenantSwitchRouteSource, 'switchManagerRestaurant', 'Tenant switch API must allow managers to switch among their signed restaurant choices.');
 mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must render an in-app restaurant switcher when portal identity has multiple tenant choices.');
+mustContain(app, 'فقط همین رستوران', 'Online header must still visibly show the restaurant switcher area even before additional tenant choices are available.');
 mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must change restaurant without logout/login.');
 mustContain(styles, '.header-tenant-switcher', 'Restaurant switcher must have dedicated header styling.');
 
@@ -173,7 +174,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=owner-manager-tenant-switch-73') && index.includes('core.js?v=owner-manager-tenant-switch-73') && index.includes('app.js?v=owner-manager-tenant-switch-73'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=owner-manager-tenant-switch-visible-74') && index.includes('core.js?v=owner-manager-tenant-switch-visible-74') && index.includes('app.js?v=owner-manager-tenant-switch-visible-74'), 'cache-bust هماهنگی تم و ورود آنلاین کارکنان باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
