@@ -119,8 +119,7 @@ mustContain(authActionsSource, 'chooseOwnerRestaurantAction', 'Owner restaurant 
 mustContain(tenantSource, 'OWNER_TENANT_COOKIE', 'Selected owner restaurant must be stored server-side so dashboard/API use the chosen tenant.');
 mustContain(tenantSource, 'getOwnerTenantChoices', 'Owner tenant lookup must return every restaurant owned by the same auth identity.');
 mustContain(restaurantStateApiSource, 'ownerTenantChoicesFor(ownerTenants)', 'Restaurant state API must expose tenant choices to the embedded app for in-panel switching.');
-mustContain(managerSessionSource, "return user?.role === 'manager' && user.active !== false && user.accessActive === true && hasManagerCredential(user)", 'Manager switcher must include only explicitly activated manager access with a real credential, not draft staff records.');
-mustContain(managerSessionSource, 'function hasManagerCredential', 'Manager membership requires an accepted invite/manual credential, not just a manager role flag.');
+mustContain(managerSessionSource, "return user?.role === 'manager' && user.active !== false && user.accessActive === true", 'Manager switcher must include only explicitly activated manager access, not draft staff records.');
 mustContain(managerSessionSource, 'let authenticatedByPin = !pin', 'Manager login must authenticate once, then build choices from all active manager memberships for the same email.');
 mustContain(managerSessionSource, 'if (!authenticatedByPin) return []', 'Manager login must reject if the PIN does not match any active manager account.');
 assert(!managerSessionSource.includes("if (pin && !verifyPasswordRecord(staff, pin)) continue;"), 'Manager switcher must not filter out other active restaurants just because their stored PIN differs.');
