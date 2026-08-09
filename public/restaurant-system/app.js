@@ -2810,7 +2810,17 @@ function bindCommon() {
   document.querySelectorAll('[data-menu-preview-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentMenuPreviewCategoryTab = btn.dataset.menuPreviewCategoryTab; render(); }));
   document.querySelectorAll('[data-menu-edit-category-tab]').forEach(btn => btn.addEventListener('click', () => { currentMenuEditCategoryTab = btn.dataset.menuEditCategoryTab; render(); }));
   document.querySelector('[data-tenant-switcher]')?.addEventListener('change', (e) => switchPortalTenant(e.target.value));
-  document.querySelector('#logout').addEventListener('click', () => { if (session?.id && RestaurantCore.logout) RestaurantCore.logout(state, session.id); setActiveSession(null); saveState(); if (portalMode && window.location.hostname === 'app.flowkave.tech') { window.location.href = 'https://flowkave.tech/'; return; } render(); });
+  document.querySelector('#logout').addEventListener('click', async () => {
+    if (session?.id && RestaurantCore.logout) RestaurantCore.logout(state, session.id);
+    setActiveSession(null);
+    saveState();
+    if (portalMode && window.location.hostname === 'app.flowkave.tech') {
+      try { await fetch('/api/logout', { method:'POST', credentials:'same-origin' }); } catch {}
+      window.location.href = '/login';
+      return;
+    }
+    render();
+  });
   const seedSale = document.querySelector('#seedSale');
   if (seedSale) seedSale.addEventListener('click', () => { const items = customerMenuItems(); if (!items[0]) return alert('اول آیتم منو بساز'); const order = RestaurantCore.createSale(state, currentCustomer().id, [{ itemId: items[0].id, qty: 1 }], 'card'); saveState(); render(); notifyLowStock(order); });
   const customer = currentCustomer();

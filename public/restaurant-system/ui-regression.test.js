@@ -140,6 +140,9 @@ mustContain(authActionsSourceForSignup, 'signUpData.user.identities.length === 0
 mustContain(authActionsSourceForSignup, 'این ایمیل قبلاً حساب مالک دارد', 'Existing owner email must get a clear Persian message, not a misleading email-confirmation success.');
 mustContain(tenantSwitchRouteSource, 'chooseOwnerTenantForUser', 'Tenant switch API must allow owners to switch only to restaurants they own.');
 mustContain(tenantSwitchRouteSource, 'switchManagerRestaurant', 'Tenant switch API must allow managers to switch among their signed restaurant choices.');
+mustContain(app, "fetch('/api/logout'", 'Portal logout must clear server auth/session before redirecting.');
+mustContain(app, "window.location.href = '/login'", 'Portal logout must return to the internal login page, not the FlowKave homepage.');
+assert(!app.includes("window.location.href = 'https://flowkave.tech/'"), 'Authenticated portal logout must not redirect to the marketing homepage.');
 mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must render an in-app restaurant switcher when portal identity has multiple tenant choices.');
 assert(!app.includes('فقط همین رستوران'), 'Single-restaurant header must not show فقط همین رستوران.');
 mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must change restaurant without logout/login.');
