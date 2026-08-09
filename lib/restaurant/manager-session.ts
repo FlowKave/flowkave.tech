@@ -127,8 +127,10 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
       if (normalizeEmail(staff.email) !== normalizedEmail) continue;
       if (!isManager(staff)) continue;
       if (pin && !verifyPasswordRecord(staff, pin)) continue;
-      const customer = customers.find((item: any) => item.id === staff.customerId) || customers.find((item: any) => item.portalTenantId === row.tenant_id) || customers[0];
-      const restaurantName = String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.businessName || customer?.name || 'رستوران').trim() || 'رستوران';
+      const tenantCustomer = customers.find((item: any) => item.portalTenantId === row.tenant_id);
+      const staffCustomer = customers.find((item: any) => item.id === staff.customerId);
+      const customer = tenantCustomer || staffCustomer || customers[0];
+      const restaurantName = String(customer?.businessName || restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.name || 'رستوران').trim() || 'رستوران';
       choices.push({
         tenantId: row.tenant_id,
         customerId: String(staff.customerId || customer?.id || ''),
