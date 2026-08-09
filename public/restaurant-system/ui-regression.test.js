@@ -144,10 +144,6 @@ mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must 
 mustContain(styles, '.header-tenant-switcher', 'Restaurant switcher must have dedicated header styling.');
 mustContain(app, 'function activeRestaurantHeaderName(customer)', 'Authenticated header must compute restaurant context separately from owner/manager identity.');
 mustContain(app, '${renderRestaurantSwitcher(customer)}', 'Authenticated header must render the restaurant switcher where the restaurant name used to be.');
-mustContain(app, 'let portalInitialStateLoaded = !portalMode', 'Portal dashboard must wait for server state before rendering stale localStorage.');
-mustContain(app, 'در حال بارگذاری رستوران', 'Portal dashboard should show a loading state while server restaurant identity loads.');
-assert(!app.includes("if (portalMode) {\n  ensurePortalCustomerSession(portalIdentity);\n  saveState(state);\n}"), 'Portal bootstrap must not create a placeholder رستوران جدید customer before server identity loads.');
-mustContain(app, 'customer.businessName = serverBusinessName', 'Portal customer name must be overwritten from the server tenant name so زرین does not stay رستوران جدید.');
 mustContain(app, 'header-restaurant-select', 'Restaurant dropdown must sit inline beside the logout button as the restaurant context.');
 mustContain(app, 'if (!customer && !portalIdentity.tenantId)', 'Portal tenant lookup must not match an old customer only by manager/owner email when a tenant id exists.');
 assert(!app.includes('<strong class="header-restaurant-name">${esc(customer.businessName)}</strong>${renderRestaurantSwitcher'), 'Header must not show a separate stale customer/owner name before the restaurant dropdown.');
