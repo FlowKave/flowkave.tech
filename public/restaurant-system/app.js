@@ -19,6 +19,7 @@ const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
 let portalInitialStateLoaded = !portalMode;
 let portalInitialLoadError = '';
+let portalLoadingWatchdog = null;
 let state = loadState();
 let session = loadLocalSession(state);
 let currentTab = portalParams.get('tab') || 'dashboard';
@@ -302,6 +303,7 @@ async function initSharedStateSync() {
   } finally {
     if (portalMode) {
       portalInitialStateLoaded = true;
+      if (portalLoadingWatchdog) clearTimeout(portalLoadingWatchdog);
       if (!staffInvitationTokenFromUrl() && !publicCustomerId()) render();
     }
   }
@@ -3507,6 +3509,13 @@ function bindCommon() {
 
 window.addEventListener('hashchange', render);
 if (portalMode) {
+  portalLoadingWatchdog = setTimeout(() => {
+    if (!portalInitialStateLoaded) {
+      portalInitialLoadError = 'بارگذاری رستوران بیشتر از حد معمول طول کشید. لطفاً دوباره تلاش کنید.';
+      portalInitialStateLoaded = true;
+      render();
+    }
+  }, 15000);
   render();
   initSharedStateSync();
 } else {
