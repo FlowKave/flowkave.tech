@@ -100,6 +100,8 @@ const loginPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'logi
 const authActionsSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'auth', 'actions.ts'), 'utf8');
 const managerSessionSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'manager-session.ts'), 'utf8');
 const restaurantStateApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'restaurant-state', 'route.ts'), 'utf8');
+const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'reset-password', 'page.tsx'), 'utf8');
+const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, 'restaurant-switcher-inline-75', 'Dashboard iframe cache-bust token must match the online multi-restaurant manager invite fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
@@ -116,6 +118,11 @@ assert(restaurantStateApiSource.indexOf('const manager = await getManagerSession
 assert(authActionsSource.includes('await supabase.auth.signOut();') && authActionsSource.includes('await clearOwnerTenantSelection();') && authActionsSource.includes('await setManagerSession(choices[0], choices);'), 'Manager login must clear stale owner Supabase auth/cookie before setting manager session.');
 mustContain(managerSessionSource, 'const authenticatedChoices = await collectManagerRestaurantChoices(email, pin)', 'Manager PIN should authenticate the email once before listing all active manager restaurants.');
 mustContain(managerSessionSource, 'return collectManagerRestaurantChoices(email);', 'After manager authentication, all active manager restaurants across owners must be shown.');
+mustContain(resetPasswordPageSource, "fetch('/api/manager-password-sync'", 'Password reset must sync the new password into manager staff records after Supabase updates the auth user.');
+mustContain(resetPasswordPageSource, 'Authorization: `Bearer ${currentSession.access_token}`', 'Manager password sync must be tied to the authenticated reset session email.');
+mustContain(managerPasswordSyncApiSource, "admin.auth.getUser(token)", 'Manager password sync API must verify the reset-session access token before touching restaurant state.');
+mustContain(managerPasswordSyncApiSource, "staff?.role === 'manager'", 'Manager password sync must only update manager staff records for the authenticated email.');
+mustContain(managerPasswordSyncApiSource, "delete nextState.sessions", 'Manager password sync must not reintroduce shared browser sessions into restaurant state.');
 
 const tenantSource = fs.readFileSync(path.join(root, '..', '..', 'lib', 'restaurant', 'tenant.ts'), 'utf8');
 const tenantSwitchRouteSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'tenant-switch', 'route.ts'), 'utf8');
