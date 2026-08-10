@@ -119,6 +119,9 @@ assert(authActionsSource.includes('await supabase.auth.signOut();') && authActio
 mustContain(managerSessionSource, 'const authenticatedChoices = await collectManagerRestaurantChoices(email, pin)', 'Manager PIN should authenticate the email once before listing all active manager restaurants.');
 mustContain(managerSessionSource, 'return collectManagerRestaurantChoices(email);', 'After manager authentication, all active manager restaurants across owners must be shown.');
 mustContain(resetPasswordPageSource, "fetch('/api/manager-password-sync'", 'Password reset must sync the new password into manager staff records after Supabase updates the auth user.');
+mustContain(resetPasswordPageSource, 'exchangeCodeForSession(code)', 'Reset password page must handle direct Supabase recovery links that land on /reset-password?code=... instead of only /auth/callback.');
+mustContain(resetPasswordPageSource, 'readableResetError', 'Reset password failures must be translated to actionable Persian messages for manager password reset.');
+mustContain(resetPasswordPageSource, 'رمز جدید باید با رمز قبلی فرق داشته باشد', 'Reset password page must explain same-password failures in Persian.');
 mustContain(resetPasswordPageSource, 'Authorization: `Bearer ${currentSession.access_token}`', 'Manager password sync must be tied to the authenticated reset session email.');
 mustContain(managerPasswordSyncApiSource, "admin.auth.getUser(token)", 'Manager password sync API must verify the reset-session access token before touching restaurant state.');
 mustContain(managerPasswordSyncApiSource, "staff?.role === 'manager'", 'Manager password sync must only update manager staff records for the authenticated email.');

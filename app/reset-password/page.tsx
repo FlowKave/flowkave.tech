@@ -4,6 +4,18 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase/client';
 
+
+function readableResetError(message: string) {
+  const lower = String(message || '').toLowerCase();
+  if (lower.includes('auth session missing') || lower.includes('invalid login credentials') || lower.includes('invalid') || lower.includes('expired')) {
+    return 'لینک بازیابی معتبر نیست یا منقضی شده است. دوباره از فراموشی رمز لینک جدید بگیر و همان لینک را مستقیم در همین مرورگر باز کن.';
+  }
+  if (lower.includes('same password') || lower.includes('different from')) {
+    return 'رمز جدید باید با رمز قبلی فرق داشته باشد.';
+  }
+  return message || 'ذخیره رمز جدید ناموفق بود.';
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -16,13 +28,25 @@ export default function ResetPasswordPage() {
     async function hydrateRecoverySession() {
       const supabase = createClient();
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const query = new URLSearchParams(window.location.search);
       const accessToken = hash.get('access_token');
       const refreshToken = hash.get('refresh_token');
+      const code = query.get('code');
+      const linkError = query.get('error_description') || hash.get('error_description');
+
+      if (linkError) {
+        if (!cancelled) setMessage(decodeURIComponent(linkError));
+        return;
+      }
 
       if (accessToken && refreshToken) {
         const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        if (!cancelled && error) setMessage(error.message);
+        window.history.replaceState(null, '', window.location.pathname);
+        if (!cancelled && error) setMessage(readableResetError(error.message));
+      } else if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState(null, '', window.location.pathname);
+        if (!cancelled && error) setMessage(readableResetError(error.message));
       }
 
       const { data } = await supabase.auth.getSession();
@@ -45,7 +69,7 @@ export default function ResetPasswordPage() {
       }
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        setMessage(error.message === 'Auth session missing' ? 'لینک بازیابی منقضی شده یا session آن در مرورگر ساخته نشده است. دوباره لینک جدید بگیر و همان مرورگر را استفاده کن.' : error.message);
+        setMessage(readableResetError(error.message));
         return;
       }
       const currentSession = (await supabase.auth.getSession()).data.session;
@@ -60,14 +84,14 @@ export default function ResetPasswordPage() {
         });
         if (!syncResponse.ok) {
           const payload = await syncResponse.json().catch(() => ({}));
-          setMessage(payload.error || 'رمز مالک ذخیره شد، اما همگام‌سازی رمز مدیر ناموفق بود.');
+          setMessage(readableResetError(payload.error || 'رمز مالک ذخیره شد، اما همگام‌سازی رمز مدیر ناموفق بود.'));
           return;
         }
       }
       await supabase.auth.signOut();
       router.push('/login?reset=1');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره رمز جدید ناموفق بود.');
+      setMessage(error instanceof Error ? readableResetError(error.message) : 'ذخیره رمز جدید ناموفق بود.');
     } finally {
       setPending(false);
     }
