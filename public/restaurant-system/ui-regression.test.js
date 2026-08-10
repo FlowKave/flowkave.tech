@@ -140,6 +140,7 @@ mustContain(restaurantStateApiSource, 'hydrateExistingManagerCredentials', 'Savi
 mustContain(restaurantStateApiSource, ".neq('tenant_id', currentTenantId)", 'Existing manager credential lookup must search other restaurants in the system, not only the current tenant.');
 mustContain(restaurantStateApiSource, 'linkedExistingManagerAccount: true', 'Linked manager staff records must be marked so existing manager accounts can switch into the newly assigned restaurant.');
 mustContain(restaurantStateApiSource, 'accessActive: true', 'Existing manager accounts added as manager personnel must become switch/login-active without a new invite link.');
+mustContain(restaurantStateApiSource, 'updated_by: manager ? null : user.id', 'Manager restaurant-state saves must not write staffUserId into updated_by because the database column stores Supabase auth UUIDs.');
 mustContain(managerSessionSource, 'tenantChoices: publicManagerChoices(availableChoices)', 'Manager session must keep all allowed restaurants so managers can switch without logout.');
 mustContain(managerSessionSource, "admin.from('restaurants').select('tenant_id,name').in('tenant_id', tenantIds)", 'Manager multi-restaurant choices must prefer the real restaurant table name over a stale customer/owner name.');
 mustContain(managerSessionSource, 'restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id)', 'Manager header/dropdown must use server restaurant/tenant names before falling back to mutable customer businessName.');
