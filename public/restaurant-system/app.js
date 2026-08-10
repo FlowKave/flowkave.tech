@@ -205,6 +205,12 @@ function scheduleSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) 
   clearTimeout(sharedSaveTimer);
   sharedSaveTimer = setTimeout(() => pushSharedState(serialized), 180);
 }
+async function flushSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
+  if (!serialized) return;
+  clearTimeout(sharedSaveTimer);
+  sharedSaveTimer = null;
+  await pushSharedState(serialized);
+}
 async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) || '') {
   if (!sharedSyncEnabled || !serialized) return;
   try {
@@ -1363,6 +1369,7 @@ function renderRestaurantSwitcher(customer) {
 }
 async function switchPortalTenant(tenantId) {
   if (!portalMode || !tenantId || tenantId === portalIdentity?.tenantId) return;
+  await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
   const response = await fetch('/api/tenant-switch', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify({ tenantId }) });
   if (!response.ok) { alert('امکان تغییر رستوران وجود ندارد'); return; }
   window.location.reload();

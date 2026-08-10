@@ -157,6 +157,8 @@ assert(!app.includes("window.location.href = 'https://flowkave.tech/'"), 'Authen
 mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must render an in-app restaurant switcher when portal identity has multiple tenant choices.');
 assert(!app.includes('فقط همین رستوران'), 'Single-restaurant header must not show فقط همین رستوران.');
 mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must change restaurant without logout/login.');
+mustContain(app, 'async function flushSharedStateSave', 'Portal switch must be able to flush pending debounced saves before changing restaurants.');
+mustContain(app, 'await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));', 'Switching restaurants must wait for pending inventory/import edits to save to the server first.');
 mustContain(styles, '.header-tenant-switcher', 'Restaurant switcher must have dedicated header styling.');
 mustContain(app, 'function activeRestaurantHeaderName(customer)', 'Authenticated header must compute restaurant context separately from owner/manager identity.');
 mustContain(app, '${renderRestaurantSwitcher(customer)}', 'Authenticated header must render the restaurant switcher where the restaurant name used to be.');
