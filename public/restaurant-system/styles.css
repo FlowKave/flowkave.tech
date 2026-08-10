@@ -1393,3 +1393,18 @@ html body .personnel-modal-card.staff-create-modal{width:min(820px,94vw)!importa
 html body .staff-user-edit-modal .staff-user-edit-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 @media(max-width:900px){html body .staff-user-edit-modal .staff-user-edit-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:720px){html body .staff-user-edit-modal .staff-user-edit-grid{grid-template-columns:1fr!important}}
+
+/* Personnel popup scroll + invitation containment fix: keep actions reachable and links inside cards. */
+html body .personnel-modal-overlay{padding:16px!important;align-items:center!important;overflow:hidden!important}
+html body .personnel-modal-card,
+html body .personnel-modal-card.staff-user-edit-modal,
+html body .staff-user-edit-form.staff-user-edit-modal{max-height:calc(100dvh - 32px)!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;scrollbar-gutter:stable both-edges!important}
+html body .staff-user-edit-modal .staff-user-actions{position:sticky!important;bottom:-14px!important;z-index:5!important;margin:10px -14px -14px!important;padding:12px 14px!important;background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 86%,transparent),var(--surface))!important;border-top:1px solid var(--border)!important;border-radius:0 0 18px 18px!important;display:flex!important;flex-wrap:wrap!important;gap:10px!important}
+html body .staff-create-modal>button.primary{position:sticky!important;bottom:0!important;z-index:5!important;width:100%!important;margin-top:10px!important}
+.staff-invitations-panel{overflow:hidden!important}
+.invitation-row{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;align-items:stretch!important;overflow:hidden!important;min-width:0!important}
+.invitation-person,.invitation-controls{display:grid!important;gap:6px!important;min-width:0!important;max-width:100%!important}
+.invitation-link{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-all!important;direction:ltr!important;text-align:left!important;padding:10px 12px!important;border-radius:12px!important;background:rgba(8,47,73,.82)!important;color:#dff9ff!important}
+.invitation-buttons{display:flex!important;flex-wrap:wrap!important;gap:8px!important;justify-content:flex-start!important;min-width:0!important}
+.invitation-buttons button{min-width:min(170px,100%)!important;max-width:100%!important}
+@media(max-width:720px){html body .personnel-modal-overlay{padding:10px!important}html body .personnel-modal-card{max-height:calc(100dvh - 20px)!important}html body .staff-user-edit-modal .staff-user-actions{bottom:-14px!important}.invitation-buttons{display:grid!important;grid-template-columns:1fr!important}}
