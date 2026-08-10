@@ -133,6 +133,10 @@ mustContain(authActionsSource, 'chooseOwnerRestaurantAction', 'Owner restaurant 
 mustContain(tenantSource, 'OWNER_TENANT_COOKIE', 'Selected owner restaurant must be stored server-side so dashboard/API use the chosen tenant.');
 mustContain(tenantSource, 'getOwnerTenantChoices', 'Owner tenant lookup must return every restaurant owned by the same auth identity.');
 mustContain(restaurantStateApiSource, 'ownerTenantChoicesFor(ownerTenants)', 'Restaurant state API must expose tenant choices to the embedded app for in-panel switching.');
+mustContain(restaurantStateApiSource, 'hydrateExistingManagerCredentials', 'Saving a restaurant state must link newly-added manager personnel to an existing manager account by email without invitation.');
+mustContain(restaurantStateApiSource, ".neq('tenant_id', currentTenantId)", 'Existing manager credential lookup must search other restaurants in the system, not only the current tenant.');
+mustContain(restaurantStateApiSource, 'linkedExistingManagerAccount: true', 'Linked manager staff records must be marked so existing manager accounts can switch into the newly assigned restaurant.');
+mustContain(restaurantStateApiSource, 'accessActive: true', 'Existing manager accounts added as manager personnel must become switch/login-active without a new invite link.');
 mustContain(managerSessionSource, 'tenantChoices: publicManagerChoices(availableChoices)', 'Manager session must keep all allowed restaurants so managers can switch without logout.');
 mustContain(managerSessionSource, "admin.from('restaurants').select('tenant_id,name').in('tenant_id', tenantIds)", 'Manager multi-restaurant choices must prefer the real restaurant table name over a stale customer/owner name.');
 mustContain(managerSessionSource, 'restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id)', 'Manager header/dropdown must use server restaurant/tenant names before falling back to mutable customer businessName.');

@@ -48,6 +48,59 @@ function unauthorized() {
   return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
 }
 
+function normalizeEmail(email: unknown) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function hasManagerPassword(staff: any) {
+  return Boolean(staff?.passwordHash && staff?.passwordSalt);
+}
+
+function isActiveManager(staff: any, email = '') {
+  const matchesEmail = !email || normalizeEmail(staff?.email) === email;
+  return matchesEmail && staff?.role === 'manager' && staff?.active !== false;
+}
+
+async function hydrateExistingManagerCredentials(sharedState: any, currentTenantId: string) {
+  const staffUsers = Array.isArray(sharedState?.staffUsers) ? sharedState.staffUsers : [];
+  const managerEmailsNeedingCredentials = [...new Set(staffUsers
+    .filter((staff: any) => isActiveManager(staff) && normalizeEmail(staff.email) && !hasManagerPassword(staff))
+    .map((staff: any) => normalizeEmail(staff.email)))];
+  if (!managerEmailsNeedingCredentials.length) return sharedState;
+
+  const admin = createAdminClient();
+  if (!admin) return sharedState;
+  const { data, error } = await admin
+    .from('restaurant_states')
+    .select('tenant_id,state')
+    .neq('tenant_id', currentTenantId)
+    .limit(1000);
+  if (error) throw new Error(error.message);
+
+  const credentialByEmail = new Map<string, { passwordHash: string; passwordSalt: string }>();
+  for (const row of data || []) {
+    const remoteStaffUsers = Array.isArray((row as any).state?.staffUsers) ? (row as any).state.staffUsers : [];
+    for (const staff of remoteStaffUsers) {
+      const email = normalizeEmail(staff?.email);
+      if (!managerEmailsNeedingCredentials.includes(email)) continue;
+      if (!isActiveManager(staff, email) || staff.accessActive === false || !hasManagerPassword(staff)) continue;
+      if (!credentialByEmail.has(email)) credentialByEmail.set(email, { passwordHash: staff.passwordHash, passwordSalt: staff.passwordSalt });
+    }
+  }
+
+  if (!credentialByEmail.size) return sharedState;
+  sharedState.staffUsers = staffUsers.map((staff: any) => {
+    const email = normalizeEmail(staff?.email);
+    const credential = credentialByEmail.get(email);
+    if (!credential || !isActiveManager(staff, email) || hasManagerPassword(staff)) return staff;
+    const next = { ...staff, ...credential, accessActive: true, linkedExistingManagerAccount: true };
+    delete next.password;
+    delete next.pin;
+    return next;
+  });
+  return sharedState;
+}
+
 export async function GET() {
   try {
     const { supabase, user, tenant, identity } = await authContext();
@@ -89,7 +142,7 @@ export async function PUT(request: NextRequest) {
     const requestedVersion = Number(body?.updatedAt || Date.now() / 1000);
     const version = Number.isFinite(requestedVersion) && requestedVersion > 0 ? requestedVersion : Date.now() / 1000;
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.slice(0, 120) : null;
-    const sharedState = { ...state };
+    const sharedState = await hydrateExistingManagerCredentials({ ...state }, tenant.id);
     delete (sharedState as any).sessions;
 
     const { data, error } = await supabase
