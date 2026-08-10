@@ -158,6 +158,10 @@ mustContain(app, 'data-tenant-switcher', 'Authenticated restaurant header must r
 assert(!app.includes('فقط همین رستوران'), 'Single-restaurant header must not show فقط همین رستوران.');
 mustContain(app, "fetch('/api/tenant-switch'", 'In-app restaurant switcher must change restaurant without logout/login.');
 mustContain(app, 'async function flushSharedStateSave', 'Portal switch must be able to flush pending debounced saves before changing restaurants.');
+mustContain(app, 'let sharedPendingSerialized', 'Pending local edits must be tracked so stale remote polling cannot overwrite import data before a restaurant switch.');
+mustContain(app, 'if (!initial && (sharedPendingSerialized || sharedSaveTimer || sharedSaveInFlight)) return;', 'Remote polling must pause while a local save is pending/in-flight.');
+mustContain(app, 'return pushSharedState(serialized, { throwOnError: true });', 'Manual restaurant switch must fail closed if the latest local save cannot reach the server.');
+mustContain(app, 'ذخیره تغییرات کامل نشد', 'Restaurant switch must warn and stay put instead of reloading when the pending save fails.');
 mustContain(app, 'await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));', 'Switching restaurants must wait for pending inventory/import edits to save to the server first.');
 mustContain(styles, '.header-tenant-switcher', 'Restaurant switcher must have dedicated header styling.');
 mustContain(app, 'function activeRestaurantHeaderName(customer)', 'Authenticated header must compute restaurant context separately from owner/manager identity.');

@@ -9,6 +9,8 @@ let sharedSyncStarted = false;
 let sharedApplyingRemote = false;
 let sharedStateRevision = 0;
 let sharedSaveTimer = null;
+let sharedSaveInFlight = null;
+let sharedPendingSerialized = '';
 let sharedLastSerialized = '';
 const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
@@ -193,7 +195,11 @@ function saveState(next = state) {
   const serialized = JSON.stringify(next);
   localStorage.setItem(STORAGE_KEY, serialized);
   sharedLastSerialized = serialized;
-  if (sharedSyncEnabled && !sharedApplyingRemote) scheduleSharedStateSave(serialized);
+  if (sharedSyncEnabled && !sharedApplyingRemote) {
+    sharedPendingSerialized = serialized;
+    sharedStateRevision = Math.max(sharedStateRevision, Date.now() / 1000);
+    scheduleSharedStateSave(serialized);
+  }
 }
 function sharedStatePayload(nextState) {
   const payload = JSON.parse(JSON.stringify(nextState || {}));
@@ -202,32 +208,44 @@ function sharedStatePayload(nextState) {
 }
 function scheduleSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
   if (!serialized) return;
+  sharedPendingSerialized = serialized;
   clearTimeout(sharedSaveTimer);
   sharedSaveTimer = setTimeout(() => pushSharedState(serialized), 180);
 }
 async function flushSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
-  if (!serialized) return;
+  if (!serialized) return true;
+  sharedPendingSerialized = serialized;
   clearTimeout(sharedSaveTimer);
   sharedSaveTimer = null;
-  await pushSharedState(serialized);
+  return pushSharedState(serialized, { throwOnError: true });
 }
-async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) || '') {
-  if (!sharedSyncEnabled || !serialized) return;
-  try {
-    const updatedAt = Date.now() / 1000;
-    const response = await fetch(SHARED_STATE_API, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updatedAt, data: sharedStatePayload(JSON.parse(serialized)) }),
-      cache: 'no-store',
-      credentials: 'same-origin',
-    });
-    if (!response.ok) throw new Error('SYNC_SAVE_FAILED');
-    const result = await response.json();
-    sharedStateRevision = Number(result.updatedAt || updatedAt);
-  } catch (error) {
-    console.warn('shared state save failed', error);
-  }
+async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) || '', options = {}) {
+  if (!sharedSyncEnabled || !serialized) return true;
+  const savePromise = (async () => {
+    try {
+      const updatedAt = Date.now() / 1000;
+      const response = await fetch(SHARED_STATE_API, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updatedAt, data: sharedStatePayload(JSON.parse(serialized)) }),
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('SYNC_SAVE_FAILED');
+      const result = await response.json();
+      sharedStateRevision = Number(result.updatedAt || updatedAt);
+      if (sharedPendingSerialized === serialized) sharedPendingSerialized = '';
+      return true;
+    } catch (error) {
+      console.warn('shared state save failed', error);
+      if (options.throwOnError) throw error;
+      return false;
+    } finally {
+      if (sharedSaveInFlight === savePromise) sharedSaveInFlight = null;
+    }
+  })();
+  sharedSaveInFlight = savePromise;
+  return savePromise;
 }
 function shouldDelayRemoteApply() {
   const active = document.activeElement;
@@ -266,6 +284,7 @@ function shouldSeedSharedStateFromLocal() {
 }
 async function pullSharedState({ initial = false } = {}) {
   if (!sharedSyncEnabled && !initial) return;
+  if (!initial && (sharedPendingSerialized || sharedSaveTimer || sharedSaveInFlight)) return;
   try {
     const response = await fetch(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) throw new Error('SYNC_LOAD_FAILED');
@@ -1369,7 +1388,13 @@ function renderRestaurantSwitcher(customer) {
 }
 async function switchPortalTenant(tenantId) {
   if (!portalMode || !tenantId || tenantId === portalIdentity?.tenantId) return;
-  await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+  try {
+    await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+  } catch {
+    alert('ذخیره تغییرات کامل نشد؛ لطفاً چند لحظه دیگر دوباره تغییر رستوران را بزنید.');
+    render();
+    return;
+  }
   const response = await fetch('/api/tenant-switch', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify({ tenantId }) });
   if (!response.ok) { alert('امکان تغییر رستوران وجود ندارد'); return; }
   window.location.reload();
