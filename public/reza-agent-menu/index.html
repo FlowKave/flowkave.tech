@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>منوی ایجنت رضا پورمحمودیان</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg:#140f0a;
+      --card:#21170f;
+      --card2:#2b1d12;
+      --cream:#f7ead1;
+      --muted:#c9b99c;
+      --gold:#d9a441;
+      --gold2:#ffcf70;
+      --line:rgba(255,207,112,.22);
+      --danger:#ff7d7d;
+      --ok:#72e0aa;
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100svh;
+      background:
+        radial-gradient(circle at 15% 5%, rgba(217,164,65,.28), transparent 28rem),
+        radial-gradient(circle at 90% 10%, rgba(255,207,112,.12), transparent 24rem),
+        linear-gradient(160deg,#0b0805 0%,var(--bg) 54%,#070503 100%);
+      color:var(--cream);
+      font-family:Tahoma, Arial, sans-serif;
+      padding:18px 14px 34px;
+    }
+    .wrap{max-width:680px;margin:0 auto}
+    .hero{
+      border:1px solid var(--line);
+      background:linear-gradient(145deg,rgba(43,29,18,.92),rgba(20,15,10,.82));
+      border-radius:28px;
+      padding:20px 18px;
+      box-shadow:var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .hero:before{content:"";position:absolute;inset:auto -40px -80px auto;width:190px;height:190px;border-radius:50%;background:rgba(217,164,65,.16);filter:blur(4px)}
+    .badge{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:var(--gold2);font-size:12px;background:rgba(0,0,0,.16)}
+    h1{font-size:24px;line-height:1.45;margin:13px 0 6px;letter-spacing:-.03em}
+    .sub{color:var(--muted);font-size:14px;line-height:1.9;margin:0}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:15px}
+    .card{
+      border:1px solid var(--line);
+      background:linear-gradient(150deg,rgba(33,23,15,.94),rgba(25,17,11,.94));
+      border-radius:22px;
+      padding:14px;
+      box-shadow:0 10px 28px rgba(0,0,0,.22);
+    }
+    .top{display:flex;align-items:flex-start;gap:12px}
+    .icon{width:44px;height:44px;display:grid;place-items:center;border-radius:16px;background:linear-gradient(145deg,rgba(217,164,65,.28),rgba(255,207,112,.12));border:1px solid var(--line);font-size:23px;flex:0 0 auto}
+    h2{font-size:16px;margin:0 0 4px}.desc{margin:0;color:var(--muted);font-size:12.5px;line-height:1.75}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button,a.btn{
+      appearance:none;border:0;border-radius:14px;padding:11px 13px;
+      background:linear-gradient(135deg,var(--gold),var(--gold2));
+      color:#21160b;font-weight:800;font-size:13px;cursor:pointer;text-decoration:none;
+      box-shadow:0 8px 18px rgba(217,164,65,.22);
+      font-family:inherit;
+    }
+    button.secondary,a.secondary{background:rgba(255,255,255,.07);color:var(--cream);border:1px solid var(--line);box-shadow:none}
+    .status{position:sticky;bottom:12px;margin-top:15px;padding:12px 14px;border-radius:18px;background:rgba(5,4,3,.88);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--ok);font-size:13px;display:none;line-height:1.7}
+    .hint{margin-top:15px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.055);border:1px dashed var(--line);color:var(--muted);font-size:12.5px;line-height:1.9}
+    textarea{position:absolute;left:-9999px;top:-9999px}
+    @media(min-width:620px){.grid{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}h1{font-size:28px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <span class="badge">☕ Roast Group × FlowKave Agent</span>
+      <h1>منوی سریع ایجنت رضا</h1>
+      <p class="sub">برای هر کار، دستور آماده را کپی کن و داخل چت بات بفرست. هر خروجی باید فایل/متن قابل فروش و QA‌شده تحویل بدهد، نه جواب خام.</p>
+    </section>
+
+    <section class="grid" id="cards"></section>
+
+    <div class="hint">
+      نکته: اگر بعداً Telegram Topics برای بات فعال شد، برای هر پروژه یک topic جدا بساز و داخلش از همین دستورها استفاده کن. فعلاً این منو بهترین مسیر سریع بدون ورود به شماره شخصی است.
+    </div>
+    <div class="status" id="status"></div>
+    <textarea id="copyBox"></textarea>
+  </main>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    try { tg?.ready(); tg?.expand(); tg?.setHeaderColor('#140f0a'); tg?.setBackgroundColor('#140f0a'); } catch(e) {}
+
+    const items = [
+      {
+        icon:'📄', title:'شروع پکیج/PDF جدید', desc:'برای ساخت محصول قابل فروش با PDF، DOCX، متن صفحه فروش و فایل نهایی.',
+        cmd:'/new پکیج PDF جدید\nیک پکیج فروش‌پذیر فارسی برای حوزه کافه/رستوران بساز. خروجی باید شامل PDF-ready structure، متن ووکامرس، FAQ، پست تلگرام/اینستاگرام، پرامپت Lovable، و چک کیفیت باشد. اگر فایل لازم است بساز و MEDIA بده.'
+      },
+      {
+        icon:'🎨', title:'کاور یا عکس محصول', desc:'برای کاور حرفه‌ای، تصویر محصول، بنر یا اسلاید اول کاروسل.',
+        cmd:'/new کاور محصول\nبرای این محصول یک کاور حرفه‌ای فارسی بساز: کرم گرم، مشکی/طلایی، متن کوتاه و خوانا، حس مشاوره تخصصی کافه/رستوران، بدون ظاهر چیپ. خروجی را فایل تصویر واقعی بساز، QA کن و MEDIA بده.'
+      },
+      {
+        icon:'🛒', title:'صفحه فروش ووکامرس', desc:'متن کوتاه/کامل محصول، مزایا، قیمت، FAQ و CTA آماده paste.',
+        cmd:'/new صفحه فروش محصول\nبرای محصولی که توضیح می‌دهم صفحه فروش ووکامرس آماده کن: نام محصول، وعده فروش، مخاطب هدف، درد بازار، محتویات، قیمت پیشنهادی، FAQ، CTA، توضیح کوتاه و کامل. متن باید آماده paste و فروش‌محور باشد.'
+      },
+      {
+        icon:'✅', title:'بازبینی کیفیت خروجی', desc:'وقتی خروجی ضعیف/چیپ شد، با این دستور مجبورش کن بازسازی کند.',
+        cmd:'این خروجی را مثل محصول قابل فروش بازبینی کن. اگر چیپ، شلخته، عمومی، ناخوانا، یا بدون artifact واقعی است، همان را تحویل نده؛ نسخه بهتر بساز. QA کن: خوانایی فارسی، overflow/crop، فایل واقعی، کاربرد فروش.'
+      },
+      {
+        icon:'📂', title:'موضوعات/سشن‌های قبلی', desc:'لیست کارهای قبلی برای برگشت یا ادامه دادن.',
+        cmd:'/sessions'
+      },
+      {
+        icon:'🏷️', title:'نام‌گذاری کار فعلی', desc:'اسم session فعلی را مشخص کن تا بعداً راحت پیدا شود.',
+        cmd:'/title نام پروژه را اینجا بنویس'
+      },
+      {
+        icon:'🧵', title:'راهنمای موضوع‌ها', desc:'اگر Topics فعال شد، وضعیت و راهنمای topic mode را نشان می‌دهد.',
+        cmd:'/topic help'
+      },
+      {
+        icon:'🆕', title:'شروع گفتگوی تازه', desc:'برای جدا کردن حافظه کار جدید از کار قبلی.',
+        cmd:'/new نام پروژه جدید'
+      }
+    ];
+
+    const cards = document.getElementById('cards');
+    const status = document.getElementById('status');
+    function showStatus(text){ status.textContent = text; status.style.display = 'block'; clearTimeout(window.__st); window.__st=setTimeout(()=>status.style.display='none', 3200); }
+    async function copyText(text){
+      try { await navigator.clipboard.writeText(text); }
+      catch(e){ const box=document.getElementById('copyBox'); box.value=text; box.select(); document.execCommand('copy'); }
+      try { tg?.HapticFeedback?.notificationOccurred('success'); } catch(e) {}
+      showStatus('کپی شد. حالا برگرد داخل چت بات و Paste/Send کن.');
+    }
+    function openBot(){ window.location.href = 'https://t.me/rsadatreza_bot'; }
+    cards.innerHTML = items.map((it,i)=>`<article class="card ${i===0?'wide':''}">
+      <div class="top"><div class="icon">${it.icon}</div><div><h2>${it.title}</h2><p class="desc">${it.desc}</p></div></div>
+      <div class="actions"><button data-copy="${i}">کپی دستور</button><button class="secondary" data-open>باز کردن بات</button></div>
+    </article>`).join('');
+    cards.addEventListener('click', e=>{
+      const copy=e.target.closest('[data-copy]');
+      if(copy) copyText(items[+copy.dataset.copy].cmd);
+      if(e.target.closest('[data-open]')) openBot();
+    });
+  </script>
+</body>
+</html>
