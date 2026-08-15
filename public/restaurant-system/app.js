@@ -2003,7 +2003,10 @@ function renderRecipes(customer) {
 
 
 function readonlyInventoryText(value, extraClass = '') {
-  return `<span class="inventory-readonly-value ${extraClass}" data-inventory-readonly><bdi class="inventory-readonly-text" dir="rtl">${esc(cleanPersianText(value))}</bdi></span>`;
+  const isNumber = String(extraClass || '').includes('inventory-number-readonly');
+  const displayValue = isNumber ? faNum(value) : cleanPersianText(value);
+  const textDir = isNumber ? 'ltr' : 'rtl';
+  return `<span class="inventory-readonly-value ${extraClass}" data-inventory-readonly><bdi class="inventory-readonly-text" dir="${textDir}">${esc(displayValue)}</bdi></span>`;
 }
 
 function renderInventoryEditRow(x) {
