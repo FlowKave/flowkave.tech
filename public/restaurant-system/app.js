@@ -1731,7 +1731,7 @@ function renderHallTablePicker(tables, selectedTable) {
 function renderOccupiedHallTablesBox(tables, selectedTable) {
   const occupiedTables = tables.filter(table => table.active !== false && (table.status !== 'free' || table.id === selectedTable?.id));
   const rows = occupiedTables.map(table => `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${table.status}" data-hall-occupied-table="${esc(table.id)}"><b>${esc(table.name)}</b>${table.remainingTotal ? `<small>${money(table.remainingTotal)}</small>` : ''}</button>`).join('') || '<span class="hall-occupied-empty">میزی انتخاب نشده</span>';
-  return `<div class="hall-occupied-tables-box" aria-label="میزهای درگیر سفارش"><strong>میزهای درگیر</strong><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
+  return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
 
 function renderHallTableConfigForm(customer) {
