@@ -1078,6 +1078,32 @@ function publicCustomerId() {
   const match = location.hash.match(/^#menu\/([^/?]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
+function publicReceiptCustomerId() {
+  const match = location.hash.match(/^#receipt\/([^/?]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+function resolvePublicReceiptCustomerId() {
+  const hashCustomerId = publicReceiptCustomerId();
+  if (hashCustomerId && state.customers?.some(customer => customer.id === hashCustomerId)) return hashCustomerId;
+  if (publicTenantId) {
+    const customer = state.customers?.find(customer => customer.portalTenantId === publicTenantId);
+    if (customer) return customer.id;
+  }
+  return hashCustomerId;
+}
+function publicReceiptOrderId() {
+  const query = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
+  return new URLSearchParams(query).get('order') || '';
+}
+function publicReceiptLink(customerId, orderId, tableId = '') {
+  const url = new URL(`${location.origin}${location.pathname}`);
+  url.searchParams.set('v', 'qr-receipt-persistent-114');
+  if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
+  const query = new URLSearchParams({ order: orderId });
+  if (tableId) query.set('table', tableId);
+  url.hash = `receipt/${encodeURIComponent(customerId)}?${query.toString()}`;
+  return url.toString();
+}
 function resolvePublicCustomerId() {
   const hashCustomerId = publicCustomerId();
   if (hashCustomerId && (state.customers || []).some((customer) => customer.id === hashCustomerId)) return hashCustomerId;
@@ -1115,7 +1141,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-receipt-empty-inputs-113');
+  url.searchParams.set('v', 'qr-receipt-persistent-114');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1408,6 +1434,8 @@ function renderStaffInvitationAccept(token) {
 function render() {
   const inviteToken = staffInvitationTokenFromUrl();
   if (inviteToken) return renderStaffInvitationAccept(inviteToken);
+  const publicReceiptId = resolvePublicReceiptCustomerId();
+  if (publicReceiptId) return renderPublicReceipt(publicReceiptId);
   const publicId = resolvePublicCustomerId();
   if (publicId) return renderPublicMenu(publicId);
   const customer = currentCustomer();
@@ -1604,6 +1632,18 @@ function renderPublicMenu(customerId) {
   updateBusinessDateLineDom();
 }
 
+function renderPublicReceipt(customerId) {
+  const orderId = publicReceiptOrderId();
+  const order = (state.orders || []).find(item => item.id === orderId && item.customerId === customerId);
+  if (!order) {
+    if (publicQrMode) { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>در حال بارگذاری رسید</h1><p>اطلاعات سفارش از سرور خوانده می‌شود؛ چند لحظه صبر کنید.</p></section></main>`; return; }
+    app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>رسید پیدا نشد</h1><p>این لینک رسید معتبر نیست یا سفارش هنوز روی این دستگاه بارگذاری نشده است.</p></section></main>`;
+    return;
+  }
+  const table = order.tableId ? (RestaurantCore.getHallTables(state, customerId).find(item => item.id === order.tableId) || { id: order.tableId, name: order.tableName || '' }) : null;
+  app.innerHTML = `<main class="public-page"><section class="public-hero"><span class="badge public-table-badge">رسید سفارش</span><h1>رسید سفارش شما</h1><p>این صفحه مستقل است و با refresh هم از بین نمی‌رود.</p></section><section class="public-panel">${renderPublicQrReceipt(order, table)}</section></main>`;
+}
+
 function bindPublicMenu(customerId, items) {
   const form = document.querySelector('#publicOrderForm');
   const trackingForm = document.querySelector('#publicTrackingForm');
@@ -1639,14 +1679,16 @@ function bindPublicMenu(customerId, items) {
     saveState();
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
-    message.innerHTML = table ? renderPublicQrReceipt(order, table) : `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
+    const receiptLink = table ? publicReceiptLink(customerId, order.id, table.id) : '';
+    message.innerHTML = table ? `${renderPublicQrReceipt(order, table)}<a class="public-link" href="${esc(receiptLink)}" target="_blank" rel="noopener">باز کردن رسید در صفحه جدا</a>` : `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
+    if (receiptLink) window.open(receiptLink, '_blank', 'noopener');
     form.querySelectorAll('[data-number]').forEach(input => { input.value = ''; });
   });
 }
 
 function renderPublicTrackingResult(order) {
   const guest = order.guestName || order.guestContact ? `<small>مهمان: ${esc(order.guestName || 'بدون نام')}${order.guestContact ? ` — تماس: ${esc(faNum(order.guestContact))}` : ''}</small>` : '';
-  return `<b>شماره پیگیری ${receiptNumberText(order.trackingNumber)}</b><span>وضعیت: ${orderStatusLabel(order.status)}</span><span>مبلغ: ${money(order.total)}</span>${guest}<small>آیتم‌ها: ${order.lines.map(line => `${esc(line.name)} × ${numberText(line.qty, 0)}`).join('، ')}</small>${renderOrderPrepNotes(order)}`;
+  return `<b>شماره پیگیری ${receiptNumberText(order.trackingNumber)}</b><span>وضعیت: ${orderStatusLabel(order.status)}</span><span>مبلغ: ${money(order.grandTotal || order.total)}</span>${guest}<small>آیتم‌ها: ${order.lines.map(line => `${esc(line.name)} × ${numberText(line.qty, 0)}`).join('، ')}</small>${renderOrderPrepNotes(order)}`;
 }
 function renderPublicQrReceipt(order, table) {
   const lines = (order.lines || []).map((line) => {
