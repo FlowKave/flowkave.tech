@@ -1736,8 +1736,8 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
 
 function renderHallTableConfigForm(customer) {
   const tables = RestaurantCore.getHallTables(state, customer.id);
-  const settings = customer.hallTableSettings || { count: tables.length || 8, prefix: 'میز', startNumber: 1, customNames: [] };
-  return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میز، پیشوند و نام‌گذاری دستی سالن را همین‌جا تنظیم کن؛ بعد از ذخیره، انتخاب میز با چیدمان جدید نمایش داده می‌شود.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || tables.length || 8)}</label><label>عنوان/پیشوند<input name="prefix" value="${esc(settings.prefix || 'میز')}"></label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً میز ۱، وی‌آی‌پی، تراس ۱">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
+  const settings = customer.hallTableSettings || { count: tables.length || 8, startNumber: 1, customNames: [] };
+  return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میزهای شماره‌ای را تعیین کن؛ نام‌های دستی اگر وارد شوند به تعداد میزها اضافه می‌شوند و اول لیست نمایش داده می‌شوند.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || 8)}</label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً VIP، رضا، آزاد">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
 }
 
 function canManageHallTableLayout() {
@@ -3502,7 +3502,7 @@ function bindCommon() {
       return item;
     },
     hallTableConfigForm: (f) => {
-      const tables = RestaurantCore.configureHallTables(state, customer.id, { count: parseFaNumber(f.get('count')), prefix: cleanPersianText(f.get('prefix') || 'میز'), startNumber: parseFaNumber(f.get('startNumber')) || 1, customNames: String(f.get('customNames') || '').split(/[،,\n]/).map(x => cleanPersianText(x)).filter(Boolean) });
+      const tables = RestaurantCore.configureHallTables(state, customer.id, { count: parseFaNumber(f.get('count')), startNumber: parseFaNumber(f.get('startNumber')) || 1, customNames: String(f.get('customNames') || '').split(/[،,\n]/).map(x => cleanPersianText(x)).filter(Boolean) });
       selectedHallTableId = '';
       hallTablePickerOpen = false;
       hallTableConfigOpen = false;

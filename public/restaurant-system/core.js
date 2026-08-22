@@ -2033,20 +2033,26 @@
     if (!Array.isArray(state.restaurantTables)) state.restaurantTables = [];
     const customer = state.customers.find((item) => item.id === customerId);
     const count = Math.max(1, Math.min(80, Math.floor(Number(input.count || 8))));
-    const prefix = String(input.prefix || 'میز').trim() || 'میز';
     const startNumber = Math.max(1, Math.floor(Number(input.startNumber || 1)));
     const customNames = Array.isArray(input.customNames) ? input.customNames.map((item) => String(item || '').trim()).filter(Boolean) : [];
     const current = state.restaurantTables.filter((table) => table.customerId === customerId);
     const activeOrderTableIds = new Set((state.orders || []).filter((order) => order.customerId === customerId && order.hallSale === true && !['paid','cancelled'].includes(normalizePosStatus(order.posStatus))).map((order) => order.tableId));
-    const nextTables = Array.from({ length: count }, (_, index) => {
-      const existing = current[index];
-      const number = startNumber + index;
-      const manualName = customNames[index];
-      return { id: existing?.id || uid('tbl'), customerId, name: manualName || `${prefix} ${persianDigits(number)}`, number, position: existing?.position || { x: (index % 4) + 1, y: Math.floor(index / 4) + 1 }, status: existing?.status || 'free', active: existing?.active !== false };
+    const usedIds = new Set();
+    const takeExisting = (matcher) => {
+      const found = current.find((table) => !usedIds.has(table.id) && matcher(table));
+      if (found) usedIds.add(found.id);
+      return found;
+    };
+    const tableNames = customNames.concat(Array.from({ length: count }, (_, index) => persianDigits(startNumber + index)));
+    const nextTables = tableNames.map((name, index) => {
+      const isManual = index < customNames.length;
+      const number = isManual ? 0 : startNumber + (index - customNames.length);
+      const existing = takeExisting((table) => table.name === name) || (!isManual ? takeExisting((table) => Number(table.number || 0) === number && !customNames.includes(table.name)) : null);
+      return { id: existing?.id || uid('tbl'), customerId, name, number, position: existing?.position || { x: (index % 4) + 1, y: Math.floor(index / 4) + 1 }, status: existing?.status || 'free', active: existing?.active !== false };
     });
     current.filter((table) => activeOrderTableIds.has(table.id) && !nextTables.some((next) => next.id === table.id)).forEach((table) => nextTables.push({ ...table, active: true }));
     state.restaurantTables = state.restaurantTables.filter((table) => table.customerId !== customerId).concat(nextTables);
-    if (customer) customer.hallTableSettings = { count, prefix, startNumber, customNames };
+    if (customer) customer.hallTableSettings = { count, startNumber, customNames };
     return nextTables.map((table) => cloneJson(table));
   }
 
