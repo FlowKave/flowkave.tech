@@ -832,6 +832,10 @@ function showRecipePrintPreview(recipeId) {
   });
 }
 
+function dailyClosingCategoryRows(report) {
+  return (report.categorySales || []).map(row => `<tr><td>${esc(row.category)}</td><td>${numberText(row.quantity, 2)}</td><td>${money(row.subtotal)}</td></tr>`).join('') || '<tr><td colspan="3">فروشی در این بازه ثبت نشده است.</td></tr>';
+}
+
 function showDailyClosingPrintPreview() {
   const customer = currentCustomer();
   if (!customer) return;
@@ -842,20 +846,22 @@ function showDailyClosingPrintPreview() {
   modal.id = 'dailyClosingModalRoot';
   modal.className = 'print-modal-overlay';
   const lowStock = report.lowStockWarnings.length ? lowStockText(report.lowStockWarnings) : 'موجودی بحرانی ندارید.';
+  const rangeText = `از ${formatDate(report.fromDate)} تا ${formatDate(report.toDate)}`;
   modal.innerHTML = `<section class="print-modal" role="dialog" aria-modal="true">
     <div class="print-actions"><button type="button" class="modal-close-icon" data-close-daily-closing aria-label="بستن">×</button>${actionDecalButton('print', 'data-do-daily-closing-print', 'modal-print-decal')}</div>
     <div class="recipe-print-sheet daily-closing-sheet">
-      <header class="daily-closing-header"><h1>گزارش بستن روز</h1><strong>${report.shift ? `${esc(report.shift.name)} — ${esc(report.shift.operatorName)}` : formatDate(report.date)}</strong></header>
+      <header class="daily-closing-header"><h1>بستن حساب روز کاری</h1><strong>${report.shift ? `${esc(report.shift.name)} — ${esc(report.shift.operatorName)}` : 'بدون شیفت باز'} — ${esc(rangeText)}</strong></header>
       <section class="daily-closing-grid">
-        <div><span>درآمد</span><b>${money(report.revenue)}</b></div>
-        <div><span>قیمت تمام‌شده</span><b>${money(report.cost)}</b></div>
-        <div><span>هزینه‌ها</span><b>${money(report.expenses)}</b></div>
-        <div><span>پرداخت تأمین‌کننده</span><b>${money(report.supplierPayments)}</b></div>
-        <div><span>سود روز</span><b>${money(report.profit)}</b></div>
+        <div><span>جمع فروش آیتم‌ها</span><b>${money(report.subtotal)}</b></div>
+        <div><span>مالیات</span><b>${money(report.taxTotal)}</b></div>
+        <div><span>حق سرویس</span><b>${money(report.serviceChargeTotal)}</b></div>
+        <div><span>تخفیف</span><b>${money(report.discountTotal)}</b></div>
+        <div class="total"><span>جمع کل فروش</span><b>${money(report.grandTotal)}</b></div>
         <div><span>تعداد فاکتور</span><b>${numberText(report.orderCount, 0)}</b></div>
       </section>
+      <section class="recipe-print-box"><h2>فروش به تفکیک دسته‌بندی منو</h2><table class="purchase-invoice-print-table daily-closing-category-table"><thead><tr><th>دسته‌بندی</th><th>تعداد</th><th>مبلغ فروش</th></tr></thead><tbody>${dailyClosingCategoryRows(report)}</tbody></table></section>
       <section class="recipe-print-box"><h2>هشدار کمبود موجودی</h2><p>${esc(lowStock)}</p></section>
-      <section class="recipe-print-box"><h2>رویدادهای مالی روز</h2>${report.entries.map(entry => `<div class="daily-closing-entry"><span>${esc(ledgerTypeLabel(entry.type))}</span><b>${money(entry.amount)}</b><small>${formatDate(entry.createdAt)}</small></div>`).join('') || '<p>رویداد مالی امروز ثبت نشده است.</p>'}</section>
+      <section class="recipe-print-box"><h2>رویدادهای مالی این بازه</h2>${report.entries.map(entry => `<div class="daily-closing-entry"><span>${esc(ledgerTypeLabel(entry.type))}</span><b>${money(entry.amount)}</b><small>${formatDate(entry.createdAt)}</small></div>`).join('') || '<p>رویداد مالی در این بازه ثبت نشده است.</p>'}</section>
     </div>
   </section>`;
   document.body.appendChild(modal);
@@ -1099,7 +1105,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'order-panels-scroll-paid-116');
+  url.searchParams.set('v', 'workday-closing-categories-117');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1143,7 +1149,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'order-panels-scroll-paid-116');
+  url.searchParams.set('v', 'workday-closing-categories-117');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1602,7 +1608,7 @@ function renderDashboardReadinessShortcuts(customer) {
   const checklist = RestaurantCore.getOnboardingChecklist(state, customer.id);
   const missing = checklist.items.filter(item => !item.done);
   if (!missing.length) {
-    return `<div class="panel wide dashboard-readiness-panel"><div class="section-title"><h2>میانبرهای آمادگی راه‌اندازی</h2><span class="badge">کامل</span></div><p>همه گام‌های ضروری راه‌اندازی اولیه تکمیل شده‌اند؛ حالا از صندوق تستی و گزارش بستن روز برای کنترل عملیات استفاده کنید.</p><button type="button" class="secondary" data-onboarding-tab="sales">رفتن به صندوق</button></div>`;
+    return `<div class="panel wide dashboard-readiness-panel"><div class="section-title"><h2>میانبرهای آمادگی راه‌اندازی</h2><span class="badge">کامل</span></div><p>همه گام‌های ضروری راه‌اندازی اولیه تکمیل شده‌اند؛ حالا از صندوق تستی و بستن حساب روز کاری برای کنترل عملیات استفاده کنید.</p><button type="button" class="secondary" data-onboarding-tab="sales">رفتن به صندوق</button></div>`;
   }
   return `<div class="panel wide dashboard-readiness-panel"><div class="section-title"><h2>میانبرهای آمادگی راه‌اندازی</h2><span class="badge">${numberText(missing.length, 0)} کار باقی‌مانده</span></div><p>برای رسیدن سریع‌تر به نسخه قابل بهره‌برداری، از همین داشبورد مستقیم به کارهای ناقص بروید.</p><div class="dashboard-shortcuts">${missing.map(item => `<div class="dashboard-shortcut"><div><b>${esc(item.title)}</b><span>${esc(faNum(item.detail))}</span></div>${item.key === 'backup-export' ? `<button type="button" class="secondary" data-onboarding-backup>${esc(item.action)}</button>` : `<button type="button" class="secondary" data-onboarding-tab="${esc(item.tab)}">${esc(item.action)}</button>`}</div>`).join('')}</div></div>`;
 }
@@ -2357,13 +2363,13 @@ function renderAccounting(customer) {
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
   const dailyReport = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), currentShift ? { shiftId: currentShift.id } : {});
   const selected = (value, current) => value === current ? 'selected' : '';
-  const shiftCaption = currentShift ? `گزارش به ${esc(currentShift.name)} با اپراتور ${esc(currentShift.operatorName)} از ${formatDate(currentShift.openedAt)} متصل است.` : 'شیفت بازی ثبت نشده؛ گزارش بر اساس امروز نمایش داده می‌شود.';
+  const shiftCaption = currentShift ? `گزارش از شروع روز کاری ${esc(currentShift.name)} با اپراتور ${esc(currentShift.operatorName)} از ${formatDate(currentShift.openedAt)} تا همین لحظه محاسبه می‌شود؛ حتی اگر بعد از نیمه‌شب باشد.` : 'روز کاری بازی ثبت نشده؛ گزارش بر اساس امروز تقویمی نمایش داده می‌شود.';
   const accountsContent = renderFinancialAccountPanel(customer);
   const accountCreateContent = renderFinancialAccountCreatePanel();
   const expensesContent = `<div class="expense-entry-grid"><form class="panel expense-panel expense-fixed-panel" id="expenseForm"><h2>ثبت هزینه عملیاتی</h2><div class="expense-document-row">${jalaliDateInput('documentDate', 'تاریخ سند')}<label>شماره سند<input name="documentNumber" value="" placeholder="مثلاً ۱۲۳"></label></div><label>عنوان هزینه<input name="title" value="تعمیر دستگاه اسپرسو"></label><label>دسته هزینه<select name="category">${expenseCategoryOptions('تعمیرات و نگهداری')}</select></label><label>توضیحات<textarea name="description" rows="2" class="expense-description" placeholder="توضیحات سند هزینه"></textarea></label><label>مبلغ${numInput('amount', 500000)}</label>${renderPaymentMetaFields(customer, { paymentMethod: 'نقدی' })}<button class="primary">ثبت هزینه</button></form>${renderPurchaseInvoicePanel(customer)}${renderOperationalExpenseList(customer)}</div>`;
   const chequesContent = renderChequeWarningsPanel(customer);
   const ledgerContent = `<div class="panel wide"><h2>دفتر مالی</h2><form id="accountingFilterForm" class="filter-form"><strong>فیلتر دفتر رویداد مالی</strong><label>نوع رویداد<select name="type"><option value="" ${selected('', accountingFilter.type)}>همه رویدادها</option><option value="revenue" ${selected('revenue', accountingFilter.type)}>درآمد</option><option value="cost" ${selected('cost', accountingFilter.type)}>قیمت تمام‌شده</option><option value="expense" ${selected('expense', accountingFilter.type)}>هزینه</option><option value="supplier-payment" ${selected('supplier-payment', accountingFilter.type)}>پرداخت تأمین‌کننده</option></select></label><label>بازه زمانی<select name="range"><option value="all" ${selected('all', accountingFilter.range)}>همه زمان‌ها</option><option value="today" ${selected('today', accountingFilter.range)}>امروز</option><option value="seven" ${selected('seven', accountingFilter.range)}>هفت روز اخیر</option><option value="thirty" ${selected('thirty', accountingFilter.range)}>سی روز اخیر</option></select></label><button class="secondary">اعمال فیلتر</button><button type="button" class="secondary" data-export-accounting-ledger>دریافت فایل دفتر مالی</button></form>${ledger.map(l=>`<div class="order-row"><b>${esc(ledgerTypeLabel(l.type))}</b><span>${money(l.amount)}${l.accountName ? ` — حساب: ${esc(l.accountName)}` : ''}${l.paymentMethod ? ` — روش: ${esc(l.paymentMethod)}` : ''}${l.chequeNumber ? ` — چک ${esc(l.chequeNumber)} سررسید ${esc(l.chequeDueDate)}` : ''}</span><em>${formatDate(l.createdAt)}</em></div>`).join('') || '<p>رویدادی با این فیلتر پیدا نشد.</p>'}</div>`;
-  const reportsContent = `<form class="panel shift-panel" id="shiftForm"><h2>شیفت صندوق</h2>${currentShift ? `<p><b>${esc(currentShift.name)}</b></p><p>اپراتور: ${esc(currentShift.operatorName)}</p><p>شروع: ${formatDate(currentShift.openedAt)}</p><button type="button" class="danger-button" data-close-shift="${currentShift.id}">بستن شیفت</button>` : `<label>نام شیفت<input name="name" value="شیفت صبح"></label><label>نام اپراتور<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">باز کردن شیفت</button>`}</form><div class="panel wide daily-closing-panel"><h2>گزارش بستن روز</h2><p>${shiftCaption}</p><p>خلاصه آماده پرینت برای پایان شیفت امروز؛ درآمد، قیمت تمام‌شده، هزینه‌ها، پرداخت تأمین‌کننده و هشدار کمبود موجودی را یکجا نشان می‌دهد.</p><div class="ledger"><div><span>درآمد امروز</span><b>${money(dailyReport.revenue)}</b></div><div><span>قیمت تمام‌شده امروز</span><b>${money(dailyReport.cost)}</b></div><div><span>هزینه امروز</span><b>${money(dailyReport.expenses)}</b></div><div><span>پرداخت تأمین‌کننده امروز</span><b>${money(dailyReport.supplierPayments)}</b></div><div class="total"><span>سود روز</span><b>${money(dailyReport.profit)}</b></div></div><div class="button-row">${actionDecalButton('print', 'data-print-daily-closing', 'daily-closing-print-decal', 'پرینت گزارش بستن روز')}<button type="button" class="secondary" data-export-daily-closing>دریافت فایل گزارش بستن روز</button></div></div>`;
+  const reportsContent = `<form class="panel shift-panel" id="shiftForm"><h2>روز کاری صندوق</h2>${currentShift ? `<p><b>${esc(currentShift.name)}</b></p><p>اپراتور: ${esc(currentShift.operatorName)}</p><p>شروع: ${formatDate(currentShift.openedAt)}</p><button type="button" class="danger-button" data-close-shift="${currentShift.id}">بستن حساب روز</button>` : `<label>نام شیفت<input name="name" value="شیفت صبح"></label><label>نام اپراتور<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">شروع روز کاری</button>`}</form><div class="panel wide daily-closing-panel"><h2>بستن حساب روز کاری</h2><p>${shiftCaption}</p><p>خلاصه آماده پرینت برای پایان روز کاری؛ فروش از شروع روز کاری تا لحظه بستن حساب جمع می‌شود، حتی اگر بستن بعد از نیمه‌شب انجام شود.</p><div class="ledger"><div><span>جمع فروش آیتم‌ها</span><b>${money(dailyReport.subtotal)}</b></div><div><span>مالیات</span><b>${money(dailyReport.taxTotal)}</b></div><div><span>حق سرویس</span><b>${money(dailyReport.serviceChargeTotal)}</b></div><div class="total"><span>جمع کل فروش</span><b>${money(dailyReport.grandTotal)}</b></div></div><div class="daily-closing-category-preview"><h3>تفکیک دسته‌بندی منو</h3><table class="purchase-invoice-print-table daily-closing-category-table"><thead><tr><th>دسته‌بندی</th><th>تعداد</th><th>مبلغ فروش</th></tr></thead><tbody>${dailyClosingCategoryRows(dailyReport)}</tbody></table></div><div class="button-row">${actionDecalButton('print', 'data-print-daily-closing', 'daily-closing-print-decal', 'پرینت بستن حساب روز کاری')}<button type="button" class="secondary" data-export-daily-closing>دریافت فایل بستن حساب روز کاری</button></div></div>`;
   const tabContent = { accounts: accountsContent, expenses: expensesContent, cheques: chequesContent, ledger: ledgerContent, reports: reportsContent }[accountingSubTab] || accountsContent;
   const topPanels = accountingSubTab === 'accounts' ? `<div class="accounting-top-grid"><div class="panel accounting-summary-panel"><h2>خلاصه حسابداری</h2><div class="ledger"><div><span>درآمد</span><b>${money(summary.revenue)}</b></div><div><span>قیمت تمام‌شده</span><b>${money(summary.cost)}</b></div><div><span>هزینه‌ها</span><b>${money(summary.expenses)}</b></div><div><span>چک‌های هشدار</span><b>${money(summary.chequeWarningsAmount || 0)}</b></div><div class="total"><span>سود</span><b>${money(summary.profit)}</b></div></div></div>${accountCreateContent}</div>` : '';
   return `<section class="workspace accounting-workspace">${renderAccountingSubNav()}${topPanels}${tabContent}</section>`;

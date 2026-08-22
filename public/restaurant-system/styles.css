@@ -1477,3 +1477,6 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* Order status / paid panels stay compact: about five rows then scroll. */
 .order-status-panel,.paid-orders-panel{overflow:hidden!important}.order-panel-scroll{display:grid;gap:10px;max-height:390px;overflow-y:auto;overflow-x:hidden;padding:2px 6px 4px;scrollbar-width:thin}.order-panel-scroll::-webkit-scrollbar{width:7px}.order-panel-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--primary) 32%,transparent);border-radius:10px}
+
+/* Workday closing report: category sales and final tax/total summary. */
+.daily-closing-category-preview{margin-top:14px;display:grid;gap:10px}.daily-closing-category-table{width:100%;border-collapse:collapse}.daily-closing-category-table th,.daily-closing-category-table td{text-align:center;padding:8px 10px;border:1px solid var(--border,#dfe7ee)}.daily-closing-category-table th{background:color-mix(in srgb,var(--primary) 12%,var(--surface));font-weight:950}.daily-closing-sheet .daily-closing-category-table th,.daily-closing-sheet .daily-closing-category-table td{border-color:#d7dee8;color:#102033}

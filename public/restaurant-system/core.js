@@ -2589,28 +2589,81 @@
     }
     const from = shift ? new Date(shift.openedAt) : new Date(day);
     if (!shift) from.setHours(0, 0, 0, 0);
-    const to = shift ? new Date(shift.closedAt || new Date()) : new Date(day);
-    if (!shift) to.setHours(23, 59, 59, 999);
+    const to = shift ? new Date(shift.closedAt || options.toDate || new Date()) : new Date(options.toDate || day);
+    if (!shift && !options.toDate) to.setHours(23, 59, 59, 999);
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
     const entries = getAccountingLedger(state, customerId, { fromDate: from.toISOString(), toDate: to.toISOString() });
     const totalByType = (type) => entries.filter((entry) => entry.type === type).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
-    const revenue = totalByType('revenue');
     const cost = totalByType('cost');
     const expenses = totalByType('expense');
     const supplierPayments = totalByType('supplier-payment');
-    const orders = state.orders.filter((order) => {
+    const menuItemById = new Map((state.menuItems || []).filter((item) => item.customerId === customerId).map((item) => [item.id, item]));
+    const finalOrderTotal = (order) => Number(order.grandTotal ?? Math.max(0, Math.round(Number(order.subtotal ?? order.total ?? 0) - Number(order.discountTotal || 0) + Number(order.taxTotal || 0) + Number(order.serviceChargeTotal || 0))));
+    const reportablePaidAmount = (order) => {
+      const posStatus = normalizePosStatus(order.posStatus);
+      if (order.posStatus && ['paid', 'partially-paid'].includes(posStatus)) return Math.min(finalOrderTotal(order), Math.round(Number(order.paidTotal || 0)));
+      return finalOrderTotal(order);
+    };
+    const paidRatio = (order) => {
+      const finalTotal = finalOrderTotal(order);
+      if (!finalTotal) return 0;
+      return Math.min(1, reportablePaidAmount(order) / finalTotal);
+    };
+    const orders = (state.orders || []).filter((order) => {
       const createdAt = new Date(order.createdAt).getTime();
-      return order.customerId === customerId && createdAt >= from.getTime() && createdAt <= to.getTime();
+      if (order.customerId !== customerId || createdAt < fromMs || createdAt > toMs) return false;
+      if (!order.posStatus) return true;
+      return reportablePaidAmount(order) > 0;
     });
+    const categoryMap = new Map();
+    let subtotal = 0;
+    let taxTotal = 0;
+    let serviceChargeTotal = 0;
+    let discountTotal = 0;
+    let revenue = 0;
+    orders.forEach((order) => {
+      const ratio = paidRatio(order) || 0;
+      const orderSubtotal = Math.round(Number(order.subtotal ?? order.total ?? 0) * ratio);
+      const orderTax = Math.round(Number(order.taxTotal || 0) * ratio);
+      const orderService = Math.round(Number(order.serviceChargeTotal || 0) * ratio);
+      const orderDiscount = Math.round(Number(order.discountTotal || 0) * ratio);
+      const orderRevenue = reportablePaidAmount(order);
+      subtotal += orderSubtotal;
+      taxTotal += orderTax;
+      serviceChargeTotal += orderService;
+      discountTotal += orderDiscount;
+      revenue += orderRevenue;
+      (order.lines || []).forEach((line) => {
+        const item = menuItemById.get(line.itemId || line.productId);
+        const category = cleanPersianText(item?.category || line.category || 'بدون دسته‌بندی') || 'بدون دسته‌بندی';
+        const fullQty = Number(line.qty ?? line.quantity ?? 0);
+        const qty = order.posStatus && Number(line.paidQty || line.paidQuantity || 0) > 0 ? Number(line.paidQty || line.paidQuantity || 0) : Number((fullQty * ratio).toFixed(3));
+        const unitPrice = Number(line.unitPrice || line.price || line.unitPriceSnapshot || 0);
+        const lineAmount = Math.round(unitPrice * qty);
+        const current = categoryMap.get(category) || { category, quantity: 0, subtotal: 0 };
+        current.quantity = Number((current.quantity + qty).toFixed(3));
+        current.subtotal += lineAmount;
+        categoryMap.set(category, current);
+      });
+    });
+    const categorySales = [...categoryMap.values()].sort((a, b) => b.subtotal - a.subtotal || a.category.localeCompare(b.category, 'fa-IR'));
     return {
       date: from.toISOString(),
       fromDate: from.toISOString(),
       toDate: to.toISOString(),
       revenue,
+      subtotal,
+      taxTotal,
+      serviceChargeTotal,
+      discountTotal,
+      grandTotal: revenue,
       cost,
       expenses,
       supplierPayments,
       profit: revenue - cost - expenses,
       orderCount: orders.length,
+      categorySales,
       lowStockWarnings: getLowStockItems(state, customerId),
       entries,
       shift: shift ? cloneJson(shift) : null,
