@@ -13,11 +13,11 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const managerSession = await getManagerSession();
   const supabase = await createClient();
   const { data: authData, error: authError } = await supabase.auth.getUser();
-
-  if ((authError || !authData.user) && !managerSession) redirect('/login');
-
   const staffLogin = params?.staffLogin === '1' || params?.staff === '1';
-  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=hall-picker-solid-centered-94`;
+
+  if ((authError || !authData.user) && !managerSession && !staffLogin) redirect('/login');
+
+  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=staff-login-route-95`;
 
   return (
     <main dir="rtl" className="min-h-screen bg-[#05070d] text-white">

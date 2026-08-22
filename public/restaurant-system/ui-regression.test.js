@@ -131,7 +131,8 @@ const restaurantStateApiSource = fs.readFileSync(path.join(root, '..', '..', 'ap
 const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'reset-password', 'page.tsx'), 'utf8');
 const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
-mustContain(dashboardSource, 'hall-picker-solid-centered-94', 'Dashboard iframe cache-bust token must match the solid centered table picker fix.');
+mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
+mustContain(dashboardSource, 'staff-login-route-95', 'Dashboard iframe cache-bust token must match the staff login route fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
