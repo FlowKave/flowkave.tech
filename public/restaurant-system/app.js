@@ -1805,12 +1805,20 @@ function renderHallSales(customer) {
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
 
+function renderHallServiceChargeControls(order) {
+  const mode = order.serviceChargeMode || '';
+  const percentValue = mode === 'percent' ? order.serviceChargePercent || 0 : 0;
+  const amountValue = mode === 'amount' ? order.serviceChargeAmount || order.serviceChargeTotal || 0 : 0;
+  return `<div class="hall-service-charge-box" data-hall-service-charge-box><h3>حق سرویس</h3><div class="hall-service-charge-controls"><label><span>محاسبه درصدی</span><input type="radio" name="serviceMode" value="percent" ${mode === 'percent' ? 'checked' : ''}><input name="servicePercent" data-number inputmode="decimal" value="${numberText(percentValue,2)}" aria-label="درصد حق سرویس"><b>٪</b></label><label><span>مبلغ دستی</span><input type="radio" name="serviceMode" value="amount" ${mode === 'amount' ? 'checked' : ''}><input name="serviceAmount" data-number data-money inputmode="decimal" value="${numberText(amountValue,0)}" aria-label="مبلغ حق سرویس"><b>تومان</b></label><button type="button" class="secondary" data-clear-service-charge>حذف حق سرویس</button></div><small>این قسمت داخل پرداخت میز است و صندوق‌دار هم می‌تواند درصد یا مبلغ حق سرویس را وارد کند.</small></div>`;
+}
+
 function renderHallPaymentPanel(order) {
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
   const paid = order.payments || [];
   const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b>${money(order.grandTotal || order.total)}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b>${money(order.remainingTotal ?? order.total)}</b></div></div><div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b>${money(order.grandTotal || order.total)}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
 }
+
 
 function collectSaleLines(form) {
   return [...form.querySelectorAll('[data-sale-row]')]
@@ -3190,18 +3198,43 @@ function bindCommon() {
     selectAll.checked = lineChecks.length > 0 && lineChecks.every(ch => ch.checked);
     selectAll.indeterminate = lineChecks.some(ch => ch.checked) && !selectAll.checked;
   };
+  const applyHallServiceChargeFromForm = () => {
+    if (!hallPaymentFormLive || !RestaurantCore.setOrderServiceCharge) return null;
+    const f = new FormData(hallPaymentFormLive);
+    return RestaurantCore.setOrderServiceCharge(state, customer.id, hallPaymentFormLive.dataset.orderId, {
+      serviceMode: f.get('serviceMode') || '',
+      servicePercent: parseFaNumber(f.get('servicePercent') || 0),
+      serviceAmount: parseFaNumber(f.get('serviceAmount') || 0),
+    });
+  };
   const refreshHallPaymentPreview = () => {
 
     const orderId = hallPaymentFormLive.dataset.orderId;
     const selected = [...hallPaymentFormLive.querySelectorAll('[data-hall-pay-line]:checked')].map(ch => ({ lineId: ch.value, qty: parseFaNumber(hallPaymentFormLive.querySelector(`[name="qty:${CSS.escape(ch.value)}"]`)?.value || 0) }));
-    try { const preview = RestaurantCore.previewOrderPayment(state, customer.id, orderId, selected); hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = `مبلغ انتخاب‌شده: ${money(preview.finalAmount)} — جمع اقلام: ${money(preview.itemSubtotal)} — سهم تخفیف: ${money(preview.discountShare)} — سهم مالیات: ${money(preview.taxShare)} — سهم حق سرویس: ${money(preview.serviceChargeShare)}`; } catch { hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = 'برای محاسبه، یک یا چند قلم با تعداد معتبر انتخاب کنید.'; }
+    try { applyHallServiceChargeFromForm(); const preview = RestaurantCore.previewOrderPayment(state, customer.id, orderId, selected); hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = `مبلغ انتخاب‌شده: ${money(preview.finalAmount)} — جمع اقلام: ${money(preview.itemSubtotal)} — سهم تخفیف: ${money(preview.discountShare)} — سهم مالیات: ${money(preview.taxShare)} — سهم حق سرویس: ${money(preview.serviceChargeShare)}`; saveState(); } catch { hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = 'برای محاسبه، یک یا چند قلم با تعداد معتبر انتخاب کنید.'; }
   };
   if (hallPaymentFormLive) {
     hallPaymentFormLive.addEventListener('input', refreshHallPaymentPreview);
     hallPaymentFormLive.addEventListener('change', (event) => {
+      if (event.target.matches('[data-clear-service-charge]')) {
+        hallPaymentFormLive.querySelectorAll('[name="serviceMode"]').forEach(input => { input.checked = false; });
+        const percent = hallPaymentFormLive.querySelector('[name="servicePercent"]');
+        const amount = hallPaymentFormLive.querySelector('[name="serviceAmount"]');
+        if (percent) percent.value = numberText(0, 2);
+        if (amount) amount.value = numberText(0, 0);
+      }
       if (event.target.matches('[data-hall-pay-all]')) hallPaymentFormLive.querySelectorAll('[data-hall-pay-line]').forEach(ch => { ch.checked = event.target.checked; });
       updateHallPaymentSelectAllState();
       refreshHallPaymentPreview();
+    });
+    hallPaymentFormLive.querySelector('[data-clear-service-charge]')?.addEventListener('click', () => {
+      hallPaymentFormLive.querySelectorAll('[name="serviceMode"]').forEach(input => { input.checked = false; });
+      const percent = hallPaymentFormLive.querySelector('[name="servicePercent"]');
+      const amount = hallPaymentFormLive.querySelector('[name="serviceAmount"]');
+      if (percent) percent.value = numberText(0, 2);
+      if (amount) amount.value = numberText(0, 0);
+      refreshHallPaymentPreview();
+      render();
     });
     updateHallPaymentSelectAllState();
     refreshHallPaymentPreview();
@@ -3564,7 +3597,7 @@ function bindCommon() {
       if (!tableId) throw new Error('اول میز را انتخاب کنید');
       const lines = collectHallSaleLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
-      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: customer.posChargeSettings || {} });
+      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
       delete hallOrderDrafts[tableId];
       notifyLowStock(order);
       return order;

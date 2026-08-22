@@ -2134,8 +2134,10 @@
     return {
       vatEnabled: Boolean(input.vatEnabled),
       vatPercent: normalizePercent(input.vatPercent),
-      serviceEnabled: Boolean(input.serviceEnabled),
-      servicePercent: normalizePercent(input.servicePercent),
+      serviceEnabled: false,
+      servicePercent: 0,
+      serviceAmount: 0,
+      serviceMode: '',
     };
   }
 
@@ -2153,7 +2155,12 @@
       if (order.customerId !== customerId || !order.hallSale) return;
       const posStatus = normalizePosStatus(order.posStatus);
       if (posStatus === 'paid' || Number(order.remainingTotal || 0) <= 0) return;
-      applyOrderChargeSettings(order, settings);
+      applyOrderChargeSettings(order, {
+        ...settings,
+        serviceMode: order.serviceChargeMode || '',
+        servicePercent: order.serviceChargeMode === 'percent' ? order.serviceChargePercent || 0 : 0,
+        serviceAmount: order.serviceChargeMode === 'amount' ? order.serviceChargeAmount || order.serviceChargeTotal || 0 : 0,
+      });
     });
   }
 
@@ -2162,20 +2169,46 @@
     return normalizePosChargeSettings(customer.posChargeSettings || {});
   }
 
+  function normalizeOrderServiceChargeInput(input = {}) {
+    const mode = input.serviceMode === 'amount' ? 'amount' : (input.serviceMode === 'percent' ? 'percent' : '');
+    const percent = normalizePercent(input.servicePercent);
+    const amount = Math.max(0, Math.round(Number(input.serviceAmount || 0)));
+    return { serviceMode: mode, servicePercent: mode === 'percent' ? percent : 0, serviceAmount: mode === 'amount' ? amount : 0 };
+  }
+
   function applyOrderChargeSettings(order, settings = {}) {
     const normalized = normalizePosChargeSettings(settings);
     const subtotal = Math.round(Number(order.subtotal ?? order.total ?? 0));
+    const service = normalizeOrderServiceChargeInput({
+      serviceMode: settings.serviceMode ?? order.serviceChargeMode,
+      servicePercent: settings.servicePercent ?? order.serviceChargePercent,
+      serviceAmount: settings.serviceAmount ?? order.serviceChargeAmount,
+    });
     order.subtotal = subtotal;
     order.taxEnabled = normalized.vatEnabled;
     order.taxPercent = normalized.vatEnabled ? normalized.vatPercent : 0;
-    order.serviceChargeEnabled = normalized.serviceEnabled;
-    order.serviceChargePercent = normalized.serviceEnabled ? normalized.servicePercent : 0;
     order.taxTotal = normalized.vatEnabled ? Math.round(subtotal * normalized.vatPercent / 100) : 0;
-    order.serviceChargeTotal = normalized.serviceEnabled ? Math.round(subtotal * normalized.servicePercent / 100) : 0;
+    order.serviceChargeMode = service.serviceMode;
+    order.serviceChargePercent = service.serviceMode === 'percent' ? service.servicePercent : 0;
+    order.serviceChargeAmount = service.serviceMode === 'amount' ? service.serviceAmount : 0;
+    order.serviceChargeEnabled = Boolean(service.serviceMode);
+    order.serviceChargeTotal = service.serviceMode === 'percent' ? Math.round(subtotal * service.servicePercent / 100) : (service.serviceMode === 'amount' ? service.serviceAmount : 0);
     order.discountTotal = Math.round(Number(order.discountTotal || 0));
     order.grandTotal = Math.max(0, Math.round(subtotal - order.discountTotal + order.taxTotal + order.serviceChargeTotal));
     order.remainingTotal = Math.max(0, Math.round(order.grandTotal - Number(order.paidTotal || 0)));
     return order;
+  }
+
+  function setOrderServiceCharge(state, customerId, orderId, input = {}) {
+    requireCustomer(state, customerId);
+    const order = (state.orders || []).find((item) => item.id === orderId && item.customerId === customerId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (normalizePosStatus(order.posStatus) === 'paid') throw new Error('ORDER_ALREADY_PAID');
+    const service = normalizeOrderServiceChargeInput(input);
+    order.serviceChargeMode = service.serviceMode;
+    order.serviceChargePercent = service.servicePercent;
+    order.serviceChargeAmount = service.serviceAmount;
+    return cloneJson(applyOrderChargeSettings(order, { ...getPosChargeSettings(state, customerId), ...service }));
   }
 
   function applyPaymentChargeShares(order, allocations) {
@@ -2658,6 +2691,7 @@
     setPosChargeSettings,
     reapplyPosChargeSettingsToOpenOrders,
     applyOrderChargeSettings,
+    setOrderServiceCharge,
     roleLabel,
     getRolePermissions,
     canAccess,
