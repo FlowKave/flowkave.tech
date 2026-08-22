@@ -1083,9 +1083,10 @@ function publicReceiptCustomerId() {
   return match ? decodeURIComponent(match[1]) : null;
 }
 function resolvePublicReceiptCustomerId() {
+  if (!location.hash.startsWith('#receipt/')) return null;
   const hashCustomerId = publicReceiptCustomerId();
   if (hashCustomerId && state.customers?.some(customer => customer.id === hashCustomerId)) return hashCustomerId;
-  if (publicTenantId) {
+  if (hashCustomerId && publicTenantId) {
     const customer = state.customers?.find(customer => customer.portalTenantId === publicTenantId);
     if (customer) return customer.id;
   }
@@ -1097,7 +1098,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-receipt-persistent-114');
+  url.searchParams.set('v', 'qr-receipt-route-fix-115');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1141,7 +1142,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-receipt-persistent-114');
+  url.searchParams.set('v', 'qr-receipt-route-fix-115');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
