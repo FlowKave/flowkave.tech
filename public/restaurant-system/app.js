@@ -3503,7 +3503,7 @@ function bindCommon() {
     },
     hallTableConfigForm: (f) => {
       const tables = RestaurantCore.configureHallTables(state, customer.id, { count: parseFaNumber(f.get('count')), prefix: cleanPersianText(f.get('prefix') || 'میز'), startNumber: parseFaNumber(f.get('startNumber')) || 1, customNames: String(f.get('customNames') || '').split(/[،,\n]/).map(x => cleanPersianText(x)).filter(Boolean) });
-      selectedHallTableId = tables[0]?.id || '';
+      selectedHallTableId = '';
       hallTablePickerOpen = false;
       hallTableConfigOpen = false;
       return tables;
