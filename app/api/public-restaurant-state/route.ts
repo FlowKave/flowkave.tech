@@ -22,14 +22,57 @@ function badRequest(error: string) {
 function mergeArrayById(existing: any[] = [], incoming: any[] = []) {
   const byId = new Map<string, any>();
   for (const item of existing || []) if (item?.id) byId.set(String(item.id), item);
-  for (const item of incoming || []) if (item?.id) byId.set(String(item.id), item);
+  for (const item of incoming || []) if (item?.id) byId.set(String(item.id), { ...(byId.get(String(item.id)) || {}), ...item });
+  return Array.from(byId.values());
+}
+
+function timeValue(value: any) {
+  const ms = new Date(value || 0).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function orderFreshness(order: any) {
+  return Math.max(
+    timeValue(order?.updatedAt),
+    timeValue(order?.statusUpdatedAt),
+    timeValue(order?.completedAt),
+    timeValue(order?.paidAt),
+    ...(Array.isArray(order?.payments) ? order.payments.map((payment: any) => timeValue(payment?.confirmedAt || payment?.createdAt)) : [0]),
+    timeValue(order?.createdAt),
+  );
+}
+
+function mergeOrder(existing: any, incoming: any) {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  const existingPaid = existing?.posStatus === 'paid' || Number(existing?.remainingTotal || 0) === 0;
+  const incomingPaid = incoming?.posStatus === 'paid' || Number(incoming?.remainingTotal || 0) === 0;
+  const preferIncoming = (incomingPaid && !existingPaid) || orderFreshness(incoming) >= orderFreshness(existing);
+  const base = preferIncoming ? { ...existing, ...incoming } : { ...incoming, ...existing };
+  base.lines = mergeArrayById(existing.lines || [], incoming.lines || []);
+  base.payments = mergeArrayById(existing.payments || [], incoming.payments || []);
+  base.paymentAllocations = mergeArrayById(existing.paymentAllocations || [], incoming.paymentAllocations || []);
+  if (incomingPaid || existingPaid) {
+    base.posStatus = 'paid';
+    base.remainingTotal = 0;
+    base.status = 'completed';
+    base.completedAt = incoming.completedAt || existing.completedAt || incoming.statusUpdatedAt || existing.statusUpdatedAt || new Date().toISOString();
+  }
+  return base;
+}
+
+function mergeOrders(existing: any[] = [], incoming: any[] = []) {
+  const byId = new Map<string, any>();
+  for (const order of existing || []) if (order?.id) byId.set(String(order.id), order);
+  for (const order of incoming || []) if (order?.id) byId.set(String(order.id), mergeOrder(byId.get(String(order.id)), order));
   return Array.from(byId.values());
 }
 
 function mergePublicRestaurantState(existingState: any, incomingState: any) {
   if (!existingState || typeof existingState !== 'object') return incomingState;
   const merged = { ...existingState, ...incomingState };
-  for (const key of ['orders', 'shifts', 'ledger', 'restaurantTables']) {
+  merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : []);
+  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }
   delete merged.sessions;

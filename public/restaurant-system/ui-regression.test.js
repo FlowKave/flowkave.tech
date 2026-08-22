@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=public-paid-sync-version-120');
-mustContain(html, 'core.js?v=public-paid-sync-version-120');
-mustContain(html, 'app.js?v=public-paid-sync-version-120');
-mustContain(html, 'core.js?v=public-paid-sync-version-120');
+mustContain(html, 'styles.css?v=public-order-merge-fix-121');
+mustContain(html, 'core.js?v=public-order-merge-fix-121');
+mustContain(html, 'app.js?v=public-order-merge-fix-121');
+mustContain(html, 'core.js?v=public-order-merge-fix-121');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));', 'وضعیت سفارشات و پرداخت شده باید فقط بازه روز کاری فعلی را نشان دهند.');
@@ -194,7 +194,11 @@ mustContain(styles, 'max-height:390px', 'ارتفاع وضعیت سفارشات 
 mustContain(publicRestaurantStateApiSource, "from('restaurant_states')", 'endpoint عمومی QR باید state آنلاین رستوران را از جدول restaurant_states بخواند/بنویسد.');
 mustContain(publicRestaurantStateApiSource, 'tenantIdFrom(request)', 'endpoint عمومی QR باید tenantId لینک QR را لازم داشته باشد.');
 mustContain(publicRestaurantStateApiSource, 'function mergePublicRestaurantState', 'ذخیره سفارش از QR/تبلت نباید state جدید صندوق را کورکورانه overwrite کند.');
-mustContain(publicRestaurantStateApiSource, "for (const key of ['orders', 'shifts', 'ledger', 'restaurantTables'])", 'endpoint عمومی باید سفارش‌ها، روز کاری صندوق، ledger و میزهای موجود سرور را با state تبلت merge کند.');
+mustContain(publicRestaurantStateApiSource, 'function mergeOrders', 'endpoint عمومی باید سفارش‌های تبلت را order-aware با سفارش‌های سرور merge کند.');
+mustContain(publicRestaurantStateApiSource, 'function mergeOrder', 'merge سفارش باید پرداخت‌ها و وضعیت paid را از تبلت به صندوق منتقل کند.');
+mustContain(publicRestaurantStateApiSource, "base.posStatus = 'paid';", 'اگر سفارش در تبلت paid شد، نسخه merge‌شده روی سرور هم باید paid شود تا میز در صندوق آزاد شود.');
+mustContain(publicRestaurantStateApiSource, 'base.payments = mergeArrayById', 'پرداخت‌های سفارش باید در merge عمومی حفظ و منتقل شوند.');
+mustContain(publicRestaurantStateApiSource, "for (const key of ['shifts', 'ledger', 'restaurantTables'])", 'endpoint عمومی باید روز کاری صندوق، ledger و میزهای موجود سرور را با state تبلت merge کند.');
 mustContain(publicRestaurantStateApiSource, 'existingRow?.state', 'PUT عمومی باید قبل از upsert state فعلی سرور را بخواند تا سفارش تبلت با سفارش‌های صندوق merge شود.');
 mustContain(publicRestaurantStateApiSource, 'const version = Date.now();', 'پرداخت/سفارش تبلت نباید با updatedAt قدیمی ذخیره شود؛ سرور باید revision تازه بسازد تا صندوق حتماً pull کند.');
 assert(!publicRestaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint عمومی QR نباید version قدیمی تبلت را به عنوان revision سرور قبول کند.');
@@ -275,7 +279,7 @@ const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app
 const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'public-paid-sync-version-120', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'public-order-merge-fix-121', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -393,7 +397,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=public-paid-sync-version-120') && index.includes('core.js?v=public-paid-sync-version-120') && index.includes('app.js?v=public-paid-sync-version-120'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=public-order-merge-fix-121') && index.includes('core.js?v=public-order-merge-fix-121') && index.includes('app.js?v=public-order-merge-fix-121'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
