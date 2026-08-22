@@ -836,11 +836,12 @@ function dailyClosingCategoryRows(report) {
   return (report.categorySales || []).map(row => `<tr><td>${esc(row.category)}</td><td>${numberText(row.quantity, 2)}</td><td>${money(row.subtotal)}</td></tr>`).join('') || '<tr><td colspan="3">فروشی در این بازه ثبت نشده است.</td></tr>';
 }
 
-function showDailyClosingPrintPreview() {
+function showDailyClosingPrintPreview(options = {}) {
   const customer = currentCustomer();
   if (!customer) return;
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
-  const report = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), currentShift ? { shiftId: currentShift.id } : {});
+  const shiftId = options.shiftId || currentShift?.id || '';
+  const report = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), shiftId ? { shiftId } : {});
   document.querySelector('#dailyClosingModalRoot')?.remove();
   const modal = document.createElement('div');
   modal.id = 'dailyClosingModalRoot';
@@ -1105,7 +1106,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'workday-closing-categories-117');
+  url.searchParams.set('v', 'pos-workday-closing-118');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1149,7 +1150,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'workday-closing-categories-117');
+  url.searchParams.set('v', 'pos-workday-closing-118');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1976,6 +1977,16 @@ function collectSaleLines(form) {
     .filter(x => x.itemId && x.qty > 0);
 }
 
+
+function renderPosWorkdayClosingPanel(customer) {
+  const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
+  const dailyReport = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), currentShift ? { shiftId: currentShift.id } : {});
+  if (!currentShift) {
+    return `<div class="panel wide pos-workday-closing-panel"><div class="section-title"><h2>بستن حساب روز کاری</h2><span class="badge">بدون روز کاری باز</span></div><p>برای اینکه صندوق‌دار آخر شب بتواند حساب را ببندد، اول روز کاری صندوق را از همین‌جا شروع کن.</p><form id="posShiftForm" class="pos-workday-start-form"><label>نام روز کاری<input name="name" value="روز کاری صندوق"></label><label>نام صندوق‌دار<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">شروع روز کاری</button></form></div>`;
+  }
+  return `<div class="panel wide pos-workday-closing-panel"><div class="section-title"><h2>بستن حساب روز کاری</h2><span class="badge">باز از ${formatDate(currentShift.openedAt)}</span></div><p>صندوق‌دار می‌تواند بعد از پایان کار، حتی بعد از نیمه‌شب، حساب همین روز کاری را ببندد و گزارش دسته‌بندی/مالیات/جمع کل را پرینت بگیرد.</p><div class="ledger"><div><span>جمع فروش آیتم‌ها</span><b>${money(dailyReport.subtotal)}</b></div><div><span>مالیات</span><b>${money(dailyReport.taxTotal)}</b></div><div><span>حق سرویس</span><b>${money(dailyReport.serviceChargeTotal)}</b></div><div class="total"><span>جمع کل فروش</span><b>${money(dailyReport.grandTotal)}</b></div></div><div class="button-row"><button type="button" class="secondary" data-print-pos-workday-closing="${esc(currentShift.id)}">پیش‌نمایش/پرینت گزارش</button><button type="button" class="danger-button" data-close-pos-workday="${esc(currentShift.id)}">بستن حساب روز و پرینت</button></div></div>`;
+}
+
 function renderSales(customer) {
   if (posSalesChannel !== 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}<h2>${posSalesChannel === 'delivery' ? 'دلیوری' : 'اسنپ‌فود'}</h2><p>در این مرحله فقط ورودی مستقل این بخش آماده شده و منطق آن در فاز بعد پیاده‌سازی می‌شود.</p></div></section>`;
   const hall = renderHallSales(customer);
@@ -1987,7 +1998,7 @@ function renderSales(customer) {
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
   const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div></div>`;
   const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p><div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارش پرداخت‌شده‌ای وجود ندارد.</p>'}</div></div>`;
-  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${paidPanel}${statusPanel}</section>`;
+  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div>${renderPosWorkdayClosingPanel(customer)}<div class="panel wide pos-hall-shell">${hall}</div>${paidPanel}${statusPanel}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
   const paymentSelected = value => (editingOrder?.paymentMethod || 'card') === value ? 'selected' : '';
@@ -3125,7 +3136,13 @@ function bindCommon() {
     downloadTextFile(`رویدادهای-امنیتی-${Date.now()}.json`, JSON.stringify(exportData, null, 2));
   });
   const dailyClosingButton = document.querySelector('[data-print-daily-closing]');
-  if (dailyClosingButton) dailyClosingButton.addEventListener('click', showDailyClosingPrintPreview);
+  if (dailyClosingButton) dailyClosingButton.addEventListener('click', () => showDailyClosingPrintPreview());
+  document.querySelectorAll('[data-print-pos-workday-closing]').forEach(btn => btn.addEventListener('click', () => showDailyClosingPrintPreview({ shiftId: btn.dataset.printPosWorkdayClosing })));
+  document.querySelectorAll('[data-close-pos-workday]').forEach(btn => btn.addEventListener('click', () => {
+    if (!confirm('حساب این روز کاری بسته شود و گزارش پرینت باز شود؟')) return;
+    try { const shiftId = btn.dataset.closePosWorkday; RestaurantCore.closeCashierShift(state, customer.id, shiftId); saveState(); render(); showDailyClosingPrintPreview({ shiftId }); }
+    catch (err) { alert(err.message === 'SHIFT_NOT_FOUND' ? 'روز کاری پیدا نشد' : err.message); }
+  }));
   const inventoryPrintButton = document.querySelector('[data-print-inventory]');
   if (inventoryPrintButton) inventoryPrintButton.addEventListener('click', showInventoryPrintPreview);
   const printableMenuButton = document.querySelector('[data-printable-menu]');
@@ -3797,6 +3814,7 @@ function bindCommon() {
     financialAccountForm: (f) => RestaurantCore.createFinancialAccount(state, customer.id, { name: cleanPersianText(f.get('name')), type: f.get('type'), openingBalance: parseFaNumber(f.get('openingBalance')) }),
     expenseForm: (f) => RestaurantCore.addExpense(state, customer.id, f.get('title'), parseFaNumber(f.get('amount')), { documentDate: f.get('documentDate'), documentNumber: f.get('documentNumber'), description: f.get('description'), category: f.get('category'), paymentMethod: f.get('paymentMethod'), accountId: f.get('accountId'), chequeNumber: f.get('chequeNumber'), chequeDueDate: f.get('chequeDueDate') }),
     shiftForm: (f) => RestaurantCore.openCashierShift(state, customer.id, { name: cleanPersianText(f.get('name')), operatorName: f.get('operatorName') }),
+    posShiftForm: (f) => RestaurantCore.openCashierShift(state, customer.id, { name: cleanPersianText(f.get('name')), operatorName: f.get('operatorName') }),
     packageForm: (f) => RestaurantCore.setPackage(state, customer.id, f.get('packageName')),
   };
   for (const [id, fn] of Object.entries(handlers)) {

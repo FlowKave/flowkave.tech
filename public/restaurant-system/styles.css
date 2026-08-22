@@ -1480,3 +1480,6 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* Workday closing report: category sales and final tax/total summary. */
 .daily-closing-category-preview{margin-top:14px;display:grid;gap:10px}.daily-closing-category-table{width:100%;border-collapse:collapse}.daily-closing-category-table th,.daily-closing-category-table td{text-align:center;padding:8px 10px;border:1px solid var(--border,#dfe7ee)}.daily-closing-category-table th{background:color-mix(in srgb,var(--primary) 12%,var(--surface));font-weight:950}.daily-closing-sheet .daily-closing-category-table th,.daily-closing-sheet .daily-closing-category-table td{border-color:#d7dee8;color:#102033}
+
+/* Cashier-facing workday closing panel inside POS. */
+.pos-workday-closing-panel{background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,var(--surface)),var(--surface))!important}.pos-workday-start-form{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto;gap:12px;align-items:end}.pos-workday-closing-panel .button-row{justify-content:flex-start;gap:10px;flex-wrap:wrap}@media(max-width:760px){.pos-workday-start-form{grid-template-columns:1fr}.pos-workday-closing-panel .button-row button{width:100%}}
