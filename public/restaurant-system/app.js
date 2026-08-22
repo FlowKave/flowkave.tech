@@ -1106,7 +1106,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'pos-workday-closing-118');
+  url.searchParams.set('v', 'pos-workday-scope-sync-119');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1150,7 +1150,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'pos-workday-closing-118');
+  url.searchParams.set('v', 'pos-workday-scope-sync-119');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1982,9 +1982,19 @@ function renderPosWorkdayClosingPanel(customer) {
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
   const dailyReport = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), currentShift ? { shiftId: currentShift.id } : {});
   if (!currentShift) {
-    return `<div class="panel wide pos-workday-closing-panel"><div class="section-title"><h2>بستن حساب روز کاری</h2><span class="badge">بدون روز کاری باز</span></div><p>برای اینکه صندوق‌دار آخر شب بتواند حساب را ببندد، اول روز کاری صندوق را از همین‌جا شروع کن.</p><form id="posShiftForm" class="pos-workday-start-form"><label>نام روز کاری<input name="name" value="روز کاری صندوق"></label><label>نام صندوق‌دار<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">شروع روز کاری</button></form></div>`;
+    return `<details class="panel wide pos-workday-closing-panel compact-pos-workday-closing"><summary><b>بستن حساب روز کاری</b><span>شروع روز کاری صندوق</span></summary><form id="posShiftForm" class="pos-workday-start-form"><label>نام روز کاری<input name="name" value="روز کاری صندوق"></label><label>نام صندوق‌دار<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">شروع روز کاری</button></form></details>`;
   }
-  return `<div class="panel wide pos-workday-closing-panel"><div class="section-title"><h2>بستن حساب روز کاری</h2><span class="badge">باز از ${formatDate(currentShift.openedAt)}</span></div><p>صندوق‌دار می‌تواند بعد از پایان کار، حتی بعد از نیمه‌شب، حساب همین روز کاری را ببندد و گزارش دسته‌بندی/مالیات/جمع کل را پرینت بگیرد.</p><div class="ledger"><div><span>جمع فروش آیتم‌ها</span><b>${money(dailyReport.subtotal)}</b></div><div><span>مالیات</span><b>${money(dailyReport.taxTotal)}</b></div><div><span>حق سرویس</span><b>${money(dailyReport.serviceChargeTotal)}</b></div><div class="total"><span>جمع کل فروش</span><b>${money(dailyReport.grandTotal)}</b></div></div><div class="button-row"><button type="button" class="secondary" data-print-pos-workday-closing="${esc(currentShift.id)}">پیش‌نمایش/پرینت گزارش</button><button type="button" class="danger-button" data-close-pos-workday="${esc(currentShift.id)}">بستن حساب روز و پرینت</button></div></div>`;
+  return `<details class="panel wide pos-workday-closing-panel compact-pos-workday-closing"><summary><b>بستن حساب روز کاری</b><span>باز از ${formatDate(currentShift.openedAt)} — جمع کل ${money(dailyReport.grandTotal)}</span></summary><p>این بخش پایین صندوق است و مزاحم سفارش‌گیری نیست. صندوق‌دار می‌تواند بعد از پایان کار، حتی بعد از نیمه‌شب، حساب همین روز کاری را ببندد و گزارش را پرینت بگیرد.</p><div class="ledger compact-workday-ledger"><div><span>جمع فروش آیتم‌ها</span><b>${money(dailyReport.subtotal)}</b></div><div><span>مالیات</span><b>${money(dailyReport.taxTotal)}</b></div><div><span>حق سرویس</span><b>${money(dailyReport.serviceChargeTotal)}</b></div><div class="total"><span>جمع کل فروش</span><b>${money(dailyReport.grandTotal)}</b></div></div><div class="button-row"><button type="button" class="secondary" data-print-pos-workday-closing="${esc(currentShift.id)}">پیش‌نمایش/پرینت گزارش</button><button type="button" class="danger-button" data-close-pos-workday="${esc(currentShift.id)}">بستن حساب روز و پرینت</button></div></details>`;
+}
+
+function currentWorkdayRange(customer) {
+  const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
+  const from = currentShift?.openedAt ? new Date(currentShift.openedAt).getTime() : 0;
+  return { shift: currentShift, from };
+}
+function isInCurrentWorkday(order, range) {
+  if (!range?.from) return true;
+  return new Date(order.createdAt || 0).getTime() >= range.from;
 }
 
 function renderSales(customer) {
@@ -1992,13 +2002,15 @@ function renderSales(customer) {
   const hall = renderHallSales(customer);
   const items = customerSaleItems();
   const orders = RestaurantCore.getCustomerOrders ? RestaurantCore.getCustomerOrders(state, customer.id) : byCustomer(state.orders).slice().reverse();
-  const openUnpaidOrders = orders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? orderFinalTotal(o) ?? 0) > 0);
-  const paidOrders = orders.filter(o => o.posStatus === 'paid');
+  const workdayRange = currentWorkdayRange(customer);
+  const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));
+  const openUnpaidOrders = visibleWorkdayOrders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? orderFinalTotal(o) ?? 0) > 0);
+  const paidOrders = visibleWorkdayOrders.filter(o => o.posStatus === 'paid');
   const orderRow = (o, paid = false) => `<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o)))}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${!paid ? actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش') : ''}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', paid ? 'حذف سفارش پرداخت‌شده' : 'حذف فروش')}</div></div>`;
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
   const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div></div>`;
   const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p><div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارش پرداخت‌شده‌ای وجود ندارد.</p>'}</div></div>`;
-  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div>${renderPosWorkdayClosingPanel(customer)}<div class="panel wide pos-hall-shell">${hall}</div>${paidPanel}${statusPanel}</section>`;
+  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${statusPanel}${paidPanel}${renderPosWorkdayClosingPanel(customer)}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
   const paymentSelected = value => (editingOrder?.paymentMethod || 'card') === value ? 'selected' : '';

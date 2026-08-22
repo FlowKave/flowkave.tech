@@ -19,6 +19,24 @@ function badRequest(error: string) {
   return NextResponse.json({ error }, { status: 400 });
 }
 
+function mergeArrayById(existing: any[] = [], incoming: any[] = []) {
+  const byId = new Map<string, any>();
+  for (const item of existing || []) if (item?.id) byId.set(String(item.id), item);
+  for (const item of incoming || []) if (item?.id) byId.set(String(item.id), item);
+  return Array.from(byId.values());
+}
+
+function mergePublicRestaurantState(existingState: any, incomingState: any) {
+  if (!existingState || typeof existingState !== 'object') return incomingState;
+  const merged = { ...existingState, ...incomingState };
+  for (const key of ['orders', 'shifts', 'ledger', 'restaurantTables']) {
+    merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
+  }
+  delete merged.sessions;
+  return merged;
+}
+
+
 export async function GET(request: NextRequest) {
   try {
     const tenantId = tenantIdFrom(request);
@@ -68,8 +86,13 @@ export async function PUT(request: NextRequest) {
     const requestedVersion = Number(body?.updatedAt || Date.now() / 1000);
     const version = Number.isFinite(requestedVersion) && requestedVersion > 0 ? requestedVersion : Date.now() / 1000;
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.slice(0, 120) : null;
-    const sharedState = { ...state } as any;
-    delete sharedState.sessions;
+    const { data: existingRow, error: existingError } = await admin
+      .from('restaurant_states')
+      .select('state')
+      .eq('tenant_id', tenantId)
+      .maybeSingle<{ state: any }>();
+    if (existingError) throw new Error(existingError.message);
+    const sharedState = mergePublicRestaurantState(existingRow?.state, { ...state });
 
     const { data, error } = await admin
       .from('restaurant_states')

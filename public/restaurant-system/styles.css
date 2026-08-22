@@ -1483,3 +1483,6 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* Cashier-facing workday closing panel inside POS. */
 .pos-workday-closing-panel{background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,var(--surface)),var(--surface))!important}.pos-workday-start-form{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto;gap:12px;align-items:end}.pos-workday-closing-panel .button-row{justify-content:flex-start;gap:10px;flex-wrap:wrap}@media(max-width:760px){.pos-workday-start-form{grid-template-columns:1fr}.pos-workday-closing-panel .button-row button{width:100%}}
+
+/* POS workday closing moved below order panels and collapsed by default. */
+.compact-pos-workday-closing{padding:0!important;overflow:hidden!important}.compact-pos-workday-closing summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 18px}.compact-pos-workday-closing summary::-webkit-details-marker{display:none}.compact-pos-workday-closing[open]{padding:0 18px 18px!important}.compact-pos-workday-closing[open] summary{margin:0 -18px 12px}.compact-workday-ledger{grid-template-columns:repeat(4,minmax(120px,1fr))!important}
