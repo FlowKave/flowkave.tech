@@ -83,8 +83,9 @@ export async function PUT(request: NextRequest) {
     }
     const admin = createAdminClient();
     if (!admin) return NextResponse.json({ error: 'ADMIN_CLIENT_UNAVAILABLE' }, { status: 500 });
-    const requestedVersion = Number(body?.updatedAt || Date.now() / 1000);
-    const version = Number.isFinite(requestedVersion) && requestedVersion > 0 ? requestedVersion : Date.now() / 1000;
+    // Public QR/tablet clients can hold stale local revisions; always mint
+    // a fresh server revision so cashier tablets pull paid-status/table changes.
+    const version = Date.now();
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.slice(0, 120) : null;
     const { data: existingRow, error: existingError } = await admin
       .from('restaurant_states')
