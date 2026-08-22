@@ -459,6 +459,7 @@ function parseFaNumber(value) { return Number(toEnglishDigits(value).replace(/[�
 function numberText(n, maxFraction = 2) { return faNum(Number(n || 0).toLocaleString('fa-IR', { maximumFractionDigits: maxFraction })); }
 function receiptNumberText(n) { return faNum(String(Math.round(Number(n || 0)))); }
 function money(n) { return `${numberText(Math.round(n || 0), 0)} تومان`; }
+function orderFinalTotal(order) { return Number(order?.grandTotal ?? Math.max(0, Math.round(Number(order?.subtotal ?? order?.total ?? 0) - Number(order?.discountTotal || 0) + Number(order?.taxTotal || 0) + Number(order?.serviceChargeTotal || 0)))); }
 function unitLabel(unit) { return ({ ml: 'میلی‌لیتر', g: 'گرم', kg: 'کیلوگرم', l: 'لیتر', pcs: 'عدد', piece: 'عدد' }[unit] || unit || 'عدد'); }
 function packageLabel(name) { return ({ 'Menu Starter': 'منوی پایه', 'Menu Pro': 'منوی پیشرفته', 'POS Lite': 'صندوق پایه', 'Full OS': 'سامانه کامل' }[name] || name); }
 function moduleLabel(name) { return ({ 'digital-menu': 'منوی دیجیتال', orders: 'سفارش‌گیری', pos: 'صندوق', reports: 'گزارش‌ها', inventory: 'انبار', accounting: 'حسابداری', crm: 'باشگاه مشتریان' }[name] || name); }
@@ -1098,7 +1099,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-receipt-route-fix-115');
+  url.searchParams.set('v', 'order-panels-scroll-paid-116');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1142,7 +1143,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-receipt-route-fix-115');
+  url.searchParams.set('v', 'order-panels-scroll-paid-116');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1681,7 +1682,7 @@ function bindPublicMenu(customerId, items) {
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
     const receiptLink = table ? publicReceiptLink(customerId, order.id, table.id) : '';
-    message.innerHTML = table ? `${renderPublicQrReceipt(order, table)}<a class="public-link" href="${esc(receiptLink)}" target="_blank" rel="noopener">باز کردن رسید در صفحه جدا</a>` : `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
+    message.innerHTML = table ? `${renderPublicQrReceipt(order, table)}<a class="public-link" href="${esc(receiptLink)}" target="_blank" rel="noopener">باز کردن رسید در صفحه جدا</a>` : `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(orderFinalTotal(order))} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
     if (receiptLink) window.open(receiptLink, '_blank', 'noopener');
     form.querySelectorAll('[data-number]').forEach(input => { input.value = ''; });
   });
@@ -1689,7 +1690,7 @@ function bindPublicMenu(customerId, items) {
 
 function renderPublicTrackingResult(order) {
   const guest = order.guestName || order.guestContact ? `<small>مهمان: ${esc(order.guestName || 'بدون نام')}${order.guestContact ? ` — تماس: ${esc(faNum(order.guestContact))}` : ''}</small>` : '';
-  return `<b>شماره پیگیری ${receiptNumberText(order.trackingNumber)}</b><span>وضعیت: ${orderStatusLabel(order.status)}</span><span>مبلغ: ${money(order.grandTotal || order.total)}</span>${guest}<small>آیتم‌ها: ${order.lines.map(line => `${esc(line.name)} × ${numberText(line.qty, 0)}`).join('، ')}</small>${renderOrderPrepNotes(order)}`;
+  return `<b>شماره پیگیری ${receiptNumberText(order.trackingNumber)}</b><span>وضعیت: ${orderStatusLabel(order.status)}</span><span>مبلغ: ${money(orderFinalTotal(order))}</span>${guest}<small>آیتم‌ها: ${order.lines.map(line => `${esc(line.name)} × ${numberText(line.qty, 0)}`).join('، ')}</small>${renderOrderPrepNotes(order)}`;
 }
 function renderPublicQrReceipt(order, table) {
   const lines = (order.lines || []).map((line) => {
@@ -1702,7 +1703,7 @@ function renderPublicQrReceipt(order, table) {
   const subtotal = Number(order.subtotal || order.total || 0);
   const tax = Number(order.taxTotal || 0);
   const service = Number(order.serviceChargeTotal || 0);
-  const grand = Number(order.grandTotal || order.total || 0);
+  const grand = orderFinalTotal(order);
   return `<article class="public-qr-receipt"><div class="public-receipt-head"><b>رسید سفارش</b><span>شماره فیش: <b>${receiptNumberText(order.trackingNumber)}</b></span>${tableText}</div><div class="public-receipt-lines">${lines}</div><div class="public-receipt-totals"><span>جمع آیتم‌ها <b>${money(subtotal)}</b></span>${tax ? `<span>مالیات <b>${money(tax)}</b></span>` : ''}${service ? `<span>حق سرویس <b>${money(service)}</b></span>` : ''}<strong>مبلغ قابل پرداخت <b>${money(grand)}</b></strong></div><small>این رسید را نگه دارید؛ پرداخت نهایی در صندوق انجام می‌شود.</small></article>`;
 }
 
@@ -1959,7 +1960,7 @@ function renderHallPaymentPanel(order) {
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
   const paid = order.payments || [];
   const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(order.grandTotal || order.total)}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
 }
 
 
@@ -1974,10 +1975,13 @@ function renderSales(customer) {
   const hall = renderHallSales(customer);
   const items = customerSaleItems();
   const orders = RestaurantCore.getCustomerOrders ? RestaurantCore.getCustomerOrders(state, customer.id) : byCustomer(state.orders).slice().reverse();
-  const openUnpaidOrders = orders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? o.total ?? 0) > 0);
+  const openUnpaidOrders = orders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? orderFinalTotal(o) ?? 0) > 0);
+  const paidOrders = orders.filter(o => o.posStatus === 'paid');
+  const orderRow = (o, paid = false) => `<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o)))}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${!paid ? actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش') : ''}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', paid ? 'حذف سفارش پرداخت‌شده' : 'حذف فروش')}</div></div>`;
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
-  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2>${openUnpaidOrders.map(o=>`<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(o.remainingTotal ?? o.total)}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(o.createdAt)}</em><div class="row-action-buttons">${actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش')}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', 'حذف فروش')}</div></div>`).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div>`;
-  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div><div class="panel wide order-completion-summary"><h2>خلاصه تحویل سفارش</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p></div>${statusPanel}</section>`;
+  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div></div>`;
+  const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p><div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارش پرداخت‌شده‌ای وجود ندارد.</p>'}</div></div>`;
+  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${paidPanel}${statusPanel}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
   const paymentSelected = value => (editingOrder?.paymentMethod || 'card') === value ? 'selected' : '';
@@ -3555,7 +3559,7 @@ function bindCommon() {
     try { RestaurantCore.updateInventoryPurchasePaymentStatus(state, customer.id, purchase.id, nextStatus); saveState(); render(); }
     catch (err) { alert(err.message === 'PURCHASE_NOT_FOUND' ? 'خرید پیدا نشد' : err.message); }
   }));
-  document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = btn.dataset.editSale; render(); }));
+  document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { const order = (state.orders || []).find(item => item.id === btn.dataset.editSale && item.customerId === customer.id); if (posSalesChannel === 'hall' && order?.tableId) { selectedHallTableId = order.tableId; hallTablePickerOpen = false; hallTableConfigOpen = false; render(); requestAnimationFrame(() => document.querySelector('#hallSaleForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); return; } editingSaleOrderId = btn.dataset.editSale; render(); }));
   document.querySelectorAll('[data-cancel-sale-edit]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = ''; render(); }));
   document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', () => {
     if (!confirm('این فروش حذف شود؟ اثر موجودی و دفتر مالی همین فاکتور برگردانده می‌شود.')) return;
