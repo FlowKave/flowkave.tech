@@ -1007,6 +1007,8 @@
       operatorName: input.operatorName || 'اپراتور',
       openedAt: input.openedAt || new Date().toISOString(),
       closedAt: '',
+      receiptStartNumber: 1001,
+      nextReceiptNumber: 1001,
     };
     state.shifts.push(shift);
     return shift;
@@ -1025,6 +1027,55 @@
   function getCurrentCashierShift(state, customerId) {
     requireCustomer(state, customerId);
     return (state.shifts || []).find((shift) => shift.customerId === customerId && !shift.closedAt) || null;
+  }
+
+  function receiptDayKey(value = new Date().toISOString()) {
+    const date = new Date(value || new Date().toISOString());
+    if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function nextDailyReceiptNumber(state, customerId, createdAt = new Date().toISOString()) {
+    if (!Array.isArray(state.orders)) state.orders = [];
+    if (!Array.isArray(state.shifts)) state.shifts = [];
+    const activeShift = getCurrentCashierShift(state, customerId);
+    const inActiveShift = (order) => activeShift && order.customerId === customerId && new Date(order.createdAt || 0).getTime() >= new Date(activeShift.openedAt || 0).getTime();
+    const sameDay = (order) => order.customerId === customerId && receiptDayKey(order.createdAt || createdAt) === receiptDayKey(createdAt);
+    const relevantOrders = state.orders.filter(activeShift ? inActiveShift : sameDay);
+    const maxReceipt = relevantOrders.reduce((max, order) => Math.max(max, Number(order.trackingNumber || 0)), 1000);
+    if (activeShift) {
+      const next = Math.max(1001, Number(activeShift.nextReceiptNumber || 0), maxReceipt + 1);
+      activeShift.receiptStartNumber = 1001;
+      activeShift.nextReceiptNumber = next + 1;
+      return next;
+    }
+    return Math.max(1001, maxReceipt + 1);
+  }
+
+  function normalizeDailyReceiptNumbers(state) {
+    if (!state || !Array.isArray(state.orders)) return state;
+    const originalOrderIndex = new Map(state.orders.map((order, index) => [order, index]));
+    const groups = new Map();
+    state.orders.forEach((order) => {
+      const key = `${order.customerId || ''}:${receiptDayKey(order.createdAt || new Date().toISOString())}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(order);
+    });
+    groups.forEach((orders) => {
+      orders.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || (originalOrderIndex.get(a) || 0) - (originalOrderIndex.get(b) || 0));
+      const seen = new Set();
+      const needsDailyFix = orders.some((order) => Number(order.trackingNumber || 0) < 1001 || seen.size === seen.add(Number(order.trackingNumber || 0)).size);
+      if (!needsDailyFix) return;
+      orders.forEach((order, index) => { order.trackingNumber = 1001 + index; });
+    });
+    (state.shifts || []).filter((shift) => !shift.closedAt).forEach((shift) => {
+      const maxReceipt = state.orders
+        .filter((order) => order.customerId === shift.customerId && new Date(order.createdAt || 0).getTime() >= new Date(shift.openedAt || 0).getTime())
+        .reduce((max, order) => Math.max(max, Number(order.trackingNumber || 0)), 1000);
+      shift.receiptStartNumber = 1001;
+      shift.nextReceiptNumber = Math.max(1001, Number(shift.nextReceiptNumber || 0), maxReceipt + 1);
+    });
+    return state;
   }
 
 
@@ -1945,8 +1996,8 @@
     });
     const lowStockWarnings = [...consumedInventory.values()]
       .filter((x) => Number(x.minStock || 0) > 0 && x.beforeStock > x.minStock && x.afterStock <= x.minStock);
-    const trackingNumber = state.orders.filter((existing) => existing.customerId === customerId).length + 1;
-    const createdAt = new Date().toISOString();
+    const createdAt = options.createdAt || new Date().toISOString();
+    const trackingNumber = nextDailyReceiptNumber(state, customerId, createdAt);
     const initialStatus = normalizeOrderStatus(options.status);
     const guestName = String(options.guestName || '').trim();
     const guestContact = String(options.guestContact || '').trim();
@@ -2521,6 +2572,8 @@
     openCashierShift,
     closeCashierShift,
     getCurrentCashierShift,
+    nextDailyReceiptNumber,
+    normalizeDailyReceiptNumbers,
     roleLabel,
     getRolePermissions,
     canAccess,

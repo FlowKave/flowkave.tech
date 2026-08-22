@@ -184,6 +184,7 @@ function migrateDisplayState(next) {
     if (!order.trackingNumber) order.trackingNumber = index + 1;
     if (!order.statusUpdatedAt) order.statusUpdatedAt = order.createdAt || new Date().toISOString();
   });
+  if (RestaurantCore.normalizeDailyReceiptNumbers) RestaurantCore.normalizeDailyReceiptNumbers(next);
   next.staffUsers?.forEach((u, index) => {
     if (!u.personnelCode) u.personnelCode = String(u.staffCode || u.code || '').replace(/[\s\-]/g, '').trim();
     const ownerCustomer = next.customers?.find(c => c.id === u.customerId && String(c.email || '').trim() === String(u.email || '').trim());
@@ -1808,7 +1809,7 @@ function renderSales(customer) {
   const orders = RestaurantCore.getCustomerOrders ? RestaurantCore.getCustomerOrders(state, customer.id) : byCustomer(state.orders).slice().reverse();
   const openUnpaidOrders = orders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? o.total ?? 0) > 0);
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
-  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2>${openUnpaidOrders.map(o=>`<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(o.remainingTotal ?? o.total)}</b><span><strong>شماره فیش ${numberText(o.trackingNumber || 0,0)}</strong>${o.lowStockWarnings?.length ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(o.createdAt)}</em><div class="row-action-buttons">${actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش')}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', 'حذف فروش')}</div></div>`).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div>`;
+  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2>${openUnpaidOrders.map(o=>`<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(o.remainingTotal ?? o.total)}</b><span><strong>شماره فیش ${numberText(o.trackingNumber || 0,0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(o.createdAt)}</em><div class="row-action-buttons">${actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش')}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', 'حذف فروش')}</div></div>`).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div>`;
   if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${posChannelTabs()}</div><div class="panel wide pos-hall-shell">${hall}</div><div class="panel wide order-completion-summary"><h2>خلاصه تحویل سفارش</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p></div>${statusPanel}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
