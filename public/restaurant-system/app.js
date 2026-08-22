@@ -251,6 +251,7 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
   return savePromise;
 }
 function shouldDelayRemoteApply() {
+  if (currentTab === 'sales' || publicQrMode) return false;
   const active = document.activeElement;
   return !!active && active.matches?.('input, textarea, select');
 }
@@ -1087,7 +1088,7 @@ function publicMenuTable(customerId) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-sync-query-fix-108');
+  url.searchParams.set('v', 'cashier-live-qr-sync-109');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
