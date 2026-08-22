@@ -1725,7 +1725,7 @@ function renderHallTablePicker(tables, selectedTable) {
   if (!hallTablePickerOpen) return '';
   const openTables = tables.filter(table => table.active !== false && table.status === 'free' && table.id !== selectedTable?.id);
   const tableButtons = openTables.map(table => `<button type="button" class="hall-table-card ${table.status}" data-hall-table="${table.id}"><b>${esc(table.name)}</b>${table.remainingTotal ? `<small>باقی‌مانده: ${money(table.remainingTotal)}</small>` : ''}</button>`).join('') || '<p class="hall-table-picker-empty">همه میزها درگیر سفارش یا پرداخت هستند.</p>';
-  return `<div class="modal-backdrop hall-table-picker-backdrop" data-close-hall-table-picker><div class="panel hall-table-picker-popup" role="dialog" aria-modal="true" aria-label="انتخاب میز"><button type="button" class="modal-close-icon hall-table-picker-close" data-close-hall-table-picker aria-label="بستن">×</button><div class="hall-table-picker-grid">${tableButtons}</div></div></div>`;
+  return `<div class="modal-backdrop hall-table-picker-backdrop" data-close-hall-table-picker><div class="panel hall-table-picker-popup" role="dialog" aria-modal="true" aria-label="انتخاب میز"><div class="hall-table-picker-grid">${tableButtons}</div></div></div>`;
 }
 
 function renderOccupiedHallTablesBox(tables, selectedTable) {
