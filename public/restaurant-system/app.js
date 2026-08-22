@@ -1062,6 +1062,16 @@ function publicCustomerId() {
   const match = location.hash.match(/^#menu\/([^/?]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
+function resolvePublicCustomerId() {
+  const hashCustomerId = publicCustomerId();
+  if (hashCustomerId && (state.customers || []).some((customer) => customer.id === hashCustomerId)) return hashCustomerId;
+  if (publicTenantId) {
+    const tenantCustomer = (state.customers || []).find((customer) => customer.portalTenantId === publicTenantId);
+    if (tenantCustomer) return tenantCustomer.id;
+    if (publicQrMode && (state.customers || []).length === 1) return state.customers[0].id;
+  }
+  return hashCustomerId;
+}
 function publicMenuHashParams() {
   const query = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
   return new URLSearchParams(query);
@@ -1076,7 +1086,7 @@ function publicMenuTable(customerId) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'mobile-table-qr-105');
+  url.searchParams.set('v', 'mobile-qr-resolve-106');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1369,7 +1379,7 @@ function renderStaffInvitationAccept(token) {
 function render() {
   const inviteToken = staffInvitationTokenFromUrl();
   if (inviteToken) return renderStaffInvitationAccept(inviteToken);
-  const publicId = publicCustomerId();
+  const publicId = resolvePublicCustomerId();
   if (publicId) return renderPublicMenu(publicId);
   const customer = currentCustomer();
   if (!customer) return renderAuth();
@@ -1541,7 +1551,10 @@ function renderDashboardReadinessShortcuts(customer) {
 function renderPublicMenu(customerId) {
   let publicMenu;
   try { publicMenu = RestaurantCore.getPublicMenu(state, customerId); }
-  catch { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>منو پیدا نشد</h1><p>این لینک منوی عمومی معتبر نیست.</p><a class="public-link" href="#">بازگشت</a></section></main>`; return; }
+  catch {
+    if (publicQrMode && sharedSyncStarted) { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>در حال بارگذاری منوی میز</h1><p>اطلاعات رستوران از سرور خوانده می‌شود؛ چند لحظه صبر کنید.</p></section></main>`; return; }
+    app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>منو پیدا نشد</h1><p>این لینک منوی عمومی معتبر نیست یا QR بدون شناسه آنلاین رستوران ساخته شده است.</p><a class="public-link" href="#">بازگشت</a></section></main>`; return;
+  }
   const categories = [...new Set(publicMenu.items.map(i => i.category))];
   const table = publicMenuTable(customerId);
   const tableBadge = table ? `<span class="badge public-table-badge">سفارش میز ${esc(table.name)}</span>` : '<span class="badge">منوی آنلاین با کد پاسخ سریع</span>';
@@ -1790,7 +1803,8 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
 function renderHallTableConfigForm(customer) {
   const tables = RestaurantCore.getHallTables(state, customer.id);
   const settings = customer.hallTableSettings || { count: tables.length || 8, startNumber: 1, customNames: [] };
-  const qrCards = tables.map((table) => { const link = tablePublicMenuLink(customer, table); return `<article class="hall-table-qr-card"><img src="${esc(qrImageUrl(link))}" alt="QR میز ${esc(table.name)}"><div><b>میز ${esc(table.name)}</b><input readonly dir="ltr" value="${esc(link)}"><div class="hall-table-qr-actions"><a class="secondary" href="${esc(link)}" target="_blank" rel="noopener">تست لینک</a><button type="button" class="secondary" data-copy-table-qr="${esc(link)}">کپی لینک</button></div></div></article>`; }).join('');
+  const hasOnlineTenant = Boolean(customer.portalTenantId || portalIdentity?.tenantId);
+  const qrCards = tables.map((table) => { const link = tablePublicMenuLink(customer, table); return `<article class="hall-table-qr-card ${hasOnlineTenant ? '' : 'missing-tenant'}"><img src="${esc(qrImageUrl(link))}" alt="QR میز ${esc(table.name)}"><div><b>میز ${esc(table.name)}</b><input readonly dir="ltr" value="${esc(link)}"><div class="hall-table-qr-actions"><a class="secondary" href="${esc(link)}" target="_blank" rel="noopener">تست لینک</a><button type="button" class="secondary" data-copy-table-qr="${esc(link)}">کپی لینک</button></div>${hasOnlineTenant ? '' : '<small class="hall-table-qr-warning">برای موبایل اول از پنل آنلاین رستوران وارد شو تا QR شناسه آنلاین داشته باشد.</small>'}</div></article>`; }).join('');
   return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میزهای شماره‌ای را تعیین کن؛ نام‌های دستی اگر وارد شوند به تعداد میزها اضافه می‌شوند و اول لیست نمایش داده می‌شوند.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || 8)}</label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً VIP، رضا، آزاد">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button><section class="hall-table-qr-section"><div class="section-title"><h3>QR تست منوی میزها</h3><span>برای چاپ یا تست با موبایل</span></div><p>هر QR منوی همین رستوران را برای همان میز باز می‌کند و سفارش ثبت‌شده به فیش باز همان میز اضافه می‌شود.</p><div class="hall-table-qr-grid">${qrCards || '<p>هنوز میزی تعریف نشده است.</p>'}</div></section></form>`;
 }
 
