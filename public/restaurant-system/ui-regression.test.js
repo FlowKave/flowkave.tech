@@ -50,16 +50,18 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=qr-order-guard-112');
-mustContain(html, 'core.js?v=qr-order-guard-112');
-mustContain(html, 'app.js?v=qr-order-guard-112');
-mustContain(html, 'core.js?v=qr-order-guard-112');
+mustContain(html, 'styles.css?v=qr-receipt-empty-inputs-113');
+mustContain(html, 'core.js?v=qr-receipt-empty-inputs-113');
+mustContain(html, 'app.js?v=qr-receipt-empty-inputs-113');
+mustContain(html, 'core.js?v=qr-receipt-empty-inputs-113');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const openUnpaidOrders = orders.filter', 'بخش وضعیت سفارشات باید فقط سفارش‌های باز پرداخت‌نشده را نشان دهد.');
 mustContain(salesSource, '<h2>وضعیت سفارشات</h2>', 'عنوان فروش‌ها و وضعیت سفارش باید به وضعیت سفارشات تغییر کند.');
 mustContain(salesSource, 'شماره فیش', 'شماره پیگیری در وضعیت سفارشات باید شماره فیش شود.');
 mustContain(app, 'function receiptNumberText', 'شماره فیش/پیگیری باید بدون جداکننده سه‌رقمی نمایش داده شود.');
+mustContain(app, "function numInput(name, value, attrs = '') { const numericValue", 'همه inputهای عددی باید از helper مرکزی عبور کنند تا صفر پیش‌فرض خالی شود.');
+mustContain(app, "numericValue === 0 ? ''", 'فیلدهای عددی در کل سامانه وقتی مقدارشان صفر است باید خالی نمایش داده شوند.');
 mustContain(salesSource, 'شماره فیش ${receiptNumberText(o.trackingNumber || 0)}', 'شماره فیش در وضعیت سفارشات نباید با numberText سه‌رقم‌سه‌رقم شود.');
 assert(!salesSource.includes('شماره فیش ${numberText(o.trackingNumber'), 'شماره فیش نباید جداکننده سه‌رقمی داشته باشد.');
 mustContain(app, 'function money(n) { return `${numberText(Math.round(n || 0), 0)} تومان`; }', 'فرمت مبلغ باید همچنان از numberText و جداکننده سه‌رقمی استفاده کند.');
@@ -138,10 +140,17 @@ mustContain(app, "order.source = 'table_qr'", 'سفارش‌های QR میز ب�
 mustContain(app, "if (publicQrTableBlocked(table)) return alert('این میز الان در صندوق سفارش باز دارد", 'اگر میز در صندوق درگیر باشد QR نباید اجازه ثبت سفارش بدهد.');
 mustContain(app, "if (table && publicQrAlreadyOrdered(customerId, table.id)) return alert('از همین موبایل برای این میز قبلاً سفارش ثبت شده است", 'QR میز نباید از یک موبایل اجازه سفارش دوم بدهد.');
 mustContain(app, 'markPublicQrOrdered(customerId, table.id)', 'بعد از ثبت موفق QR باید همان موبایل برای سفارش دوم قفل شود.');
+mustContain(app, 'function renderPublicQrReceipt(order, table)', 'بعد از ثبت سفارش QR مشتری باید رسید موبایلی با جزئیات فیش ببیند.');
+mustContain(app, 'شماره فیش: <b>${receiptNumberText(order.trackingNumber)}</b>', 'رسید موبایل QR باید شماره فیش بدون جداکننده نشان دهد.');
+mustContain(app, 'میز: <b>${esc(table.name)}</b>', 'رسید موبایل QR باید شماره/نام میز را نشان دهد.');
+mustContain(app, 'public-receipt-line', 'رسید موبایل QR باید ردیف‌های آیتم، تعداد و مبلغ خط داشته باشد.');
+mustContain(app, 'مبلغ قابل پرداخت', 'رسید موبایل QR باید مبلغ کل قابل پرداخت را نشان دهد.');
+mustContain(app, "form.querySelectorAll('[data-number]').forEach(input => { input.value = ''; });", 'بعد از ثبت سفارش، inputهای عددی نباید دوباره با ۰ پر شوند.');
 mustContain(app, 'public-qr-lock', 'صفحه QR باید وقتی سفارش بسته است پیام واضح نشان بدهد.');
 mustContain(app, 'hall-table-qr-warning', 'کارت QR بدون tenant آنلاین باید هشدار بدهد که روی موبایل معتبر نیست.');
 mustContain(styles, 'hall-table-qr-card.missing-tenant', 'QR بدون tenant آنلاین باید در UI مشخص شود.');
 mustContain(styles, '.public-table-notice.blocked,.public-qr-lock', 'پیام بسته بودن سفارش QR باید ظاهر هشدار واضح داشته باشد.');
+mustContain(styles, '.public-qr-receipt', 'رسید موبایل QR باید CSS اختصاصی و شبیه فیش داشته باشد.');
 mustContain(publicRestaurantStateApiSource, "from('restaurant_states')", 'endpoint عمومی QR باید state آنلاین رستوران را از جدول restaurant_states بخواند/بنویسد.');
 mustContain(publicRestaurantStateApiSource, 'tenantIdFrom(request)', 'endpoint عمومی QR باید tenantId لینک QR را لازم داشته باشد.');
 mustContain(styles, 'Hall table QR test cards', 'کارت‌های QR میزها باید CSS اختصاصی داشته باشند.');
@@ -221,7 +230,7 @@ const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app
 const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'qr-order-guard-112', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'qr-receipt-empty-inputs-113', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -339,7 +348,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=qr-order-guard-112') && index.includes('core.js?v=qr-order-guard-112') && index.includes('app.js?v=qr-order-guard-112'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=qr-receipt-empty-inputs-113') && index.includes('core.js?v=qr-receipt-empty-inputs-113') && index.includes('app.js?v=qr-receipt-empty-inputs-113'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();

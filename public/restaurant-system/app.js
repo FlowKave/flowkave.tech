@@ -537,7 +537,7 @@ function formatGroupedNumberInput(value) {
   const fraction = fractionParts.join('').replace(/[^0-9]/g, '');
   return grouped + (hasTrailingDecimal ? '٫' : fraction ? `٫${faNum(fraction)}` : '');
 }
-function numInput(name, value, attrs = '') { const display = value === '' || value == null ? '' : numberText(value); const moneyAttr = isMoneyFieldName(name) ? ' data-money' : ''; return `<input name="${name}" inputmode="decimal" data-number${moneyAttr} value="${display}" ${attrs}>`; }
+function numInput(name, value, attrs = '') { const numericValue = typeof value === 'number' ? value : parseFaNumber(value || 0); const display = value === '' || value == null || numericValue === 0 ? '' : numberText(value); const moneyAttr = isMoneyFieldName(name) ? ' data-money' : ''; return `<input name="${name}" inputmode="decimal" data-number${moneyAttr} value="${display}" ${attrs}>`; }
 function unitSelect(name, selected, units = ['کیلوگرم', 'لیتر', 'عدد']) { const placeholder = selected === '' ? '<option value="" selected disabled>انتخاب واحد</option>' : ''; return `<select name="${name}">${placeholder}${units.map(unit => `<option value="${unit}" ${unit === selected ? 'selected' : ''}>${unit}</option>`).join('')}</select>`; }
 const IRAN_TIME_ZONE = 'Asia/Tehran';
 function iranGregorianDateText(date = new Date()) {
@@ -1115,7 +1115,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-order-guard-112');
+  url.searchParams.set('v', 'qr-receipt-empty-inputs-113');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1639,14 +1639,28 @@ function bindPublicMenu(customerId, items) {
     saveState();
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
-    message.innerHTML = `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)}${table ? ` برای میز ${esc(table.name)}` : ''} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
-    form.querySelectorAll('[data-number]').forEach(input => { input.value = faNum(0); });
+    message.innerHTML = table ? renderPublicQrReceipt(order, table) : `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
+    form.querySelectorAll('[data-number]').forEach(input => { input.value = ''; });
   });
 }
 
 function renderPublicTrackingResult(order) {
   const guest = order.guestName || order.guestContact ? `<small>مهمان: ${esc(order.guestName || 'بدون نام')}${order.guestContact ? ` — تماس: ${esc(faNum(order.guestContact))}` : ''}</small>` : '';
   return `<b>شماره پیگیری ${receiptNumberText(order.trackingNumber)}</b><span>وضعیت: ${orderStatusLabel(order.status)}</span><span>مبلغ: ${money(order.total)}</span>${guest}<small>آیتم‌ها: ${order.lines.map(line => `${esc(line.name)} × ${numberText(line.qty, 0)}`).join('، ')}</small>${renderOrderPrepNotes(order)}`;
+}
+function renderPublicQrReceipt(order, table) {
+  const lines = (order.lines || []).map((line) => {
+    const qty = Number(line.qty ?? line.quantity ?? 0);
+    const unitPrice = Number(line.price || line.unitPriceSnapshot || 0);
+    const lineTotal = Number(line.lineTotal || qty * unitPrice || 0);
+    return `<div class="public-receipt-line"><span>${esc(line.name || 'آیتم')}</span><small>${numberText(qty, 0)} × ${money(unitPrice)}</small><b>${money(lineTotal)}</b></div>`;
+  }).join('');
+  const tableText = table ? `<span>میز: <b>${esc(table.name)}</b></span>` : '';
+  const subtotal = Number(order.subtotal || order.total || 0);
+  const tax = Number(order.taxTotal || 0);
+  const service = Number(order.serviceChargeTotal || 0);
+  const grand = Number(order.grandTotal || order.total || 0);
+  return `<article class="public-qr-receipt"><div class="public-receipt-head"><b>رسید سفارش</b><span>شماره فیش: <b>${receiptNumberText(order.trackingNumber)}</b></span>${tableText}</div><div class="public-receipt-lines">${lines}</div><div class="public-receipt-totals"><span>جمع آیتم‌ها <b>${money(subtotal)}</b></span>${tax ? `<span>مالیات <b>${money(tax)}</b></span>` : ''}${service ? `<span>حق سرویس <b>${money(service)}</b></span>` : ''}<strong>مبلغ قابل پرداخت <b>${money(grand)}</b></strong></div><small>این رسید را نگه دارید؛ پرداخت نهایی در صندوق انجام می‌شود.</small></article>`;
 }
 
 
