@@ -1686,6 +1686,25 @@ function renderHallTicketItemRow(item, draft = {}) {
   return `<article class="hall-ticket-item-row" data-hall-ticket-item="${esc(item.id)}"><div class="hall-ticket-item-info"><h3>${esc(item.name)}</h3></div><label class="hall-ticket-item-qty">${renderHallQtyControl(item.id, draft.qty || 0)}</label>${actionDecalButton('delete', `data-delete-hall-ticket-item="${esc(item.id)}"`, 'hall-ticket-delete-button', 'حذف آیتم از فیش')}</article>`;
 }
 
+function hallTicketDraftTotal(draftItems, allItems) {
+  return Object.entries(draftItems || {}).reduce((sum, [itemId, draft]) => {
+    const item = allItems.find(candidate => candidate.id === itemId);
+    return sum + (Number(draft.qty || 0) * Number(item?.price || 0));
+  }, 0);
+}
+
+function renderHallTicketDraftTotal(total) {
+  return `<div class="hall-ticket-draft-total" data-hall-ticket-total><span>جمع مبلغ کل آیتم‌ها</span><b>${money(total)}</b></div>`;
+}
+
+function updateHallTicketDraftTotal(form = document.querySelector('#hallSaleForm')) {
+  const totalBox = form?.querySelector('[data-hall-ticket-total]');
+  if (!totalBox || !selectedHallTableId) return;
+  const total = hallTicketDraftTotal(hallOrderDrafts[selectedHallTableId]?.items || {}, customerSaleItems());
+  const value = totalBox.querySelector('b');
+  if (value) value.textContent = money(total);
+}
+
 function renderHallOrderPicker(visibleItems, allItems, selectedTable) {
   const draftItems = selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.items || {} : {};
   const selectedRows = Object.entries(draftItems)
@@ -1694,9 +1713,10 @@ function renderHallOrderPicker(visibleItems, allItems, selectedTable) {
       const item = allItems.find(candidate => candidate.id === itemId);
       return item ? renderHallTicketItemRow(item, draft) : '';
     }).filter(Boolean).join('');
+  const selectedTotal = hallTicketDraftTotal(draftItems, allItems);
   const rightItems = visibleItems.map(renderHallProductCard).join('') || '<p>در این دسته آیتم فعالی نیست.</p>';
   const leftContent = selectedTable
-    ? (selectedRows || '<p class="hall-ticket-empty">با کلیک روی آیتم‌های سمت راست، فیش اینجا ساخته می‌شود.</p>')
+    ? (selectedRows ? `${selectedRows}${renderHallTicketDraftTotal(selectedTotal)}` : '<p class="hall-ticket-empty">با کلیک روی آیتم‌های سمت راست، فیش اینجا ساخته می‌شود.</p>')
     : '<p class="hall-ticket-empty">اول میز را انتخاب کنید.</p>';
   return `<div class="hall-menu-scroll hall-two-pane-picker"><section class="hall-clickable-items-pane" aria-label="آیتم‌های قابل انتخاب">${rightItems}</section><section class="hall-ticket-draft-pane" aria-label="فیش در حال ثبت">${leftContent}</section></div>`;
 }
@@ -3080,11 +3100,13 @@ function bindCommon() {
     const next = Math.max(0, Math.min(50, parseFaNumber(input.value || 0) + delta));
     input.value = numberText(next, 0);
     syncHallOrderDraftFromForm(input.closest('#hallSaleForm'));
+    updateHallTicketDraftTotal(input.closest('#hallSaleForm'));
   }));
   document.querySelectorAll('.hall-qty-stepper input[name^="qty:"]').forEach(input => input.addEventListener('input', () => {
     const value = Math.max(0, Math.min(50, parseFaNumber(input.value || 0)));
     input.value = input.value ? numberText(value, 0) : '';
     syncHallOrderDraftFromForm(input.closest('#hallSaleForm'));
+    updateHallTicketDraftTotal(input.closest('#hallSaleForm'));
   }));
   document.querySelectorAll('#hallSaleForm textarea[name^="note:"], #hallSaleForm textarea[name="orderNote"]').forEach(input => input.addEventListener('input', () => syncHallOrderDraftFromForm(input.closest('#hallSaleForm'))));
   const addHallSaleLine = document.querySelector('#addHallSaleLine');
