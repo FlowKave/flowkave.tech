@@ -49,10 +49,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=hall-picker-solid-centered-94');
-mustContain(html, 'core.js?v=hall-picker-solid-centered-94');
-mustContain(html, 'app.js?v=hall-picker-solid-centered-94');
-mustContain(html, 'core.js?v=hall-picker-solid-centered-94');
+mustContain(html, 'styles.css?v=staff-login-tenant-96');
+mustContain(html, 'core.js?v=staff-login-tenant-96');
+mustContain(html, 'app.js?v=staff-login-tenant-96');
+mustContain(html, 'core.js?v=staff-login-tenant-96');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(app, 'function hallTicketDraftTotal', 'جمع مبلغ آیتم‌های انتخاب‌شده صندوق باید از تعداد × قیمت محاسبه شود.');
@@ -84,6 +84,8 @@ assert(!app.includes('customer.businessName = portalIdentity.businessName || cus
 assert(!app.includes('customer.ownerName = portalIdentity.ownerName || customer.ownerName'), 'Owner name edits must not be overwritten by stale auth metadata.');
 mustContain(app, 'const portalStaffLoginMode = portalMode && portalParams.get(\'staffLogin\') === \'1\';', 'Online restaurant iframe must support a dedicated staff-login mode.');
 mustContain(app, 'ورود کارکنان آنلاین', 'Online staff-login mode must render a visible staff login screen.');
+mustContain(app, "fetch('/api/staff-login'", 'ورود کارکنان آنلاین باید با کد پرسنلی/پین رستوران واقعی را از API پیدا کند، نه اینکه رستوران جدید بسازد.');
+mustContain(app, 'portalMode && !portalStaffLoginMode ? ensurePortalCustomer(portalIdentity) : null', 'در حالت ورود کارکنان نباید قبل از احراز هویت رستوران جدید ساخته شود.');
 mustContain(app, '/api/staff-invite-email', 'Online staff invitations must call the real email API.');
 mustContain(app, 'sendStaffInvitationEmail', 'Online staff invitations must trigger a real Supabase email send.');
 mustContain(app, '/api/staff-invitation?token=', 'Portal invite links must validate through a public token API instead of private owner state.');
@@ -121,7 +123,7 @@ mustContain(app, 'jobTitle: invitation.jobTitle', 'Staff invite emails must rece
 mustContain(staffInviteEmailRoute, 'staff_invite_personnel_code', 'Staff invite email metadata must include personnel code.');
 mustContain(staffInviteEmailRoute, 'staff_invite_job_title', 'Staff invite email metadata must include job title.');
 assert(!app.includes('id="invitationForm"'), 'Standalone invite-link creation box must be removed from personnel page.');
-mustContain(app, "RestaurantCore.loginWithStaffCode(state, toEnglishDigits(f.get('personnelCode')), toEnglishDigits(f.get('pin')), scopedCustomerId)", 'Online staff PIN login must be scoped to the current portal restaurant.');
+mustContain(app, "fetch('/api/staff-login'", 'Online staff PIN login must ask the server to find the real restaurant/tenant by staff code and PIN.');
 mustContain(app, 'if (portalStaffLoginMode)', 'Portal auto-owner session must not hide the staff login screen in staff-login mode.');
 const dashboardSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'app', 'dashboard', 'page.tsx'), 'utf8');
 const loginPageSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'login', 'page.tsx'), 'utf8');
@@ -132,7 +134,7 @@ const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app
 const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'staff-login-route-95', 'Dashboard iframe cache-bust token must match the staff login route fix.');
+mustContain(dashboardSource, 'staff-login-tenant-96', 'Dashboard iframe cache-bust token must match the staff tenant login fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -250,7 +252,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=hall-picker-solid-centered-94') && index.includes('core.js?v=hall-picker-solid-centered-94') && index.includes('app.js?v=hall-picker-solid-centered-94'), 'cache-bust اصلاح انتخاب میز یکدست/وسط‌چین و حذف ضربدر باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=staff-login-tenant-96') && index.includes('core.js?v=staff-login-tenant-96') && index.includes('app.js?v=staff-login-tenant-96'), 'cache-bust اصلاح ورود کارکنان به tenant واقعی باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();

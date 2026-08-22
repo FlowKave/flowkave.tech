@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 import { createAdminClient } from '../../../lib/supabase/admin';
 import { getManagerSession } from '../../../lib/restaurant/manager-session';
+import { getStaffSession } from '../../../lib/restaurant/staff-session';
 import { ensureTenantForUser, getOwnerTenantChoices, ownerTenantChoicesFor, portalIdentityFor } from '../../../lib/restaurant/tenant';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,26 @@ async function authContext() {
         tenantChoices: manager.tenantChoices || [],
       },
       manager,
+    };
+  }
+  const staff = await getStaffSession();
+  if (staff) {
+    const admin = createAdminClient();
+    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
+    return {
+      supabase: admin,
+      user: { id: staff.staffUserId },
+      tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
+      identity: {
+        tenantId: staff.tenantId,
+        tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
+        businessName: staff.restaurantName,
+        ownerName: staff.staffName,
+        ownerEmail: '',
+        phone: '',
+        tenantChoices: [],
+      },
+      manager: null,
     };
   }
   const { data, error } = await supabase.auth.getUser();
