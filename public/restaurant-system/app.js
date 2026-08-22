@@ -1086,7 +1086,7 @@ function publicMenuTable(customerId) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'mobile-qr-resolve-106');
+  url.searchParams.set('v', 'qr-loading-fix-107');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1552,7 +1552,7 @@ function renderPublicMenu(customerId) {
   let publicMenu;
   try { publicMenu = RestaurantCore.getPublicMenu(state, customerId); }
   catch {
-    if (publicQrMode && sharedSyncStarted) { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>در حال بارگذاری منوی میز</h1><p>اطلاعات رستوران از سرور خوانده می‌شود؛ چند لحظه صبر کنید.</p></section></main>`; return; }
+    if (publicQrMode) { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>در حال بارگذاری منوی میز</h1><p>اطلاعات رستوران از سرور خوانده می‌شود؛ چند لحظه صبر کنید.</p><small>اگر بعد از چند ثانیه منو باز نشد، QR جدید را از پنل آنلاین همان رستوران بگیر.</small></section></main>`; return; }
     app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>منو پیدا نشد</h1><p>این لینک منوی عمومی معتبر نیست یا QR بدون شناسه آنلاین رستوران ساخته شده است.</p><a class="public-link" href="#">بازگشت</a></section></main>`; return;
   }
   const categories = [...new Set(publicMenu.items.map(i => i.category))];
