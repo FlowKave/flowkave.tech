@@ -61,10 +61,20 @@ function mergeOrder(existing: any, incoming: any) {
   return base;
 }
 
+function inferMissingDeletedOrderIds(existingState: any, incomingState: any) {
+  if (!Array.isArray(existingState?.orders) || !Array.isArray(incomingState?.orders)) return [];
+  const incomingOrderIds = new Set(incomingState.orders.map((order: any) => String(order?.id || '')).filter(Boolean));
+  const incomingCustomerIds = new Set((incomingState.customers || []).map((customer: any) => String(customer?.id || '')).filter(Boolean));
+  return existingState.orders
+    .filter((order: any) => order?.id && incomingCustomerIds.has(String(order.customerId || '')) && !incomingOrderIds.has(String(order.id)))
+    .map((order: any) => String(order.id));
+}
+
 function mergedDeletedOrderIds(existingState: any, incomingState: any) {
   return [...new Set([
     ...(Array.isArray(existingState?.deletedOrderIds) ? existingState.deletedOrderIds : []),
     ...(Array.isArray(incomingState?.deletedOrderIds) ? incomingState.deletedOrderIds : []),
+    ...inferMissingDeletedOrderIds(existingState, incomingState),
   ].map((id: any) => String(id || '').trim()).filter(Boolean))];
 }
 
