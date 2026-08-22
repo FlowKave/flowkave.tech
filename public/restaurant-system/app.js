@@ -1059,6 +1059,25 @@ function publicCustomerId() {
   const match = location.hash.match(/^#menu\/([^/?]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
+function publicMenuHashParams() {
+  const query = location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?') + 1) : '';
+  return new URLSearchParams(query);
+}
+function publicTableId() {
+  return publicMenuHashParams().get('table') || '';
+}
+function publicMenuTable(customerId) {
+  const tableId = publicTableId();
+  if (!tableId) return null;
+  return RestaurantCore.getHallTables(state, customerId).find((table) => table.id === tableId && table.active !== false) || null;
+}
+function tablePublicMenuLink(customer, table) {
+  const base = `${location.origin}${location.pathname}${location.search ? location.search.replace(/([?&])v=[^&]+/, '$1v=table-qr-test-104') : '?v=table-qr-test-104'}`.replace(/[?&]$/, '');
+  return `${base}#menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
+}
+function qrImageUrl(link) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data=${encodeURIComponent(link)}`;
+}
 
 
 function rememberInventoryScrollFocus(form) {
@@ -1517,7 +1536,10 @@ function renderPublicMenu(customerId) {
   try { publicMenu = RestaurantCore.getPublicMenu(state, customerId); }
   catch { app.innerHTML = `<main class="public-page"><section class="public-panel"><h1>منو پیدا نشد</h1><p>این لینک منوی عمومی معتبر نیست.</p><a class="public-link" href="#">بازگشت</a></section></main>`; return; }
   const categories = [...new Set(publicMenu.items.map(i => i.category))];
-  app.innerHTML = `<main class="public-page"><section class="public-hero"><span class="badge">منوی آنلاین با کد پاسخ سریع</span><h1>${esc(publicMenu.customer.businessName)}</h1><p>غذاها را انتخاب کنید و سفارش تستی ثبت کنید. این سفارش در پنل رستوران ذخیره می‌شود و وضعیت آن همین‌جا قابل پیگیری است.</p>${publicMenu.customer.phone ? `<small>تماس: ${esc(publicMenu.customer.phone)}</small>` : ''}</section><form id="publicTrackingForm" class="public-panel public-tracking-lookup"><div class="section-title"><h2>پیگیری سفارش</h2><span>بازبینی سریع</span></div><p>اگر شماره پیگیری دارید، همین‌جا وضعیت آخرین سفارش را ببینید.</p><label>شماره پیگیری${numInput('trackingNumber', '', 'placeholder="۱۲"')}</label><button class="secondary">نمایش وضعیت سفارش</button><div id="publicTrackingResult" class="order-tracking-card" hidden></div></form><form id="publicOrderForm" class="public-panel"><div class="section-title"><h2>انتخاب سفارش</h2><span>${numberText(publicMenu.items.length,0)} آیتم فعال</span></div>${categories.map(cat => `<div class="public-category"><h3>${esc(cat)}</h3>${publicMenu.items.filter(i => i.category === cat).map(i => `<label class="public-food"><span><b>${esc(i.name)}</b><small>${esc(i.description || 'بدون توضیح')}</small></span><strong>${money(i.price)}</strong>${numInput(`qty:${i.id}`, 0, `aria-label="تعداد ${esc(i.name)}"`)}</label>`).join('')}</div>`).join('') || '<p>فعلاً آیتم فعالی برای این منو منتشر نشده است.</p>'}<div class="public-guest-fields"><label>نام مهمان<input name="guestName" placeholder="اختیاری"></label><label>شماره تماس اختیاری<input name="guestContact" inputmode="tel" dir="ltr" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" data-number></label></div><label>توضیح آماده‌سازی<textarea name="orderNote" rows="۳" placeholder="مثلا بدون پیاز یا بسته‌بندی جدا"></textarea></label><label>روش پرداخت<select name="payment"><option value="online">آنلاین</option><option value="card">کارتخوان در محل</option><option value="cash">نقدی</option></select></label><button class="primary" ${publicMenu.items.length ? '' : 'disabled'}>ثبت سفارش</button><div id="publicOrderMessage" class="success-message order-tracking-card" hidden></div><a class="public-link" href="#">بازگشت به پنل</a></form></main>`;
+  const table = publicMenuTable(customerId);
+  const tableBadge = table ? `<span class="badge public-table-badge">سفارش میز ${esc(table.name)}</span>` : '<span class="badge">منوی آنلاین با کد پاسخ سریع</span>';
+  const tableNotice = table ? `<div class="public-table-notice"><b>این سفارش برای میز ${esc(table.name)} ثبت می‌شود.</b><span>بعد از ثبت، سفارش مستقیم به فیش باز همین میز اضافه می‌شود.</span></div>` : '';
+  app.innerHTML = `<main class="public-page"><section class="public-hero">${tableBadge}<h1>${esc(publicMenu.customer.businessName)}</h1><p>غذاها را انتخاب کنید و سفارش تستی ثبت کنید. این سفارش در پنل رستوران ذخیره می‌شود و وضعیت آن همین‌جا قابل پیگیری است.</p>${publicMenu.customer.phone ? `<small>تماس: ${esc(publicMenu.customer.phone)}</small>` : ''}${tableNotice}</section><form id="publicTrackingForm" class="public-panel public-tracking-lookup"><div class="section-title"><h2>پیگیری سفارش</h2><span>بازبینی سریع</span></div><p>اگر شماره پیگیری دارید، همین‌جا وضعیت آخرین سفارش را ببینید.</p><label>شماره پیگیری${numInput('trackingNumber', '', 'placeholder="۱۲"')}</label><button class="secondary">نمایش وضعیت سفارش</button><div id="publicTrackingResult" class="order-tracking-card" hidden></div></form><form id="publicOrderForm" class="public-panel"><div class="section-title"><h2>انتخاب سفارش</h2><span>${numberText(publicMenu.items.length,0)} آیتم فعال</span></div>${categories.map(cat => `<div class="public-category"><h3>${esc(cat)}</h3>${publicMenu.items.filter(i => i.category === cat).map(i => `<label class="public-food"><span><b>${esc(i.name)}</b><small>${esc(i.description || 'بدون توضیح')}</small></span><strong>${money(i.price)}</strong>${numInput(`qty:${i.id}`, 0, `aria-label="تعداد ${esc(i.name)}"`)}</label>`).join('')}</div>`).join('') || '<p>فعلاً آیتم فعالی برای این منو منتشر نشده است.</p>'}<div class="public-guest-fields"><label>نام مهمان<input name="guestName" placeholder="اختیاری"></label><label>شماره تماس اختیاری<input name="guestContact" inputmode="tel" dir="ltr" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" data-number></label></div><label>توضیح آماده‌سازی<textarea name="orderNote" rows="۳" placeholder="مثلا بدون پیاز یا بسته‌بندی جدا"></textarea></label><label>روش پرداخت<select name="payment"><option value="online">آنلاین</option><option value="card">کارتخوان در محل</option><option value="cash">نقدی</option></select></label><button class="primary" ${publicMenu.items.length ? '' : 'disabled'}>ثبت سفارش</button><div id="publicOrderMessage" class="success-message order-tracking-card" hidden></div><a class="public-link" href="#">بازگشت به پنل</a></form></main>`;
   bindPublicMenu(customerId, publicMenu.items);
   bindPersianNumberInputs();
   restoreInventoryScrollFocus();
@@ -1551,11 +1573,15 @@ function bindPublicMenu(customerId, items) {
     const data = new FormData(form);
     const lines = items.map(i => ({ itemId: i.id, qty: parseFaNumber(data.get(`qty:${i.id}`) || 0) })).filter(l => l.qty > 0);
     if (!lines.length) return alert('حداقل یک آیتم را انتخاب کنید');
-    const order = RestaurantCore.createSale(state, customerId, lines, data.get('payment'), { status: 'received', guestName: data.get('guestName') || '', guestContact: toEnglishDigits(data.get('guestContact') || ''), orderNote: data.get('orderNote') || '' });
+    const table = publicMenuTable(customerId);
+    const order = table
+      ? RestaurantCore.createHallOrder(state, customerId, table.id, lines, { paymentMethod: 'در انتظار', orderNote: data.get('orderNote') || '', chargeSettings: { ...(RestaurantCore.getPosChargeSettings ? RestaurantCore.getPosChargeSettings(state, customerId) : {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } })
+      : RestaurantCore.createSale(state, customerId, lines, data.get('payment'), { status: 'received', guestName: data.get('guestName') || '', guestContact: toEnglishDigits(data.get('guestContact') || ''), orderNote: data.get('orderNote') || '' });
+    if (table) { order.source = 'table_qr'; order.guestName = data.get('guestName') || ''; order.guestContact = toEnglishDigits(data.get('guestContact') || ''); }
     saveState();
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
-    message.innerHTML = `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)} ثبت شد.</b><span>مبلغ: ${money(order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
+    message.innerHTML = `<b>سفارش شما با شماره پیگیری ${receiptNumberText(order.trackingNumber)}${table ? ` برای میز ${esc(table.name)}` : ''} ثبت شد.</b><span>مبلغ: ${money(order.grandTotal || order.total)} — وضعیت: ${orderStatusLabel(order.status)}</span>${order.lowStockWarnings.length ? '<small>هشدار کمبود برای اپراتور ثبت شد.</small>' : ''}`;
     form.querySelectorAll('[data-number]').forEach(input => { input.value = faNum(0); });
   });
 }
@@ -1757,7 +1783,8 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
 function renderHallTableConfigForm(customer) {
   const tables = RestaurantCore.getHallTables(state, customer.id);
   const settings = customer.hallTableSettings || { count: tables.length || 8, startNumber: 1, customNames: [] };
-  return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میزهای شماره‌ای را تعیین کن؛ نام‌های دستی اگر وارد شوند به تعداد میزها اضافه می‌شوند و اول لیست نمایش داده می‌شوند.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || 8)}</label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً VIP، رضا، آزاد">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button></form>`;
+  const qrCards = tables.map((table) => { const link = tablePublicMenuLink(customer, table); return `<article class="hall-table-qr-card"><img src="${esc(qrImageUrl(link))}" alt="QR میز ${esc(table.name)}"><div><b>میز ${esc(table.name)}</b><input readonly dir="ltr" value="${esc(link)}"><div class="hall-table-qr-actions"><a class="secondary" href="${esc(link)}" target="_blank" rel="noopener">تست لینک</a><button type="button" class="secondary" data-copy-table-qr="${esc(link)}">کپی لینک</button></div></div></article>`; }).join('');
+  return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میزهای شماره‌ای را تعیین کن؛ نام‌های دستی اگر وارد شوند به تعداد میزها اضافه می‌شوند و اول لیست نمایش داده می‌شوند.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || 8)}</label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً VIP، رضا، آزاد">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button><section class="hall-table-qr-section"><div class="section-title"><h3>QR تست منوی میزها</h3><span>برای چاپ یا تست با موبایل</span></div><p>هر QR منوی همین رستوران را برای همان میز باز می‌کند و سفارش ثبت‌شده به فیش باز همان میز اضافه می‌شود.</p><div class="hall-table-qr-grid">${qrCards || '<p>هنوز میزی تعریف نشده است.</p>'}</div></section></form>`;
 }
 
 function canManageHallTableLayout() {
@@ -3143,6 +3170,7 @@ function bindCommon() {
   document.querySelectorAll('[data-close-hall-table-config]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-config-popup')) return; hallTableConfigOpen = false; render(); }));
   document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallTable; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-hall-occupied-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallOccupiedTable; hallTablePickerOpen = false; render(); }));
+  document.querySelectorAll('[data-copy-table-qr]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyTableQr || ''); btn.textContent = 'کپی شد'; setTimeout(() => { btn.textContent = 'کپی لینک'; }, 1200); } catch { alert('کپی خودکار نشد؛ لینک را دستی انتخاب کن.'); } }));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
     if (!selectedHallTableId) return;
