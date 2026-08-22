@@ -2141,8 +2141,20 @@
 
   function setPosChargeSettings(state, customerId, input = {}) {
     const customer = requireCustomer(state, customerId);
-    customer.posChargeSettings = normalizePosChargeSettings(input);
+    const previous = normalizePosChargeSettings(customer.posChargeSettings || {});
+    customer.posChargeSettings = normalizePosChargeSettings({ ...previous, ...input });
+    reapplyPosChargeSettingsToOpenOrders(state, customerId);
     return cloneJson(customer.posChargeSettings);
+  }
+
+  function reapplyPosChargeSettingsToOpenOrders(state, customerId) {
+    const settings = getPosChargeSettings(state, customerId);
+    (state.orders || []).forEach((order) => {
+      if (order.customerId !== customerId || !order.hallSale) return;
+      const posStatus = normalizePosStatus(order.posStatus);
+      if (posStatus === 'paid' || Number(order.remainingTotal || 0) <= 0) return;
+      applyOrderChargeSettings(order, settings);
+    });
   }
 
   function getPosChargeSettings(state, customerId) {
@@ -2644,6 +2656,7 @@
     normalizeDailyReceiptNumbers,
     getPosChargeSettings,
     setPosChargeSettings,
+    reapplyPosChargeSettingsToOpenOrders,
     applyOrderChargeSettings,
     roleLabel,
     getRolePermissions,

@@ -56,6 +56,25 @@ function testHallOrderTaxAndServiceCharges() {
 
 testHallOrderTaxAndServiceCharges();
 
+function testVatReappliesToExistingOpenHallOrder() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000002', email:'vat-open@test.local', password:'123456' });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'لاته', price:2400000 });
+  const [table] = RestaurantCore.configureHallTables(state, customer.id, { count:1, startNumber:11, customNames:[] });
+  const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }]);
+  assert.equal(order.taxTotal, 0);
+  assert.equal(order.grandTotal, 2400000);
+  RestaurantCore.setPosChargeSettings(state, customer.id, { vatEnabled:true, vatPercent:10 });
+  const recalculated = state.orders.find(item => item.id === order.id);
+  assert.equal(recalculated.taxTotal, 240000);
+  assert.equal(recalculated.serviceChargeTotal, 0);
+  assert.equal(recalculated.grandTotal, 2640000);
+  assert.equal(recalculated.remainingTotal, 2640000);
+}
+
+testVatReappliesToExistingOpenHallOrder();
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();

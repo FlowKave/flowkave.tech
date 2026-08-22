@@ -1773,7 +1773,7 @@ function posChargeSettings(customer) {
 function renderPosChargeSettings(customer) {
   if (!canManagePosChargeSettings()) return '';
   const settings = posChargeSettings(customer);
-  return `<form class="pos-charge-settings" id="posChargeSettingsForm" aria-label="تنظیمات مالیات و حق سرویس"><label class="pos-charge-toggle"><input type="checkbox" name="vatEnabled" ${settings.vatEnabled ? 'checked' : ''}><span>مالیات بر ارزش افزوده</span></label><label class="pos-charge-percent"><input name="vatPercent" data-number inputmode="decimal" value="${numberText(settings.vatPercent || 0, 2)}" aria-label="درصد مالیات"><b>٪</b></label><label class="pos-charge-toggle"><input type="checkbox" name="serviceEnabled" ${settings.serviceEnabled ? 'checked' : ''}><span>حق سرویس</span></label><label class="pos-charge-percent"><input name="servicePercent" data-number inputmode="decimal" value="${numberText(settings.servicePercent || 0, 2)}" aria-label="درصد حق سرویس"><b>٪</b></label></form>`;
+  return `<form class="pos-charge-settings" id="posChargeSettingsForm" aria-label="تنظیمات مالیات"><label class="pos-charge-toggle"><input type="checkbox" name="vatEnabled" ${settings.vatEnabled ? 'checked' : ''}><span>مالیات بر ارزش افزوده</span></label><label class="pos-charge-percent"><input name="vatPercent" data-number inputmode="decimal" value="${numberText(settings.vatPercent || 0, 2)}" aria-label="درصد مالیات"><b>٪</b></label></form>`;
 }
 function renderPosChannelPanel(customer) {
   return `<div class="pos-channel-settings-row">${posChannelTabs()}${renderPosChargeSettings(customer)}</div>`;
@@ -3119,9 +3119,11 @@ function bindCommon() {
     const savePosChargeSettings = () => {
       if (!canManagePosChargeSettings()) return;
       const f = new FormData(posChargeSettingsForm);
-      const settings = { vatEnabled: f.get('vatEnabled') === 'on', vatPercent: parseFaNumber(f.get('vatPercent') || 0), serviceEnabled: f.get('serviceEnabled') === 'on', servicePercent: parseFaNumber(f.get('servicePercent') || 0) };
+      const currentSettings = posChargeSettings(customer);
+      const settings = { ...currentSettings, vatEnabled: f.get('vatEnabled') === 'on', vatPercent: parseFaNumber(f.get('vatPercent') || 0) };
       if (RestaurantCore.setPosChargeSettings) RestaurantCore.setPosChargeSettings(state, customer.id, settings);
       else customer.posChargeSettings = settings;
+      if (RestaurantCore.reapplyPosChargeSettingsToOpenOrders) RestaurantCore.reapplyPosChargeSettingsToOpenOrders(state, customer.id);
       saveState();
     };
     posChargeSettingsForm.addEventListener('change', () => { savePosChargeSettings(); render(); });
