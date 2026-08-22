@@ -11,6 +11,7 @@ let sharedStateRevision = 0;
 let sharedSaveTimer = null;
 let sharedSaveInFlight = null;
 let sharedPendingSerialized = '';
+let sharedPendingSince = 0;
 let sharedLastSerialized = '';
 const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
@@ -200,7 +201,7 @@ function saveState(next = state) {
   sharedLastSerialized = serialized;
   if (sharedSyncEnabled && !sharedApplyingRemote) {
     sharedPendingSerialized = serialized;
-    sharedStateRevision = Math.max(sharedStateRevision, Date.now() / 1000);
+    sharedPendingSince = Date.now();
     scheduleSharedStateSave(serialized);
   }
 }
@@ -212,20 +213,30 @@ function sharedStatePayload(nextState) {
 function scheduleSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
   if (!serialized) return;
   sharedPendingSerialized = serialized;
+  sharedPendingSince = Date.now();
   clearTimeout(sharedSaveTimer);
   sharedSaveTimer = setTimeout(() => pushSharedState(serialized), 180);
 }
 async function flushSharedStateSave(serialized = localStorage.getItem(STORAGE_KEY) || '') {
   if (!serialized) return true;
   sharedPendingSerialized = serialized;
+  sharedPendingSince = Date.now();
   clearTimeout(sharedSaveTimer);
   sharedSaveTimer = null;
   return pushSharedState(serialized, { throwOnError: true });
 }
 async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) || '', options = {}) {
   if (!sharedSyncEnabled || !serialized) return true;
+  if (serialized !== (localStorage.getItem(STORAGE_KEY) || '')) {
+    if (sharedPendingSerialized === serialized) { sharedPendingSerialized = ''; sharedPendingSince = 0; }
+    return true;
+  }
   const savePromise = (async () => {
     try {
+      if (serialized !== (localStorage.getItem(STORAGE_KEY) || '')) {
+        if (sharedPendingSerialized === serialized) { sharedPendingSerialized = ''; sharedPendingSince = 0; }
+        return true;
+      }
       const updatedAt = Date.now() / 1000;
       const response = await fetch(SHARED_STATE_API, {
         method: 'PUT',
@@ -237,10 +248,11 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
       if (!response.ok) throw new Error('SYNC_SAVE_FAILED');
       const result = await response.json();
       sharedStateRevision = Number(result.updatedAt || updatedAt);
-      if (sharedPendingSerialized === serialized) sharedPendingSerialized = '';
+      if (sharedPendingSerialized === serialized) { sharedPendingSerialized = ''; sharedPendingSince = 0; }
       return true;
     } catch (error) {
       console.warn('shared state save failed', error);
+      if (sharedPendingSerialized === serialized) { sharedPendingSerialized = ''; sharedPendingSince = 0; }
       if (options.throwOnError) throw error;
       return false;
     } finally {
@@ -288,7 +300,9 @@ function shouldSeedSharedStateFromLocal() {
 }
 async function pullSharedState({ initial = false } = {}) {
   if (!sharedSyncEnabled && !initial) return;
-  if (!initial && (sharedPendingSerialized || sharedSaveTimer || sharedSaveInFlight)) return;
+  const localSaveBusy = Boolean(sharedPendingSerialized || sharedSaveTimer || sharedSaveInFlight);
+  const localSaveStale = sharedPendingSince && Date.now() - sharedPendingSince > 5000;
+  if (!initial && localSaveBusy && currentTab !== 'sales' && !publicQrMode && !localSaveStale) return;
   try {
     const syncUrl = `${SHARED_STATE_API}${SHARED_STATE_API.includes('?') ? '&' : '?'}t=${Date.now()}`;
     const response = await fetch(syncUrl, { cache: 'no-store', credentials: 'same-origin' });
@@ -1088,7 +1102,7 @@ function publicMenuTable(customerId) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-live-qr-sync-109');
+  url.searchParams.set('v', 'sync-unlock-110');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
