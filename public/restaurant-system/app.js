@@ -16,7 +16,9 @@ const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
 const portalMode = portalParams.get('portal') === '1';
 const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
-const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : '/api/state'}`;
+const publicTenantId = portalParams.get('publicTenant') || '';
+const publicQrMode = Boolean(publicTenantId);
+const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : (publicQrMode ? `/api/public-restaurant-state?tenantId=${encodeURIComponent(publicTenantId)}` : '/api/state')}`;
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
 let state = loadState();
@@ -83,7 +85,7 @@ const menuItemDetails = {
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) { const parsed = JSON.parse(raw); migrateDisplayState(parsed); saveState(parsed); return parsed; }
-  const fresh = portalMode ? RestaurantCore.createInitialState() : (RestaurantCore.createDemoSampleState ? RestaurantCore.createDemoSampleState() : RestaurantCore.createInitialState());
+  const fresh = (portalMode || publicQrMode) ? RestaurantCore.createInitialState() : (RestaurantCore.createDemoSampleState ? RestaurantCore.createDemoSampleState() : RestaurantCore.createInitialState());
   saveState(fresh);
   return fresh;
 }
@@ -305,6 +307,7 @@ async function pullSharedState({ initial = false } = {}) {
     if (updatedAt && updatedAt <= sharedStateRevision) return;
     if (!initial && shouldDelayRemoteApply()) return;
     applyRemoteState(result.data, updatedAt, portalIdentity);
+    if (initial) render();
   } catch (error) {
     if (portalMode && initial) { ensurePortalCustomerSession(portalIdentity); saveState(state); render(); }
     if (initial) console.warn('shared state unavailable; using browser-local data', error);
@@ -1072,8 +1075,12 @@ function publicMenuTable(customerId) {
   return RestaurantCore.getHallTables(state, customerId).find((table) => table.id === tableId && table.active !== false) || null;
 }
 function tablePublicMenuLink(customer, table) {
-  const base = `${location.origin}${location.pathname}${location.search ? location.search.replace(/([?&])v=[^&]+/, '$1v=table-qr-test-104') : '?v=table-qr-test-104'}`.replace(/[?&]$/, '');
-  return `${base}#menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
+  const url = new URL(`${location.origin}${location.pathname}`);
+  url.searchParams.set('v', 'mobile-table-qr-105');
+  const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
+  if (tenantId) url.searchParams.set('publicTenant', tenantId);
+  url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
+  return url.toString();
 }
 function qrImageUrl(link) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data=${encodeURIComponent(link)}`;
