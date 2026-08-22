@@ -61,17 +61,27 @@ function mergeOrder(existing: any, incoming: any) {
   return base;
 }
 
-function mergeOrders(existing: any[] = [], incoming: any[] = []) {
+function mergedDeletedOrderIds(existingState: any, incomingState: any) {
+  return [...new Set([
+    ...(Array.isArray(existingState?.deletedOrderIds) ? existingState.deletedOrderIds : []),
+    ...(Array.isArray(incomingState?.deletedOrderIds) ? incomingState.deletedOrderIds : []),
+  ].map((id: any) => String(id || '').trim()).filter(Boolean))];
+}
+
+function mergeOrders(existing: any[] = [], incoming: any[] = [], deletedOrderIds: string[] = []) {
+  const deleted = new Set((deletedOrderIds || []).map((id) => String(id)));
   const byId = new Map<string, any>();
-  for (const order of existing || []) if (order?.id) byId.set(String(order.id), order);
-  for (const order of incoming || []) if (order?.id) byId.set(String(order.id), mergeOrder(byId.get(String(order.id)), order));
+  for (const order of existing || []) if (order?.id && !deleted.has(String(order.id))) byId.set(String(order.id), order);
+  for (const order of incoming || []) if (order?.id && !deleted.has(String(order.id))) byId.set(String(order.id), mergeOrder(byId.get(String(order.id)), order));
   return Array.from(byId.values());
 }
 
 function mergePublicRestaurantState(existingState: any, incomingState: any) {
   if (!existingState || typeof existingState !== 'object') return incomingState;
   const merged = { ...existingState, ...incomingState };
-  merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : []);
+  const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
+  merged.deletedOrderIds = deletedOrderIds;
+  merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
   for (const key of ['shifts', 'ledger', 'restaurantTables']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }

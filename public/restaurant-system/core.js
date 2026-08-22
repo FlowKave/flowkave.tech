@@ -145,6 +145,7 @@
       securityEvents: [],
       backupExports: [],
       orders: [],
+      deletedOrderIds: [],
       restaurantTables: [],
       ledger: [],
       expenses: [],
@@ -179,7 +180,7 @@
     return state;
   }
 
-  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'shifts', 'staffUsers', 'staffSchedules', 'staffAttendance', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
+  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'shifts', 'staffUsers', 'staffSchedules', 'staffAttendance', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'deletedOrderIds', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
   const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
   const mvpMigrationPlan = {
@@ -2027,10 +2028,12 @@
 
   function deleteSale(state, customerId, orderId) {
     requireCustomer(state, customerId);
+    if (!Array.isArray(state.deletedOrderIds)) state.deletedOrderIds = [];
     const index = state.orders.findIndex((order) => order.id === orderId && order.customerId === customerId);
     if (index === -1) throw new Error('ORDER_NOT_FOUND');
     const [removed] = state.orders.splice(index, 1);
     reverseOrderEffects(state, customerId, removed);
+    if (!state.deletedOrderIds.includes(orderId)) state.deletedOrderIds.push(orderId);
     return removed;
   }
 
