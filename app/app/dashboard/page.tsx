@@ -17,7 +17,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   if ((authError || !authData.user) && !managerSession) redirect('/login');
 
   const staffLogin = params?.staffLogin === '1' || params?.staff === '1';
-  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=personnel-modal-invite-fix-77`;
+  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=kitchen-queue-removed-81`;
 
   return (
     <main dir="rtl" className="min-h-screen bg-[#05070d] text-white">
