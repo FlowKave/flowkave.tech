@@ -289,7 +289,8 @@ async function pullSharedState({ initial = false } = {}) {
   if (!sharedSyncEnabled && !initial) return;
   if (!initial && (sharedPendingSerialized || sharedSaveTimer || sharedSaveInFlight)) return;
   try {
-    const response = await fetch(`${SHARED_STATE_API}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+    const syncUrl = `${SHARED_STATE_API}${SHARED_STATE_API.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    const response = await fetch(syncUrl, { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) throw new Error('SYNC_LOAD_FAILED');
     const result = await response.json();
     if (portalMode) portalIdentity = normalizePortalIdentity(result);
@@ -1086,7 +1087,7 @@ function publicMenuTable(customerId) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'qr-loading-fix-107');
+  url.searchParams.set('v', 'qr-sync-query-fix-108');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
