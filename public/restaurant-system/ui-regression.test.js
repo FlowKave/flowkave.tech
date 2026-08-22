@@ -49,10 +49,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=receipt-no-grouping-99');
-mustContain(html, 'core.js?v=receipt-no-grouping-99');
-mustContain(html, 'app.js?v=receipt-no-grouping-99');
-mustContain(html, 'core.js?v=receipt-no-grouping-99');
+mustContain(html, 'styles.css?v=tax-service-settings-100');
+mustContain(html, 'core.js?v=tax-service-settings-100');
+mustContain(html, 'app.js?v=tax-service-settings-100');
+mustContain(html, 'core.js?v=tax-service-settings-100');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const openUnpaidOrders = orders.filter', 'بخش وضعیت سفارشات باید فقط سفارش‌های باز پرداخت‌نشده را نشان دهد.');
@@ -62,6 +62,17 @@ mustContain(app, 'function receiptNumberText', 'شماره فیش/پیگیری �
 mustContain(salesSource, 'شماره فیش ${receiptNumberText(o.trackingNumber || 0)}', 'شماره فیش در وضعیت سفارشات نباید با numberText سه‌رقم‌سه‌رقم شود.');
 assert(!salesSource.includes('شماره فیش ${numberText(o.trackingNumber'), 'شماره فیش نباید جداکننده سه‌رقمی داشته باشد.');
 mustContain(app, 'function money(n) { return `${numberText(Math.round(n || 0), 0)} تومان`; }', 'فرمت مبلغ باید همچنان از numberText و جداکننده سه‌رقمی استفاده کند.');
+mustContain(app, 'function canManagePosChargeSettings()', 'تنظیمات مالیات و حق سرویس صندوق باید helper دسترسی جداگانه داشته باشد.');
+mustContain(app, "return currentRole() === 'manager';", 'تنظیمات مالیات و حق سرویس فقط باید برای مدیر/مالک فعال باشد.');
+mustContain(app, 'pos-charge-settings', 'کنترل مالیات و حق سرویس باید کنار باکس فروش سالن/دلیوری/اسنپ‌فود رندر شود.');
+mustContain(app, 'مالیات بر ارزش افزوده', 'تنظیمات باید تیک و درصد مالیات بر ارزش افزوده داشته باشد.');
+mustContain(app, 'حق سرویس', 'تنظیمات باید تیک و درصد حق سرویس داشته باشد.');
+mustContain(app, 'chargeSettings: customer.posChargeSettings || {}', 'تنظیمات مالیات/حق سرویس باید هنگام ساخت فیش سالن اعمال شود.');
+mustContain(coreSource, 'function applyOrderChargeSettings', 'هسته باید مالیات و حق سرویس را روی subtotal فیش محاسبه کند.');
+mustContain(coreSource, 'order.taxTotal = normalized.vatEnabled ? Math.round(subtotal * normalized.vatPercent / 100) : 0;', 'مالیات باید با درصد قابل تنظیم روی فیش محاسبه شود.');
+mustContain(coreSource, 'order.serviceChargeTotal = normalized.serviceEnabled ? Math.round(subtotal * normalized.servicePercent / 100) : 0;', 'حق سرویس باید با درصد قابل تنظیم روی فیش محاسبه شود.');
+mustContain(coreSource, 'return applyPaymentChargeShares(order, allocations);', 'پرداخت آیتمی باید سهم مالیات و حق سرویس را در مبلغ نهایی لحاظ کند.');
+mustContain(styles, 'POS manager-only VAT/service charge settings', 'کنترل مالیات و حق سرویس باید CSS اختصاصی داشته باشد.');
 mustContain(salesSource, '— میز ${esc(o.tableName)}', 'میز باید کنار شماره فیش در وضعیت سفارشات نمایش داده شود.');
 assert(!salesSource.slice(salesSource.indexOf('const statusPanel'), salesSource.indexOf('if (posSalesChannel === \'hall\')')).includes('شماره پیگیری'), 'در وضعیت سفارشات نباید شماره پیگیری نمایش داده شود.');
 assert(!salesSource.slice(salesSource.indexOf('const statusPanel'), salesSource.indexOf('if (posSalesChannel === \'hall\')')).includes('وضعیت<select'), 'فیلد وضعیت باید از وضعیت سفارشات حذف شود.');
@@ -153,7 +164,7 @@ const resetPasswordPageSource = fs.readFileSync(path.join(root, '..', '..', 'app
 const managerPasswordSyncApiSource = fs.readFileSync(path.join(root, '..', '..', 'app', 'api', 'manager-password-sync', 'route.ts'), 'utf8');
 mustContain(dashboardSource, "staffLogin ? '&staffLogin=1' : ''", 'Online dashboard must pass staffLogin=1 into the embedded restaurant iframe.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'receipt-no-grouping-99', 'Dashboard iframe cache-bust token must match the receipt no-grouping fix.');
+mustContain(dashboardSource, 'tax-service-settings-100', 'Dashboard iframe cache-bust token must match the tax/service settings fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -271,7 +282,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=receipt-no-grouping-99') && index.includes('core.js?v=receipt-no-grouping-99') && index.includes('app.js?v=receipt-no-grouping-99'), 'cache-bust اصلاح نمایش ساده شماره فیش باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=tax-service-settings-100') && index.includes('core.js?v=tax-service-settings-100') && index.includes('app.js?v=tax-service-settings-100'), 'cache-bust اصلاح مالیات و حق سرویس باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();

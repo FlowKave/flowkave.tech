@@ -35,6 +35,27 @@ function testDailyReceiptNumbersStartAt1001AndStayUnique() {
 
 testDailyReceiptNumbersStartAt1001AndStayUnique();
 
+function testHallOrderTaxAndServiceCharges() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000001', email:'tax-service@test.local', password:'123456' });
+  RestaurantCore.setPosChargeSettings(state, customer.id, { vatEnabled:true, vatPercent:10, serviceEnabled:true, servicePercent:5 });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'کباب', price:100000 });
+  const [table] = RestaurantCore.configureHallTables(state, customer.id, { count:1, startNumber:1, customNames:[] });
+  const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }], { chargeSettings: RestaurantCore.getPosChargeSettings(state, customer.id) });
+  assert.equal(order.subtotal, 100000);
+  assert.equal(order.taxTotal, 10000);
+  assert.equal(order.serviceChargeTotal, 5000);
+  assert.equal(order.grandTotal, 115000);
+  const remaining = RestaurantCore.getRemainingPaymentItems(order);
+  const preview = RestaurantCore.previewOrderPayment(state, customer.id, order.id, remaining.map(line => ({ lineId: line.lineId, qty: line.remainingQty })));
+  assert.equal(preview.taxShare, 10000);
+  assert.equal(preview.serviceChargeShare, 5000);
+  assert.equal(preview.finalAmount, 115000);
+}
+
+testHallOrderTaxAndServiceCharges();
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();

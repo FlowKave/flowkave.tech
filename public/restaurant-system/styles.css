@@ -1453,3 +1453,11 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card{flex:0 0 aut
 html body .app-shell .hall-table-picker-grid button.hall-table-card b{font-size:28px!important;font-weight:1000!important;line-height:1.12!important;display:block!important;margin:auto!important;text-align:center!important}
 html body .app-shell .hall-table-picker-grid button.hall-table-card.free{background:#ea580c!important;background-image:linear-gradient(180deg,#fb923c 0%,#ea580c 50%,#c2410c 100%)!important;box-shadow:inset 0 -8px 12px rgba(124,45,18,.34),0 3px 0 #9a3412,0 10px 18px rgba(124,45,18,.24)!important}
 
+
+
+/* POS manager-only VAT/service charge settings */
+.pos-channel-settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pos-charge-settings{margin-inline-start:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border,#dfe7ee);border-radius:18px;padding:8px 10px;background:color-mix(in srgb,var(--surface-strong,#fff) 92%,var(--primary) 6%)}
+.pos-charge-toggle{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:0!important;font-weight:900;white-space:nowrap}.pos-charge-toggle input{width:auto!important}
+.pos-charge-percent{display:inline-flex!important;align-items:center!important;gap:4px!important;margin:0!important}.pos-charge-percent input{width:54px!important;min-width:54px!important;height:36px!important;text-align:center!important;padding:6px!important}.pos-charge-percent b{font-weight:950;color:var(--text,#102033)}
+.hall-receipt-charge-lines{display:grid;gap:4px;margin:6px 0}.hall-receipt-charge-lines small{display:block;color:#496174;font-weight:850}

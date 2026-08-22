@@ -2126,6 +2126,72 @@
     });
   }
 
+  function normalizePercent(value) {
+    return Math.max(0, Math.min(100, Number(value || 0)));
+  }
+
+  function normalizePosChargeSettings(input = {}) {
+    return {
+      vatEnabled: Boolean(input.vatEnabled),
+      vatPercent: normalizePercent(input.vatPercent),
+      serviceEnabled: Boolean(input.serviceEnabled),
+      servicePercent: normalizePercent(input.servicePercent),
+    };
+  }
+
+  function setPosChargeSettings(state, customerId, input = {}) {
+    const customer = requireCustomer(state, customerId);
+    customer.posChargeSettings = normalizePosChargeSettings(input);
+    return cloneJson(customer.posChargeSettings);
+  }
+
+  function getPosChargeSettings(state, customerId) {
+    const customer = requireCustomer(state, customerId);
+    return normalizePosChargeSettings(customer.posChargeSettings || {});
+  }
+
+  function applyOrderChargeSettings(order, settings = {}) {
+    const normalized = normalizePosChargeSettings(settings);
+    const subtotal = Math.round(Number(order.subtotal ?? order.total ?? 0));
+    order.subtotal = subtotal;
+    order.taxEnabled = normalized.vatEnabled;
+    order.taxPercent = normalized.vatEnabled ? normalized.vatPercent : 0;
+    order.serviceChargeEnabled = normalized.serviceEnabled;
+    order.serviceChargePercent = normalized.serviceEnabled ? normalized.servicePercent : 0;
+    order.taxTotal = normalized.vatEnabled ? Math.round(subtotal * normalized.vatPercent / 100) : 0;
+    order.serviceChargeTotal = normalized.serviceEnabled ? Math.round(subtotal * normalized.servicePercent / 100) : 0;
+    order.discountTotal = Math.round(Number(order.discountTotal || 0));
+    order.grandTotal = Math.max(0, Math.round(subtotal - order.discountTotal + order.taxTotal + order.serviceChargeTotal));
+    order.remainingTotal = Math.max(0, Math.round(order.grandTotal - Number(order.paidTotal || 0)));
+    return order;
+  }
+
+  function applyPaymentChargeShares(order, allocations) {
+    const subtotal = Math.max(1, Number(order.subtotal ?? order.total ?? 0));
+    const totals = {
+      discountShare: Math.round(Number(order.discountTotal || 0)),
+      taxShare: Math.round(Number(order.taxTotal || 0)),
+      serviceChargeShare: Math.round(Number(order.serviceChargeTotal || 0)),
+    };
+    const selectedSubtotal = allocations.reduce((sum, item) => sum + Number(item.itemAmount || 0), 0);
+    const remainingItemSubtotal = getRemainingPaymentItems(order).reduce((sum, item) => sum + Number(item.remainingAmount || 0), 0);
+    const allItemsSelected = Math.abs(selectedSubtotal - remainingItemSubtotal) < 1 && Number(order.paidTotal || 0) === 0;
+    let usedDiscount = 0;
+    let usedTax = 0;
+    let usedService = 0;
+    return allocations.map((allocation, index) => {
+      const isLast = index === allocations.length - 1;
+      const ratio = Number(allocation.itemAmount || 0) / subtotal;
+      const discountShare = isLast && allItemsSelected ? totals.discountShare - usedDiscount : Math.round(totals.discountShare * ratio);
+      const taxShare = isLast && allItemsSelected ? totals.taxShare - usedTax : Math.round(totals.taxShare * ratio);
+      const serviceChargeShare = isLast && allItemsSelected ? totals.serviceChargeShare - usedService : Math.round(totals.serviceChargeShare * ratio);
+      usedDiscount += discountShare;
+      usedTax += taxShare;
+      usedService += serviceChargeShare;
+      return { ...allocation, discountShare, taxShare, serviceChargeShare, allocatedTotal: Math.max(0, Math.round(Number(allocation.itemAmount || 0) - discountShare + taxShare + serviceChargeShare)) };
+    });
+  }
+
   function hallPaymentMethods() {
     return ['نقدی', 'کارت‌خوان', 'پرداخت آنلاین', 'کیف پول'];
   }
@@ -2162,8 +2228,7 @@
       existing.total = Number(existing.total || 0) + Number(addition.total || 0);
       existing.cost = Number(existing.cost || 0) + Number(addition.cost || 0);
       existing.subtotal = Number(existing.subtotal || 0) + Number(addition.total || 0);
-      existing.grandTotal = Number(existing.grandTotal || 0) + Number(addition.total || 0);
-      existing.remainingTotal = Math.max(0, Math.round(Number(existing.grandTotal || existing.total || 0) - Number(existing.paidTotal || 0)));
+      applyOrderChargeSettings(existing, options.chargeSettings || getPosChargeSettings(state, customerId));
       existing.posStatus = Number(existing.paidTotal || 0) > 0 ? 'partially-paid' : 'submitted';
       existing.status = ['accepted','preparing','ready'].includes(normalizeOrderStatus(existing.status)) ? existing.status : 'received';
       existing.statusUpdatedAt = sentAt;
@@ -2181,9 +2246,8 @@
     order.remainingTotal = order.total;
     order.subtotal = order.total;
     order.discountTotal = 0;
-    order.taxTotal = 0;
-    order.serviceChargeTotal = 0;
-    order.grandTotal = order.total;
+    order.paidTotal = 0;
+    applyOrderChargeSettings(order, options.chargeSettings || getPosChargeSettings(state, customerId));
     order.payments = [];
     order.paymentAllocations = [];
     order.lines.forEach((line) => prepareHallLine(line, order.createdAt));
@@ -2201,7 +2265,7 @@
 
   function normalizePaymentSelections(order, selections = []) {
     const remainingById = new Map(getRemainingPaymentItems(order).map((line) => [line.lineId, line]));
-    return selections.map((selection) => {
+    const allocations = selections.map((selection) => {
       const remaining = remainingById.get(selection.lineId || selection.orderItemId);
       if (!remaining) throw new Error('ORDER_ITEM_ALREADY_PAID');
       const qty = Number(selection.qty ?? selection.quantity ?? 0);
@@ -2210,6 +2274,7 @@
       const itemAmount = Math.round(qty * remaining.unitPrice);
       return { orderItemId: remaining.lineId, lineId: remaining.lineId, name: remaining.name, quantity: qty, qty, itemAmount, discountShare: 0, taxShare: 0, serviceChargeShare: 0, allocatedTotal: itemAmount };
     });
+    return applyPaymentChargeShares(order, allocations);
   }
 
   function previewOrderPayment(state, customerId, orderId, selections = []) {
@@ -2218,8 +2283,11 @@
     if (!order) throw new Error('ORDER_NOT_FOUND');
     const allocations = normalizePaymentSelections(order, selections);
     const itemSubtotal = allocations.reduce((sum, item) => sum + item.itemAmount, 0);
+    const discountShare = allocations.reduce((sum, item) => sum + item.discountShare, 0);
+    const taxShare = allocations.reduce((sum, item) => sum + item.taxShare, 0);
+    const serviceChargeShare = allocations.reduce((sum, item) => sum + item.serviceChargeShare, 0);
     const finalAmount = allocations.reduce((sum, item) => sum + item.allocatedTotal, 0);
-    return { orderId, itemSubtotal, discountShare: 0, taxShare: 0, serviceChargeShare: 0, finalAmount, paidTotal: Number(order.paidTotal || 0), remainingBefore: Number(order.remainingTotal ?? order.total ?? 0), allocations };
+    return { orderId, itemSubtotal, discountShare, taxShare, serviceChargeShare, finalAmount, paidTotal: Number(order.paidTotal || 0), remainingBefore: Number(order.remainingTotal ?? order.total ?? 0), allocations };
   }
 
   function recordOrderPayment(state, customerId, orderId, selections = [], input = {}) {
@@ -2574,6 +2642,9 @@
     getCurrentCashierShift,
     nextDailyReceiptNumber,
     normalizeDailyReceiptNumbers,
+    getPosChargeSettings,
+    setPosChargeSettings,
+    applyOrderChargeSettings,
     roleLabel,
     getRolePermissions,
     canAccess,
