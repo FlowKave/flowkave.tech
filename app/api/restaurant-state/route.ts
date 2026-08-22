@@ -122,6 +122,87 @@ async function hydrateExistingManagerCredentials(sharedState: any, currentTenant
   return sharedState;
 }
 
+
+function mergeArrayById(existing: any[] = [], incoming: any[] = []) {
+  const byId = new Map<string, any>();
+  for (const item of existing || []) if (item?.id) byId.set(String(item.id), item);
+  for (const item of incoming || []) if (item?.id) byId.set(String(item.id), { ...(byId.get(String(item.id)) || {}), ...item });
+  return Array.from(byId.values());
+}
+
+function timeValue(value: any) {
+  const ms = new Date(value || 0).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function orderFreshness(order: any) {
+  return Math.max(
+    timeValue(order?.updatedAt),
+    timeValue(order?.statusUpdatedAt),
+    timeValue(order?.completedAt),
+    timeValue(order?.paidAt),
+    ...(Array.isArray(order?.payments) ? order.payments.map((payment: any) => timeValue(payment?.confirmedAt || payment?.createdAt)) : [0]),
+    timeValue(order?.createdAt),
+  );
+}
+
+function mergeOrder(existing: any, incoming: any) {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  const existingPaid = existing?.posStatus === 'paid' || Number(existing?.remainingTotal || 0) === 0;
+  const incomingPaid = incoming?.posStatus === 'paid' || Number(incoming?.remainingTotal || 0) === 0;
+  const preferIncoming = (incomingPaid && !existingPaid) || orderFreshness(incoming) >= orderFreshness(existing);
+  const base = preferIncoming ? { ...existing, ...incoming } : { ...incoming, ...existing };
+  base.lines = mergeArrayById(existing.lines || [], incoming.lines || []);
+  base.payments = mergeArrayById(existing.payments || [], incoming.payments || []);
+  base.paymentAllocations = mergeArrayById(existing.paymentAllocations || [], incoming.paymentAllocations || []);
+  if (incomingPaid || existingPaid) {
+    base.posStatus = 'paid';
+    base.remainingTotal = 0;
+    base.status = 'completed';
+    base.completedAt = incoming.completedAt || existing.completedAt || incoming.statusUpdatedAt || existing.statusUpdatedAt || new Date().toISOString();
+  }
+  return base;
+}
+
+function inferMissingDeletedOrderIds(existingState: any, incomingState: any) {
+  if (!Array.isArray(existingState?.orders) || !Array.isArray(incomingState?.orders)) return [];
+  const incomingOrderIds = new Set(incomingState.orders.map((order: any) => String(order?.id || '')).filter(Boolean));
+  const incomingCustomerIds = new Set((incomingState.customers || []).map((customer: any) => String(customer?.id || '')).filter(Boolean));
+  return existingState.orders
+    .filter((order: any) => order?.id && incomingCustomerIds.has(String(order.customerId || '')) && !incomingOrderIds.has(String(order.id)))
+    .map((order: any) => String(order.id));
+}
+
+function mergedDeletedOrderIds(existingState: any, incomingState: any) {
+  return [...new Set([
+    ...(Array.isArray(existingState?.deletedOrderIds) ? existingState.deletedOrderIds : []),
+    ...(Array.isArray(incomingState?.deletedOrderIds) ? incomingState.deletedOrderIds : []),
+    ...inferMissingDeletedOrderIds(existingState, incomingState),
+  ].map((id: any) => String(id || '').trim()).filter(Boolean))];
+}
+
+function mergeOrders(existing: any[] = [], incoming: any[] = [], deletedOrderIds: string[] = []) {
+  const deleted = new Set((deletedOrderIds || []).map((id) => String(id)));
+  const byId = new Map<string, any>();
+  for (const order of existing || []) if (order?.id && !deleted.has(String(order.id))) byId.set(String(order.id), order);
+  for (const order of incoming || []) if (order?.id && !deleted.has(String(order.id))) byId.set(String(order.id), mergeOrder(byId.get(String(order.id)), order));
+  return Array.from(byId.values());
+}
+
+function mergeRestaurantState(existingState: any, incomingState: any) {
+  if (!existingState || typeof existingState !== 'object') return incomingState;
+  const merged = { ...existingState, ...incomingState };
+  const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
+  merged.deletedOrderIds = deletedOrderIds;
+  merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
+  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
+    merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
+  }
+  delete merged.sessions;
+  return merged;
+}
+
 export async function GET() {
   try {
     const { supabase, user, tenant, identity } = await authContext();
@@ -160,10 +241,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'INVALID_RESTAURANT_STATE' }, { status: 400 });
     }
 
-    const requestedVersion = Number(body?.updatedAt || Date.now() / 1000);
-    const version = Number.isFinite(requestedVersion) && requestedVersion > 0 ? requestedVersion : Date.now() / 1000;
+    // Authenticated tablets can also hold stale local revisions; always mint a
+    // fresh server revision and merge with current server state instead of blind overwrite.
+    const version = Date.now();
     const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.slice(0, 120) : null;
-    const sharedState = await hydrateExistingManagerCredentials({ ...state }, tenant.id);
+    const { data: existingRow, error: existingError } = await supabase
+      .from('restaurant_states')
+      .select('state')
+      .eq('tenant_id', tenant.id)
+      .maybeSingle<{ state: any }>();
+    if (existingError) throw new Error(existingError.message);
+    const mergedState = mergeRestaurantState(existingRow?.state, { ...state });
+    const sharedState = await hydrateExistingManagerCredentials(mergedState, tenant.id);
     delete (sharedState as any).sessions;
 
     const { data, error } = await supabase
