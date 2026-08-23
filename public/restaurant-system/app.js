@@ -225,6 +225,12 @@ async function flushSharedStateSave(serialized = localStorage.getItem(STORAGE_KE
   sharedSaveTimer = null;
   return pushSharedState(serialized, { throwOnError: true });
 }
+async function persistCriticalState(message = 'ذخیره تغییرات صندوق روی سرور ناموفق بود؛ دوباره تلاش کنید.') {
+  saveState();
+  const ok = await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+  if (!ok) throw new Error(message);
+  return true;
+}
 async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) || '', options = {}) {
   if (!sharedSyncEnabled || !serialized) return true;
   if (serialized !== (localStorage.getItem(STORAGE_KEY) || '')) {
@@ -3596,9 +3602,9 @@ function bindCommon() {
   }));
   document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { const order = (state.orders || []).find(item => item.id === btn.dataset.editSale && item.customerId === customer.id); if (posSalesChannel === 'hall' && order?.tableId) { selectedHallTableId = order.tableId; hallTablePickerOpen = false; hallTableConfigOpen = false; render(); requestAnimationFrame(() => document.querySelector('#hallSaleForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); return; } editingSaleOrderId = btn.dataset.editSale; render(); }));
   document.querySelectorAll('[data-cancel-sale-edit]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = ''; render(); }));
-  document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', async () => {
     if (!confirm('این فروش حذف شود؟ اثر موجودی و دفتر مالی همین فاکتور برگردانده می‌شود.')) return;
-    try { RestaurantCore.deleteSale(state, customer.id, btn.dataset.deleteSale); saveState(); render(); }
+    try { RestaurantCore.deleteSale(state, customer.id, btn.dataset.deleteSale); await persistCriticalState(); render(); }
     catch (err) { alert(err.message === 'ORDER_NOT_FOUND' ? 'فروش پیدا نشد' : err.message); }
   }));
   document.querySelectorAll('[data-order-status]').forEach(select => select.addEventListener('change', () => {
@@ -3831,7 +3837,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; saveState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { saveState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { await persistCriticalState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
