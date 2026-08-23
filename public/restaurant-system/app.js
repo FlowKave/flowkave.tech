@@ -1028,6 +1028,24 @@ function showHallOrderReceiptPrintPreview(order, options = {}) {
   if (options.autoPrint) setTimeout(() => { doPrint(); setTimeout(() => modal.remove(), 500); }, 60);
 }
 
+function showHallOrderReceiptChoice(order) {
+  if (!order) return;
+  document.querySelector('#hallReceiptChoiceModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'hallReceiptChoiceModalRoot';
+  modal.className = 'receipt-choice-overlay';
+  modal.innerHTML = `<section class="receipt-choice-modal" role="dialog" aria-modal="true" aria-label="ثبت سفارش انجام شد">
+    <h2>سفارش ثبت شد</h2>
+    <p>اگر فیش لازم است، صدور فیش را بزنید.</p>
+    <div class="receipt-choice-actions"><button type="button" class="primary" data-issue-hall-receipt>صدور فیش</button><button type="button" class="secondary" data-close-receipt-choice>بستن</button></div>
+  </section>`;
+  document.body.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('[data-close-receipt-choice]').addEventListener('click', close);
+  modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
+  modal.querySelector('[data-issue-hall-receipt]').addEventListener('click', () => { close(); showHallOrderReceiptPrintPreview(order); });
+}
+
 function showKitchenTicketPrintPreview(orderId) {
   const customer = currentCustomer();
   if (!customer) return;
@@ -3837,7 +3855,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true }); } else { await persistCriticalState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { await persistCriticalState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {

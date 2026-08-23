@@ -513,6 +513,7 @@ p,small,label,input,select,textarea{font-weight:500}.topbar p,.panel p{font-weig
 
 /* Hall sale receipt print preview. */
 #hallReceiptModalRoot .hall-receipt-sheet{max-width:560px!important}#hallReceiptModalRoot .hall-receipt-total{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important}#hallReceiptModalRoot .hall-receipt-total strong{font-size:22px!important;color:#92400e!important}
+.receipt-choice-overlay{position:fixed;inset:0;z-index:360;display:grid;place-items:center;background:rgba(15,23,42,.34);padding:24px}.receipt-choice-modal{width:min(340px,92vw);direction:rtl;background:var(--surface,#fff);color:var(--text,#102033);border:1px solid var(--border,#d7e2ea);border-radius:20px;box-shadow:0 22px 60px rgba(15,23,42,.26);padding:18px;text-align:center;display:grid;gap:12px}.receipt-choice-modal h2{margin:0;font-size:20px}.receipt-choice-modal p{margin:0;color:var(--muted,#64748b);font-weight:800}.receipt-choice-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.receipt-choice-actions button{min-height:46px}
 
 /* Cross-device/touch stability: keep the same visual proportions on laptop/tablet instead of hard-coded desktop pixels breaking the POS. */
 :root{--restaurant-sidebar-width:clamp(210px,20vw,290px);--restaurant-content-pad:clamp(14px,1.65vw,30px);--restaurant-panel-pad:clamp(14px,1.4vw,24px)}
