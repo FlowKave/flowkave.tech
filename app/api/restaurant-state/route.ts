@@ -56,13 +56,14 @@ async function authContext() {
         tenantChoices: [],
       },
       manager: null,
+      staff,
     };
   }
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return { supabase, user: null, tenant: null, identity: null };
   const tenant = await ensureTenantForUser(supabase, data.user);
   const ownerTenants = await getOwnerTenantChoices(supabase, data.user);
-  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant, ownerTenantChoicesFor(ownerTenants)), manager: null };
+  return { supabase, user: data.user, tenant, identity: portalIdentityFor(data.user, tenant, ownerTenantChoicesFor(ownerTenants)), manager: null, staff: null };
 }
 
 function unauthorized() {
@@ -232,7 +233,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { supabase, user, tenant, identity, manager } = await authContext();
+    const { supabase, user, tenant, identity, manager, staff } = await authContext();
     if (!user || !tenant || !identity) return unauthorized();
 
     const body = await request.json();
@@ -261,7 +262,7 @@ export async function PUT(request: NextRequest) {
         tenant_id: tenant.id,
         state: sharedState,
         version,
-        updated_by: manager ? null : user.id,
+        updated_by: manager || staff ? null : user.id,
         device_id: deviceId,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'tenant_id' })

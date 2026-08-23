@@ -251,8 +251,8 @@ async function pushSharedState(serialized = localStorage.getItem(STORAGE_KEY) ||
         cache: 'no-store',
         credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error('SYNC_SAVE_FAILED');
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || result.message || 'SYNC_SAVE_FAILED');
       sharedStateRevision = Number(result.updatedAt || updatedAt);
       if (sharedPendingSerialized === serialized) { sharedPendingSerialized = ''; sharedPendingSince = 0; }
       return true;
