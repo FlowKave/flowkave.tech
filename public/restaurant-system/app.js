@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-local-release-refresh-132');
+  url.searchParams.set('v', 'hall-draft-release-button-133');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-local-release-refresh-132');
+  url.searchParams.set('v', 'hall-draft-release-button-133');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2036,7 +2036,7 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
     const ownDraftLock = lock && !lockedByOther && table.status === 'free';
     const actionAttr = isPaidHeld
       ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"`
-      : (ownDraftLock ? `data-release-hall-table-lock="${esc(table.id)}" title="آزاد کردن انتخاب ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`);
+      : `data-hall-occupied-table="${esc(table.id)}"${ownDraftLock ? ` title="${esc(table.name)} انتخاب شده"` : ''}`;
     return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${actionAttr} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
   }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
@@ -2094,11 +2094,14 @@ function renderHallSales(customer) {
   const tableOverlays = `${renderHallTablePicker(tables, selectedTable)}${renderHallTableConfigPopup(customer)}`;
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
-  const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش ${esc(selectedTable.name)}</div>` : '';
+  const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش میز ${esc(selectedTable.name)}</div>` : '';
   const paidHeldTable = activeOrder && activeOrder.posStatus === 'paid' && activeOrder.tableHeldAfterPayment === true;
   const canSubmitHallOrder = selectedTable && items.length && !paidHeldTable;
   const hallSubmitLabel = selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید';
-  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>`;
+  const showReleaseDraftButton = selectedTable && !activeOrder && activeHallTableLock(customer.id, selectedTable.id)?.ownerId === hallTableLockOwnerId();
+  const releaseDraftButton = showReleaseDraftButton ? `<button type="button" class="secondary hall-release-draft-table-btn" data-release-hall-table-lock="${esc(selectedTable.id)}">آزاد کردن</button>` : '';
+  const orderActions = `<div class="hall-order-actions"><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
+  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label>${orderActions}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>`;
   const payment = activeOrder ? renderHallPaymentPanel(activeOrder) : `<div class="panel hall-payment-panel"><h2>تقسیم فیش و پرداخت</h2><p>بعد از ثبت سفارش، اقلام پرداخت‌نشده همین‌جا برای تسویه کامل یا جزئی نمایش داده می‌شوند.</p></div>`;
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
@@ -3507,6 +3510,7 @@ function bindCommon() {
     const tableId = btn.dataset.releaseHallTableLock;
     try {
       releaseHallTableLock(customer.id, tableId);
+      delete hallOrderDrafts[tableId];
       if (selectedHallTableId === tableId) selectedHallTableId = '';
       await persistCriticalState('آزاد کردن انتخاب میز روی سرور ناموفق بود؛ دوباره تلاش کنید.');
       render();

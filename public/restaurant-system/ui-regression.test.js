@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=hall-local-release-refresh-132');
-mustContain(html, 'core.js?v=hall-local-release-refresh-132');
-mustContain(html, 'app.js?v=hall-local-release-refresh-132');
-mustContain(html, 'core.js?v=hall-local-release-refresh-132');
+mustContain(html, 'styles.css?v=hall-draft-release-button-133');
+mustContain(html, 'core.js?v=hall-draft-release-button-133');
+mustContain(html, 'app.js?v=hall-draft-release-button-133');
+mustContain(html, 'core.js?v=hall-draft-release-button-133');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));', 'وضعیت سفارشات و پرداخت شده باید فقط بازه روز کاری فعلی را نشان دهند.');
@@ -241,8 +241,12 @@ mustContain(app, 'function acquireHallTableLock(customerId, tableId)', 'انتخ
 mustContain(app, 'await persistCriticalState(\'قفل‌کردن میز روی سرور ناموفق بود؛ دوباره تلاش کنید.\')', 'قفل انتخاب میز باید فوری روی سرور ذخیره شود نه فقط local.');
 mustContain(app, 'table.status === \'free\' && table.id !== selectedTable?.id && !hallTableLockedByOther', 'پنجره انتخاب میز باید میزهای قفل‌شده توسط صندوق دیگر را مخفی کند.');
 mustContain(app, 'releaseHallTableLock(customer.id, tableId);', 'بعد از ثبت سفارش، قفل انتخاب باید آزاد شود چون خود سفارش میز را درگیر می‌کند.');
-mustContain(app, 'data-release-hall-table-lock', 'میز انتخاب‌شده زرد باید در همان دستگاه با کلیک قابل آزاد کردن باشد.');
+mustContain(app, 'ثبت سفارش میز ${esc(selectedTable.name)}', 'عنوان سفارش سالن باید مثل «ثبت سفارش میز ۵» باشد، نه «ثبت سفارش ۵».');
+mustContain(app, 'class="secondary hall-release-draft-table-btn" data-release-hall-table-lock', 'دکمه آزاد کردن میز انتخاب‌شده باید کنار دکمه ثبت سفارش باشد.');
+mustContain(app, 'delete hallOrderDrafts[tableId];', 'آزاد کردن میز قبل از ثبت سفارش باید آیتم‌های انتخاب‌شده همان میز را هم پاک کند.');
+assert(!app.slice(app.indexOf('function renderOccupiedHallTablesBox'), app.indexOf('function renderHallTableConfigForm')).includes('data-release-hall-table-lock'), 'کلیک روی دکمه زرد میز نباید میز را آزاد کند؛ آزادسازی فقط از دکمه کنار ثبت سفارش باشد.');
 mustContain(styles, 'button.hall-occupied-table-chip.draft-locked{background:#f59e0b!important', 'میز انتخاب‌شده قبل از ثبت سفارش باید زرد باشد.');
+mustContain(styles, '.hall-release-draft-table-btn', 'دکمه آزاد کردن کنار ثبت سفارش باید استایل مستقل داشته باشد.');
 mustContain(app, "if (order?.tableId && selectedHallTableId === order.tableId) selectedHallTableId = '';", 'بعد از حذف سفارش سالن باید انتخاب local میز پاک شود تا همان دستگاه هم بدون refresh آزاد شدن را ببیند.');
 mustContain(app, "paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId", 'بعد از ثبت پرداخت با میز آزاد باید انتخاب local میز پاک شود تا همان دستگاه هم بدون refresh آزاد شدن را ببیند.');
 mustContain(app, 'activeOrderId || activeHallTableLock(table.customerId, table.id)', 'QR میز هم باید وقتی میز توسط صندوق دیگری در حال ثبت است بسته شود.');
@@ -331,7 +335,7 @@ mustContain(restaurantStateApiSource, 'const version = Date.now();', 'endpoint �
 mustContain(restaurantStateApiSource, 'existingRow?.state', 'endpoint اصلی باید قبل از upsert state فعلی سرور را بخواند و merge کند.');
 assert(!restaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint اصلی نباید version قدیمی دستگاه را revision سرور کند.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'hall-local-release-refresh-132', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'hall-draft-release-button-133', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -449,7 +453,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=hall-local-release-refresh-132') && index.includes('core.js?v=hall-local-release-refresh-132') && index.includes('app.js?v=hall-local-release-refresh-132'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=hall-draft-release-button-133') && index.includes('core.js?v=hall-draft-release-button-133') && index.includes('app.js?v=hall-draft-release-button-133'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
