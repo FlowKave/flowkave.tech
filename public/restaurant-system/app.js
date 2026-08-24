@@ -929,7 +929,7 @@ function showDailyClosingPrintPreview(options = {}) {
   if (!customer) return;
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
   const shiftId = options.shiftId || currentShift?.id || '';
-  const report = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), shiftId ? { shiftId } : {});
+  const report = options.report || RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), shiftId ? { shiftId } : {});
   document.querySelector('#dailyClosingModalRoot')?.remove();
   const modal = document.createElement('div');
   modal.id = 'dailyClosingModalRoot';
@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-qr-table-current-state-only-136');
+  url.searchParams.set('v', 'cashier-register-toggle-128');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1268,7 +1268,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-qr-table-current-state-only-136');
+  url.searchParams.set('v', 'cashier-register-toggle-128');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2079,13 +2079,55 @@ function renderPosChargeSettings(customer) {
   const settings = posChargeSettings(customer);
   return `<form class="pos-charge-settings" id="posChargeSettingsForm" aria-label="تنظیمات مالیات"><label class="pos-charge-toggle"><input type="checkbox" name="vatEnabled" ${settings.vatEnabled ? 'checked' : ''}><span>مالیات بر ارزش افزوده</span></label><label class="pos-charge-percent"><input name="vatPercent" data-number inputmode="decimal" value="${Number(settings.vatPercent || 0) ? numberText(settings.vatPercent, 2) : ''}" aria-label="درصد مالیات"><b>٪</b></label></form>`;
 }
+function renderCashierRegisterToggle(customer) {
+  const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
+  return currentShift
+    ? `<button type="button" class="pos-cashier-toggle close" data-request-close-cashier-register="${esc(currentShift.id)}">بستن صندوق</button>`
+    : `<button type="button" class="pos-cashier-toggle open" data-open-cashier-register>بازکردن صندوق</button>`;
+}
 function renderPosChannelPanel(customer) {
-  return `<div class="pos-channel-settings-row">${posChannelTabs()}${renderPosChargeSettings(customer)}</div>`;
+  return `<div class="pos-channel-settings-row">${posChannelTabs()}<div class="pos-channel-actions">${renderPosChargeSettings(customer)}${renderCashierRegisterToggle(customer)}</div></div>`;
 }
 
 function renderHallTableConfigPopup(customer) {
   if (!hallTableConfigOpen || !canManageHallTableLayout()) return '';
   return `<div class="modal-backdrop hall-table-config-backdrop" data-close-hall-table-config><div class="hall-table-config-popup" role="dialog" aria-modal="true" aria-label="چیدمان میزهای سالن"><button type="button" class="modal-close-icon hall-table-config-close" data-close-hall-table-config aria-label="بستن">×</button>${renderHallTableConfigForm(customer)}</div></div>`;
+}
+
+function hasUnsettledHallOrders(customer) {
+  return (state.orders || []).some(order => order.customerId === customer.id && order.hallSale === true && order.posStatus !== 'paid' && Number(order.remainingTotal ?? orderFinalTotal(order) ?? 0) > 0);
+}
+function showCashierCloseChoice(shiftId) {
+  document.querySelector('#cashierCloseChoiceModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'cashierCloseChoiceModalRoot';
+  modal.className = 'cashier-close-choice-overlay';
+  modal.innerHTML = `<section class="cashier-close-choice-modal" role="dialog" aria-modal="true" aria-label="بستن صندوق"><h2>بستن صندوق</h2><p>صندوق بسته شود؟</p><div class="cashier-close-choice-actions"><button type="button" class="primary" data-close-cashier-register-print="${esc(shiftId)}">بستن و چاپ</button><button type="button" class="secondary" data-close-cashier-register="${esc(shiftId)}">بستن</button></div></section>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', event => { if (event.target === modal) modal.remove(); });
+  modal.querySelector('[data-close-cashier-register]')?.addEventListener('click', () => closeCashierRegister(currentCustomer(), shiftId, false));
+  modal.querySelector('[data-close-cashier-register-print]')?.addEventListener('click', () => closeCashierRegister(currentCustomer(), shiftId, true));
+}
+async function openCashierRegister(customer) {
+  if (!confirm('آیا از بازکردن صندوق اطمینان دارید؟')) return;
+  try { RestaurantCore.openCashierShift(state, customer.id, { name: 'فروش روزانه', operatorName: session?.staffName || session?.ownerName || 'صندوقدار' }); await persistCriticalState(); render(); }
+  catch (err) { alert(err.message === 'SHIFT_ALREADY_OPEN' ? 'صندوق از قبل باز است.' : err.message); }
+}
+function requestCloseCashierRegister(customer, shiftId) {
+  if (hasUnsettledHallOrders(customer)) return alert('برای بستن صندوق، اول همه میزها و سفارش‌های تسویه‌نشده را تسویه کنید.');
+  if (!confirm('آیا از بستن صندوق اطمینان دارید؟')) return;
+  showCashierCloseChoice(shiftId);
+}
+async function closeCashierRegister(customer, shiftId, print = false) {
+  try {
+    const result = RestaurantCore.closeCashierShiftAndResetWorkday(state, customer.id, shiftId);
+    await persistCriticalState();
+    document.querySelector('#cashierCloseChoiceModalRoot')?.remove();
+    render();
+    if (print) showDailyClosingPrintPreview({ report: result.report });
+  } catch (err) {
+    alert(err.message === 'SHIFT_NOT_FOUND' ? 'صندوق باز پیدا نشد' : err.message === 'OPEN_HALL_TABLES_EXIST' ? 'برای بستن صندوق، اول همه میزها و سفارش‌های تسویه‌نشده را تسویه کنید.' : err.message === 'HALL_TABLE_LOCKS_EXIST' ? 'یک میز در حال ثبت سفارش است؛ اول میزهای در حال انتخاب را آزاد کنید.' : err.message);
+  }
 }
 
 function renderHallSales(customer) {
@@ -2113,10 +2155,11 @@ function renderHallSales(customer) {
   const tableOverlays = `${renderHallTablePicker(tables, selectedTable)}${renderHallTableConfigPopup(customer)}`;
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
+  const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش میز ${esc(selectedTable.name)}</div>` : '';
   const paidHeldTable = activeOrder && activeOrder.posStatus === 'paid' && activeOrder.tableHeldAfterPayment === true;
-  const canSubmitHallOrder = selectedTable && items.length && !paidHeldTable;
-  const hallSubmitLabel = selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید';
+  const canSubmitHallOrder = currentShift && selectedTable && items.length && !paidHeldTable;
+  const hallSubmitLabel = !currentShift ? 'اول صندوق را باز کنید' : (selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید');
   const showReleaseDraftButton = selectedTable && !activeOrder && activeHallTableLock(customer.id, selectedTable.id)?.ownerId === hallTableLockOwnerId();
   const releaseDraftButton = showReleaseDraftButton ? `<button type="button" class="secondary hall-release-draft-table-btn" data-release-hall-table-lock="${esc(selectedTable.id)}">آزاد کردن</button>` : '';
   const orderActions = `<div class="hall-order-actions"><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
@@ -2153,19 +2196,17 @@ function collectSaleLines(form) {
 function renderPosWorkdayClosingPanel(customer) {
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
   const dailyReport = RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), currentShift ? { shiftId: currentShift.id } : {});
-  if (!currentShift) {
-    return `<details class="panel wide pos-workday-closing-panel compact-pos-workday-closing"><summary><b>بستن حساب روز کاری</b><span>شروع روز کاری صندوق</span></summary><form id="posShiftForm" class="pos-workday-start-form"><label>نام روز کاری<input name="name" value="روز کاری صندوق"></label><label>نام صندوق‌دار<input name="operatorName" value="صندوق‌دار اصلی"></label><button class="primary">شروع روز کاری</button></form></details>`;
-  }
-  return `<details class="panel wide pos-workday-closing-panel compact-pos-workday-closing"><summary><b>بستن حساب روز کاری</b><span>باز از ${formatDate(currentShift.openedAt)} — جمع کل ${money(dailyReport.grandTotal)}</span></summary><p>این بخش پایین صندوق است و مزاحم سفارش‌گیری نیست. صندوق‌دار می‌تواند بعد از پایان کار، حتی بعد از نیمه‌شب، حساب همین روز کاری را ببندد و گزارش را پرینت بگیرد.</p><div class="ledger compact-workday-ledger"><div><span>جمع فروش آیتم‌ها</span><b>${money(dailyReport.subtotal)}</b></div><div><span>مالیات</span><b>${money(dailyReport.taxTotal)}</b></div><div><span>حق سرویس</span><b>${money(dailyReport.serviceChargeTotal)}</b></div><div class="total"><span>جمع کل فروش</span><b>${money(dailyReport.grandTotal)}</b></div></div><div class="button-row"><button type="button" class="secondary" data-print-pos-workday-closing="${esc(currentShift.id)}">پیش‌نمایش/پرینت گزارش</button><button type="button" class="danger-button" data-close-pos-workday="${esc(currentShift.id)}">بستن حساب روز و پرینت</button></div></details>`;
+  if (!currentShift) return '';
+  return `<div class="panel wide pos-workday-closing-panel compact-pos-workday-closing pos-workday-status-strip"><b>صندوق باز است</b><span>از ${formatDate(currentShift.openedAt)} — جمع کل ${money(dailyReport.grandTotal)}</span><button type="button" class="secondary" data-print-pos-workday-closing="${esc(currentShift.id)}">پیش‌نمایش/پرینت گزارش</button></div>`;
 }
 
 function currentWorkdayRange(customer) {
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
-  const from = currentShift?.openedAt ? new Date(currentShift.openedAt).getTime() : 0;
+  const from = currentShift?.openedAt ? new Date(currentShift.openedAt).getTime() : Number.POSITIVE_INFINITY;
   return { shift: currentShift, from };
 }
 function isInCurrentWorkday(order, range) {
-  if (!range?.from) return true;
+  if (!range?.shift || !Number.isFinite(range.from)) return false;
   return new Date(order.createdAt || 0).getTime() >= range.from;
 }
 
@@ -2182,7 +2223,7 @@ function renderSales(customer) {
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
   const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div></div>`;
   const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p><div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارش پرداخت‌شده‌ای وجود ندارد.</p>'}</div></div>`;
-  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${statusPanel}${paidPanel}${renderPosWorkdayClosingPanel(customer)}</section>`;
+  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${statusPanel}${paidPanel}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
   const paymentSelected = value => (editingOrder?.paymentMethod || 'card') === value ? 'selected' : '';
@@ -3321,12 +3362,10 @@ function bindCommon() {
   });
   const dailyClosingButton = document.querySelector('[data-print-daily-closing]');
   if (dailyClosingButton) dailyClosingButton.addEventListener('click', () => showDailyClosingPrintPreview());
-  document.querySelectorAll('[data-print-pos-workday-closing]').forEach(btn => btn.addEventListener('click', () => showDailyClosingPrintPreview({ shiftId: btn.dataset.printPosWorkdayClosing })));
-  document.querySelectorAll('[data-close-pos-workday]').forEach(btn => btn.addEventListener('click', () => {
-    if (!confirm('حساب این روز کاری بسته شود و گزارش پرینت باز شود؟')) return;
-    try { const shiftId = btn.dataset.closePosWorkday; RestaurantCore.closeCashierShift(state, customer.id, shiftId); saveState(); render(); showDailyClosingPrintPreview({ shiftId }); }
-    catch (err) { alert(err.message === 'SHIFT_NOT_FOUND' ? 'روز کاری پیدا نشد' : err.message); }
-  }));
+  document.querySelectorAll('[data-open-cashier-register]').forEach(btn => btn.addEventListener('click', () => openCashierRegister(customer)));
+  document.querySelectorAll('[data-request-close-cashier-register]').forEach(btn => btn.addEventListener('click', () => requestCloseCashierRegister(customer, btn.dataset.requestCloseCashierRegister)));
+  document.querySelectorAll('[data-close-cashier-register]').forEach(btn => btn.addEventListener('click', () => closeCashierRegister(customer, btn.dataset.closeCashierRegister, false)));
+  document.querySelectorAll('[data-close-cashier-register-print]').forEach(btn => btn.addEventListener('click', () => closeCashierRegister(customer, btn.dataset.closeCashierRegisterPrint, true)));
   const inventoryPrintButton = document.querySelector('[data-print-inventory]');
   if (inventoryPrintButton) inventoryPrintButton.addEventListener('click', showInventoryPrintPreview);
   const printableMenuButton = document.querySelector('[data-printable-menu]');
@@ -3996,6 +4035,7 @@ function bindCommon() {
     },
     hallSaleForm: (f, form) => {
       const tableId = selectedHallTableId;
+      if (!RestaurantCore.getCurrentCashierShift(state, customer.id)) throw new Error('اول صندوق را باز کنید');
       if (!tableId) throw new Error('اول میز را انتخاب کنید');
       const lines = collectHallSaleLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');

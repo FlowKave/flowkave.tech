@@ -1467,9 +1467,11 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* POS manager-only VAT/service charge settings */
 .pos-channel-settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pos-channel-actions{margin-inline-start:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pos-charge-settings{margin-inline-start:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border,#dfe7ee);border-radius:18px;padding:8px 10px;background:color-mix(in srgb,var(--surface-strong,#fff) 92%,var(--primary) 6%)}
 .pos-charge-toggle{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:0!important;font-weight:900;white-space:nowrap}.pos-charge-toggle input{width:auto!important}
 .pos-charge-percent{display:inline-flex!important;align-items:center!important;gap:4px!important;margin:0!important}.pos-charge-percent input{width:54px!important;min-width:54px!important;height:36px!important;text-align:center!important;padding:6px!important}.pos-charge-percent b{font-weight:950;color:var(--text,#102033)}
+.pos-cashier-toggle{min-height:46px!important;border-radius:16px!important;padding:9px 18px!important;font-weight:950!important}.pos-cashier-toggle.open{background:#16a34a!important;color:white!important}.pos-cashier-toggle.close{background:#dc2626!important;color:white!important}.cashier-close-choice-overlay{position:fixed;inset:0;z-index:370;display:grid;place-items:center;background:rgba(15,23,42,.38);padding:24px}.cashier-close-choice-modal{width:min(360px,92vw);direction:rtl;background:var(--surface,#fff);color:var(--text,#102033);border:1px solid var(--border,#d7e2ea);border-radius:20px;box-shadow:0 22px 60px rgba(15,23,42,.28);padding:18px;text-align:center;display:grid;gap:12px}.cashier-close-choice-modal h2{margin:0;font-size:20px}.cashier-close-choice-modal p{margin:0;color:var(--muted,#64748b);font-weight:850}.cashier-close-choice-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cashier-close-choice-actions button{min-height:46px}
 .hall-receipt-charge-lines{display:grid;gap:4px;margin:6px 0}.hall-receipt-charge-lines small{display:block;color:#496174;font-weight:850}
 
 

@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=hall-remote-release-clear-local-134');
-mustContain(html, 'core.js?v=hall-remote-release-clear-local-134');
-mustContain(html, 'app.js?v=hall-remote-release-clear-local-134');
-mustContain(html, 'core.js?v=hall-remote-release-clear-local-134');
+mustContain(html, 'styles.css?v=cashier-register-toggle-128');
+mustContain(html, 'core.js?v=cashier-register-toggle-128');
+mustContain(html, 'app.js?v=cashier-register-toggle-128');
+mustContain(html, 'core.js?v=cashier-register-toggle-128');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));', 'وضعیت سفارشات و پرداخت شده باید فقط بازه روز کاری فعلی را نشان دهند.');
@@ -108,12 +108,19 @@ assert(!app.includes('value="${numberText(settings.vatPercent || 0, 2)}"'), 'ف�
 assert(!app.includes('value="${numberText(percentValue,2)}"') && !app.includes('value="${numberText(amountValue,0)}"'), 'فیلدهای حق سرویس نباید پیش‌فرض ۰ نمایش دهند.');
 mustContain(styles, 'Hall payment-panel service charge controls for cashier', 'حق سرویس داخل فرم پرداخت باید CSS اختصاصی داشته باشد.');
 mustContain(app, 'function dailyClosingCategoryRows(report)', 'UI بستن حساب روز کاری باید جدول دسته‌بندی‌های منو بسازد.');
-mustContain(app, 'function renderPosWorkdayClosingPanel(customer)', 'بستن حساب روز کاری باید داخل خود صندوق هم رندر شود تا صندوق‌دار بتواند ببندد.');
-mustContain(salesSource, '${statusPanel}${paidPanel}${renderPosWorkdayClosingPanel(customer)}', 'پنل بستن حساب روز کاری باید پایین وضعیت سفارشات و پرداخت‌شده باشد، نه بالای صندوق.');
-mustContain(app, 'data-close-pos-workday', 'صندوق‌دار باید از داخل صندوق دکمه بستن حساب روز کاری داشته باشد.');
-mustContain(app, 'data-print-pos-workday-closing', 'صندوق‌دار باید از داخل صندوق پیش‌نمایش/پرینت گزارش بستن حساب را باز کند.');
-mustContain(app, 'posShiftForm', 'اگر روز کاری باز نیست صندوق‌دار باید از خود صندوق بتواند روز کاری را شروع کند.');
-mustContain(app, 'RestaurantCore.closeCashierShift(state, customer.id, shiftId); saveState(); render(); showDailyClosingPrintPreview({ shiftId });', 'بستن حساب از صندوق باید همان شیفت را ببندد و گزارش همان شیفت بسته‌شده را برای پرینت باز کند.');
+mustContain(app, 'function renderCashierRegisterToggle(customer)', 'باز/بستن صندوق باید با یک دکمه واحد داخل ردیف تنظیمات صندوق رندر شود.');
+mustContain(app, 'data-open-cashier-register', 'وقتی صندوق بسته است دکمه بازکردن صندوق باید نمایش داده شود.');
+mustContain(app, 'data-request-close-cashier-register', 'وقتی صندوق باز است همان دکمه باید به بستن صندوق تبدیل شود.');
+mustContain(app, "confirm('آیا از بازکردن صندوق اطمینان دارید؟')", 'بازکردن صندوق باید قبل از انجام از کاربر تأیید بگیرد.');
+mustContain(app, "confirm('آیا از بستن صندوق اطمینان دارید؟')", 'بستن صندوق باید قبل از پاپ‌آپ نهایی از کاربر تأیید بگیرد.');
+mustContain(app, 'function hasUnsettledHallOrders(customer)', 'قبل از بستن صندوق باید سفارش‌ها و میزهای تسویه‌نشده بررسی شوند.');
+mustContain(app, 'برای بستن صندوق، اول همه میزها و سفارش‌های تسویه‌نشده را تسویه کنید.', 'با میز/سفارش تسویه‌نشده نباید اجازه بستن صندوق داده شود.');
+mustContain(app, 'function showCashierCloseChoice(shiftId)', 'بستن صندوق باید پاپ‌آپ دو گزینه‌ای بستن/بستن و چاپ داشته باشد.');
+mustContain(app, 'data-close-cashier-register-print', 'پاپ‌آپ بستن صندوق باید گزینه بستن و چاپ داشته باشد.');
+mustContain(app, 'data-close-cashier-register', 'پاپ‌آپ بستن صندوق باید گزینه بستن بدون چاپ داشته باشد.');
+mustContain(app, "if (!RestaurantCore.getCurrentCashierShift(state, customer.id)) throw new Error('اول صندوق را باز کنید');", 'ثبت سفارش سالن وقتی صندوق بسته است باید ممنوع باشد.');
+mustContain(salesSource, '${statusPanel}${paidPanel}', 'بعد از بستن صندوق فقط پنل‌های سفارشات روز کاری باز نمایش داده شوند و پنل بستن حساب پایین صندوق حذف شود.');
+assert(!salesSource.includes('renderPosWorkdayClosingPanel(customer)'), 'پنل بستن حساب نباید پایین صفحه صندوق باقی بماند؛ دکمه باید کنار مالیات باشد.');
 mustContain(app, '<h1>بستن حساب روز کاری</h1>', 'پرینت گزارش باید عنوان بستن حساب روز کاری داشته باشد.');
 mustContain(app, 'از ${formatDate(report.fromDate)} تا ${formatDate(report.toDate)}', 'گزارش بستن حساب باید بازه واقعی روز کاری را نشان دهد.');
 mustContain(app, '<span>مالیات</span><b>${money(report.taxTotal)}</b>', 'گزارش بستن حساب باید مالیات را جدا نشان دهد.');
@@ -121,9 +128,8 @@ mustContain(app, '<span>جمع کل فروش</span><b>${money(report.grandTotal)
 mustContain(app, 'فروش به تفکیک دسته‌بندی منو', 'پرینت گزارش باید جدول فروش دسته‌بندی منو داشته باشد.');
 mustContain(app, 'حتی اگر بعد از نیمه‌شب باشد', 'متن گزارش باید روشن کند روز کاری می‌تواند بعد از نیمه‌شب بسته شود.');
 mustContain(styles, 'Workday closing report: category sales', 'جدول دسته‌بندی گزارش بستن حساب باید CSS اختصاصی داشته باشد.');
-mustContain(styles, 'Cashier-facing workday closing panel inside POS', 'پنل بستن حساب داخل صندوق باید CSS اختصاصی داشته باشد.');
-mustContain(styles, 'POS workday closing moved below order panels', 'پنل بستن حساب باید پایین صفحه و بسته/فشرده باشد تا صندوق را خراب نکند.');
-mustContain(app, 'compact-pos-workday-closing', 'پنل بستن حساب داخل صندوق باید به صورت details فشرده باشد.');
+mustContain(styles, '.pos-cashier-toggle', 'دکمه بازکردن/بستن صندوق باید CSS اختصاصی کنار مالیات داشته باشد.');
+mustContain(styles, '.cashier-close-choice-modal', 'پاپ‌آپ بستن صندوق باید CSS کوچک و مستقل داشته باشد.');
 mustContain(salesSource, '— میز ${esc(o.tableName)}', 'میز باید کنار شماره فیش در وضعیت سفارشات نمایش داده شود.');
 assert(!salesSource.slice(salesSource.indexOf('const statusPanel'), salesSource.indexOf('if (posSalesChannel === \'hall\')')).includes('شماره پیگیری'), 'در وضعیت سفارشات نباید شماره پیگیری نمایش داده شود.');
 assert(!salesSource.slice(salesSource.indexOf('const statusPanel'), salesSource.indexOf('if (posSalesChannel === \'hall\')')).includes('وضعیت<select'), 'فیلد وضعیت باید از وضعیت سفارشات حذف شود.');
@@ -208,7 +214,7 @@ assert(!app.includes('markPublicQrOrdered'), 'بعد از سفارش QR نبای
 assert(!app.includes('از همین موبایل برای این میز قبلاً سفارش ثبت شده است'), 'پیام سفارش قبلی همین موبایل نباید به مشتری نمایش داده شود.');
 assert(!app.includes('سفارش دوم از QR مجاز نیست'), 'QR نباید سفارش دوم را فقط به دلیل تاریخچه موبایل ممنوع کند.');
 mustContain(app, 'تا وقتی میز در صندوق سفارش باز یا در حال ثبت نداشته باشد، مشتری می‌تواند با همین QR سفارش جدید ثبت کند.', 'پیام QR باید توضیح دهد فقط وضعیت فعلی میز مهم است.');
-mustContain(app, 'hall-qr-table-current-state-only-136', 'لینک‌های QR باید token جدید رفع قفل موبایل را داشته باشند.');
+mustContain(app, 'cashier-register-toggle-128', 'لینک‌های QR و صندوق باید token جدید نسخه جاری را داشته باشند.');
 mustContain(app, 'function renderPublicQrReceipt(order, table)', 'بعد از ثبت سفارش QR مشتری باید رسید موبایلی با جزئیات فیش ببیند.');
 mustContain(app, 'function publicReceiptLink(customerId, orderId, tableId = \'\')', 'رسید QR باید لینک مستقل داشته باشد تا با refresh از بین نرود.');
 mustContain(app, 'function renderPublicReceipt(customerId)', 'رسید QR باید route مستقل داشته باشد و از state آنلاین order را دوباره بخواند.');
@@ -352,7 +358,7 @@ mustContain(restaurantStateApiSource, 'const version = Date.now();', 'endpoint �
 mustContain(restaurantStateApiSource, 'existingRow?.state', 'endpoint اصلی باید قبل از upsert state فعلی سرور را بخواند و merge کند.');
 assert(!restaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint اصلی نباید version قدیمی دستگاه را revision سرور کند.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'hall-remote-release-clear-local-134', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'cashier-register-toggle-128', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -470,7 +476,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=hall-remote-release-clear-local-134') && index.includes('core.js?v=hall-remote-release-clear-local-134') && index.includes('app.js?v=hall-remote-release-clear-local-134'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=cashier-register-toggle-128') && index.includes('core.js?v=cashier-register-toggle-128') && index.includes('app.js?v=cashier-register-toggle-128'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
