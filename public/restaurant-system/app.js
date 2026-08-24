@@ -500,6 +500,14 @@ function orderCompletionSummaryText(summary) {
   const last = summary.lastCompletedAt ? `؛ آخرین تحویل: شماره پیگیری ${numberText(summary.lastTrackingNumber || 0, 0)} در ${formatDate(summary.lastCompletedAt)}` : '';
   return `${numberText(summary.completedTodayCount, 0)} سفارش امروز تحویل و تکمیل شده است${last}`;
 }
+function currentRegisterTurnoverSummary(customer) {
+  const shift = RestaurantCore.getCurrentCashierShift ? RestaurantCore.getCurrentCashierShift(state, customer.id) : null;
+  if (!shift) return { shift:null, revenue:0, cost:0, profit:0 };
+  const report = RestaurantCore.getDailyClosingReport ? RestaurantCore.getDailyClosingReport(state, customer.id, new Date(), { shiftId: shift.id }) : { grandTotal:0, cost:0 };
+  const revenue = Number(report.grandTotal || 0);
+  const cost = Number(report.cost || 0);
+  return { shift, revenue, cost, profit: revenue - cost };
+}
 function playKitchenAlertSound() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return alert('مرورگر این دستگاه پخش زنگ هشدار را پشتیبانی نمی‌کند.');
@@ -1234,7 +1242,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'pos-register-shared-open-close-137');
+  url.searchParams.set('v', 'pos-turnover-panels-138');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1268,7 +1276,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'pos-register-shared-open-close-137');
+  url.searchParams.set('v', 'pos-turnover-panels-138');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1598,11 +1606,11 @@ function render() {
   const navItems = [
     ['dashboard','داشبورد'],['personnel','پرسنلی'],['customerBank','باشگاه مشتریان'],['aiAssistant','هوش مصنوعی'],['menu','منو'],['sales','صندوق'],['recipes','رسپی'],['inventory','انبار'],['accounting','حسابداری'],['account','تنظیمات']
   ].filter(([id]) => canAccessTab(id));
-  const statsMarkup = isCashier ? '' : `<section class="grid stats">
-          <article><span>درآمد</span><strong>${money(summary.revenue)}</strong><em>از فروش‌های ثبت‌شده</em></article>
-          <article><span>قیمت تمام‌شده</span><strong>${money(summary.cost)}</strong><em>بر اساس رسپی</em></article>
-          <article><span>هزینه‌ها</span><strong>${money(summary.expenses)}</strong><em>${esc(expenseHint(customer.id))}</em></article>
-          <article><span>سود تقریبی</span><strong>${money(summary.profit)}</strong><em>${summary.profit >= 0 ? 'مثبت' : 'منفی'}</em></article>
+  const registerTurnover = currentRegisterTurnoverSummary(customer);
+  const statsMarkup = isCashier ? '' : `<section class="grid stats register-turnover-stats">
+          <article><span>درآمد</span><strong>${money(registerTurnover.revenue)}</strong><em>ترنوور صندوق باز</em></article>
+          <article><span>قیمت تمام‌شده</span><strong>${money(registerTurnover.cost)}</strong><em>ترنوور صندوق باز</em></article>
+          <article><span>سود تقریبی</span><strong>${money(registerTurnover.profit)}</strong><em>${registerTurnover.shift ? (registerTurnover.profit >= 0 ? 'مثبت' : 'منفی') : 'صندوق بسته است'}</em></article>
         </section>`;
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
@@ -2086,7 +2094,7 @@ function renderCashierRegisterToggle(customer) {
     : `<button type="button" class="pos-cashier-toggle open" data-open-cashier-register>بازکردن صندوق</button>`;
 }
 function renderPosChannelPanel(customer) {
-  return `<div class="pos-channel-settings-row">${posChannelTabs()}<div class="pos-channel-actions">${renderPosChargeSettings(customer)}${renderCashierRegisterToggle(customer)}</div></div>`;
+  return `<div class="pos-channel-settings-row">${posChannelTabs()}<div class="pos-channel-actions">${renderCashierRegisterToggle(customer)}${renderPosChargeSettings(customer)}</div></div>`;
 }
 
 function renderHallTableConfigPopup(customer) {
@@ -2221,8 +2229,8 @@ function renderSales(customer) {
   const paidOrders = visibleWorkdayOrders.filter(o => o.posStatus === 'paid');
   const orderRow = (o, paid = false) => `<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o)))}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${!paid ? actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش') : ''}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', paid ? 'حذف سفارش پرداخت‌شده' : 'حذف فروش')}</div></div>`;
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
-  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارش باز پرداخت‌نشده‌ای وجود ندارد.</p>'}</div></div>`;
-  const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2><p>${esc(orderCompletionSummaryText(completionSummary))}</p><div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارش پرداخت‌شده‌ای وجود ندارد.</p>'}</div></div>`;
+  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارشی وجود ندارد</p>'}</div></div>`;
+  const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2>${paidOrders.length ? `<p>${esc(orderCompletionSummaryText({ completedTodayCount: paidOrders.length, lastCompletedAt: paidOrders[0]?.paidAt || paidOrders[0]?.completedAt || paidOrders[0]?.statusUpdatedAt || '', lastTrackingNumber: paidOrders[0]?.trackingNumber || 0 }))}</p>` : ''}<div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارشی وجود ندارد</p>'}</div></div>`;
   if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${statusPanel}${paidPanel}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
