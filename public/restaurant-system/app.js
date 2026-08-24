@@ -1128,6 +1128,28 @@ function showHallOrderReceiptChoice(order) {
   modal.querySelector('[data-issue-hall-receipt]').addEventListener('click', () => { close(); showHallOrderReceiptPrintPreview(order); });
 }
 
+function showHallPaymentTableReleaseChoice(form) {
+  if (!form) return;
+  document.querySelector('#hallPaymentReleaseChoiceModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'hallPaymentReleaseChoiceModalRoot';
+  modal.className = 'receipt-choice-overlay hall-payment-release-choice-overlay';
+  modal.innerHTML = `<section class="receipt-choice-modal hall-payment-release-choice-modal" role="dialog" aria-modal="true" aria-label="انتخاب وضعیت میز بعد از پرداخت">
+    <h2>بعد از ثبت پرداخت</h2>
+    <p>وضعیت میز را انتخاب کنید.</p>
+    <div class="receipt-choice-actions hall-payment-release-choice-actions"><button type="button" class="primary" data-pay-and-free-table>میز آزاد</button><button type="button" class="secondary" data-pay-and-hold-table>میز درگیر</button></div>
+  </section>`;
+  document.body.appendChild(modal);
+  const submitWithChoice = (choice) => {
+    form.dataset.freeTableAfterPaymentChoice = choice;
+    modal.remove();
+    form.requestSubmit();
+  };
+  modal.addEventListener('click', (event) => { if (event.target === modal) modal.remove(); });
+  modal.querySelector('[data-pay-and-free-table]').addEventListener('click', () => submitWithChoice('yes'));
+  modal.querySelector('[data-pay-and-hold-table]').addEventListener('click', () => submitWithChoice('no'));
+}
+
 function showKitchenTicketPrintPreview(orderId) {
   const customer = currentCustomer();
   if (!customer) return;
@@ -1212,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-payment-keep-table-130');
+  url.searchParams.set('v', 'hall-payment-release-popup-131');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1256,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-payment-keep-table-130');
+  url.searchParams.set('v', 'hall-payment-release-popup-131');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2011,7 +2033,7 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
     const lock = activeHallTableLock(customer?.id || table.customerId, table.id);
     const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId();
     const isPaidHeld = table.status === 'paid-held';
-    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${isPaidHeld ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b>${isPaidHeld ? '<small>آزاد کردن</small>' : ''}</button>`;
+    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${isPaidHeld ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
   }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
@@ -2091,7 +2113,7 @@ function renderHallPaymentPanel(order) {
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
   const paid = order.payments || [];
   const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><fieldset class="hall-table-release-choice"><legend>بعد از ثبت پرداخت</legend><label><input type="radio" name="freeTableAfterPayment" value="yes" checked><span>میز آزاد شود</span></label><label><input type="radio" name="freeTableAfterPayment" value="no"><span>میز درگیر بماند و سبز شود</span></label></fieldset><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
 }
 
 
@@ -3941,7 +3963,7 @@ function bindCommon() {
     hallPaymentForm: (f, form) => {
       const selected = [...form.querySelectorAll('[data-hall-pay-line]:checked')].map(ch => ({ lineId: ch.value, qty: parseFaNumber(form.querySelector(`[name=\"qty:${CSS.escape(ch.value)}\"]`)?.value || 0) }));
       if (!selected.length) throw new Error('حداقل یک قلم برای پرداخت انتخاب کنید');
-      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), freeTableAfterPayment: f.get('freeTableAfterPayment') !== 'no', idempotencyKey: `ui-${Date.now()}` });
+      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), freeTableAfterPayment: form.dataset.freeTableAfterPaymentChoice !== 'no', idempotencyKey: `ui-${Date.now()}` });
     },
     saleForm: (f, form) => {
       const lines = collectSaleLines(form);
@@ -3984,7 +4006,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { await persistCriticalState(); render(); } } catch (err) { alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; await persistCriticalState(); render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {

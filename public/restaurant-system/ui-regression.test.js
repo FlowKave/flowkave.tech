@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=hall-payment-keep-table-130');
-mustContain(html, 'core.js?v=hall-payment-keep-table-130');
-mustContain(html, 'app.js?v=hall-payment-keep-table-130');
-mustContain(html, 'core.js?v=hall-payment-keep-table-130');
+mustContain(html, 'styles.css?v=hall-payment-release-popup-131');
+mustContain(html, 'core.js?v=hall-payment-release-popup-131');
+mustContain(html, 'app.js?v=hall-payment-release-popup-131');
+mustContain(html, 'core.js?v=hall-payment-release-popup-131');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(salesSource, 'const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));', 'وضعیت سفارشات و پرداخت شده باید فقط بازه روز کاری فعلی را نشان دهند.');
@@ -147,13 +147,16 @@ mustContain(app, 'data-close-receipt-choice', 'پاپ‌آپ بعد از ثبت 
 mustContain(styles, '.receipt-choice-modal', 'پاپ‌آپ انتخاب صدور فیش باید استایل کوچک و مستقل داشته باشد.');
 mustContain(styles, '.receipt-choice-actions .primary{background:#0f766e!important;color:#fff!important', 'دکمه صدور فیش داخل پاپ‌آپ باید همیشه با رنگ پس‌زمینه و متن واضح دیده شود، نه فقط روی hover.');
 mustContain(app, "activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش'", 'دکمه ثبت سفارش جدید سالن باید فقط «ثبت سفارش» باشد.');
-mustContain(app, 'name="freeTableAfterPayment" value="yes" checked', 'ثبت پرداخت باید پیش‌فرض آزاد کردن میز داشته باشد.');
-mustContain(app, 'name="freeTableAfterPayment" value="no"', 'ثبت پرداخت باید گزینه نگه داشتن میز درگیر بعد از تسویه داشته باشد.');
+mustContain(app, 'function showHallPaymentTableReleaseChoice(form)', 'ثبت پرداخت باید اول پاپ‌آپ انتخاب وضعیت میز را نشان دهد.');
+mustContain(app, 'data-pay-and-free-table>میز آزاد', 'پاپ‌آپ ثبت پرداخت باید دکمه «میز آزاد» داشته باشد.');
+mustContain(app, 'data-pay-and-hold-table>میز درگیر', 'پاپ‌آپ ثبت پرداخت باید دکمه «میز درگیر» داشته باشد.');
+mustContain(app, "form.dataset.freeTableAfterPaymentChoice !== 'no'", 'انتخاب پاپ‌آپ باید تعیین کند میز بعد از پرداخت آزاد شود یا درگیر بماند.');
 mustContain(coreSource, 'order.tableHeldAfterPayment = input.freeTableAfterPayment === false', 'اگر در ثبت پرداخت انتخاب شد میز آزاد نشود، سفارش paid باید میز را درگیر نگه دارد.');
 mustContain(coreSource, "'paid-held': 'پرداخت‌شده؛ میز نگه داشته شده'", 'میز پرداخت‌شده‌ای که آزاد نشده باید وضعیت paid-held داشته باشد.');
 mustContain(app, 'data-release-hall-table', 'میز پرداخت‌شده نگه‌داشته‌شده باید با یک کلیک قابل آزاد کردن باشد.');
 mustContain(coreSource, 'function releaseHeldHallTable', 'آزاد کردن بعدی میز باید helper مستقل داشته باشد.');
 mustContain(styles, 'button.hall-occupied-table-chip.paid-held{background:#16a34a!important', 'میز پرداخت‌شده که نگه داشته شده باید در میزهای درگیر سبز نمایش داده شود.');
+assert(!app.includes("<small>آزاد کردن</small>"), 'چیپ سبز میز پرداخت‌شده نباید متن آزاد کردن داخل خودش نشان دهد؛ فقط با کلیک آزاد شود.');
 assert(!app.includes("activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش و صدور فیش'"), 'عنوان قدیمی «ثبت سفارش و صدور فیش» نباید روی دکمه ثبت سفارش جدید باقی بماند.');
 mustContain(app, 'await persistCriticalState(); render(); showHallOrderReceiptChoice(result);', 'ثبت سفارش سالن باید اول روی سرور ذخیره شود و سپس فقط پاپ‌آپ انتخاب فیش را نشان دهد.');
 assert(!app.includes('await persistCriticalState(); render(); showHallOrderReceiptPrintPreview(result, { autoPrint: true });'), 'ثبت سفارش سالن نباید فیش را خودکار چاپ/باز کند.');
@@ -323,7 +326,7 @@ mustContain(restaurantStateApiSource, 'const version = Date.now();', 'endpoint �
 mustContain(restaurantStateApiSource, 'existingRow?.state', 'endpoint اصلی باید قبل از upsert state فعلی سرور را بخواند و merge کند.');
 assert(!restaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint اصلی نباید version قدیمی دستگاه را revision سرور کند.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'hall-payment-keep-table-130', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'hall-payment-release-popup-131', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -441,7 +444,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=hall-payment-keep-table-130') && index.includes('core.js?v=hall-payment-keep-table-130') && index.includes('app.js?v=hall-payment-keep-table-130'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=hall-payment-release-popup-131') && index.includes('core.js?v=hall-payment-release-popup-131') && index.includes('app.js?v=hall-payment-release-popup-131'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();
