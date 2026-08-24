@@ -166,8 +166,8 @@ mustContain(app, 'function hallTicketDraftTotal', 'جمع مبلغ آیتم‌ه
 mustContain(app, 'data-hall-ticket-total', 'جمع مبلغ کل آیتم‌ها باید زیر آخرین خط فیش سمت چپ نمایش داده شود.');
 mustContain(app, 'updateHallTicketDraftTotal(input.closest(\'#hallSaleForm\'))', 'با تغییر تعداد آیتم در صندوق، جمع مبلغ باید همان لحظه به‌روزرسانی شود.');
 mustContain(app, 'function publicTableId()', 'لینک QR میز باید table id را از hash منوی عمومی بخواند.');
-mustContain(app, 'function publicQrOrderKey(customerId, tableId)', 'QR میز باید برای همان موبایل/میز کلید یک‌بار سفارش داشته باشد.');
-mustContain(app, 'function publicQrAlreadyOrdered(customerId, tableId)', 'QR میز باید بعد از سفارش اول از همان موبایل سفارش دوم را ببندد.');
+assert(!app.includes('function publicQrOrderKey'), 'QR میز نباید براساس موبایل کلید یک‌بار سفارش بسازد.');
+assert(!app.includes('function publicQrAlreadyOrdered'), 'QR میز نباید بعد از سفارش اول همان موبایل را برای سفارش بعدی ببندد.');
 mustContain(app, 'function publicQrTableBlocked(table)', 'QR میز باید اگر همان میز در صندوق فیش باز دارد ثبت سفارش را ببندد.');
 mustContain(app, 'function resolvePublicCustomerId()', 'QR موبایل باید اگر customerId محلی در state آنلاین پیدا نشد با publicTenant رستوران را resolve کند.');
 mustContain(app, 'customer.portalTenantId === publicTenantId', 'resolve منوی QR باید customer واقعی را از tenant آنلاین پیدا کند.');
@@ -202,8 +202,13 @@ mustContain(app, 'const table = publicMenuTable(customerId);', 'صفحه منو�
 mustContain(app, 'RestaurantCore.createHallOrder(state, customerId, table.id, lines', 'ثبت سفارش از QR میز باید به فیش سالن همان میز اضافه شود.');
 mustContain(app, "order.source = 'table_qr'", 'سفارش‌های QR میز باید source مشخص داشته باشند.');
 mustContain(app, "if (publicQrTableBlocked(table)) return alert('این میز الان در صندوق سفارش باز یا در حال ثبت دارد", 'اگر میز در صندوق درگیر باشد QR نباید اجازه ثبت سفارش بدهد.');
-mustContain(app, "if (table && publicQrAlreadyOrdered(customerId, table.id)) return alert('از همین موبایل برای این میز قبلاً سفارش ثبت شده است", 'QR میز نباید از یک موبایل اجازه سفارش دوم بدهد.');
-mustContain(app, 'markPublicQrOrdered(customerId, table.id)', 'بعد از ثبت موفق QR باید همان موبایل برای سفارش دوم قفل شود.');
+assert(!app.includes('function publicQrAlreadyOrdered'), 'QR میز نباید براساس تاریخچه همین موبایل سفارش جدید را ببندد.');
+assert(!app.includes('publicQrOrderKey'), 'قفل localStorage سفارش یک‌باره QR نباید برگردد.');
+assert(!app.includes('markPublicQrOrdered'), 'بعد از سفارش QR نباید موبایل برای سفارش‌های بعدی همان میز قفل شود.');
+assert(!app.includes('از همین موبایل برای این میز قبلاً سفارش ثبت شده است'), 'پیام سفارش قبلی همین موبایل نباید به مشتری نمایش داده شود.');
+assert(!app.includes('سفارش دوم از QR مجاز نیست'), 'QR نباید سفارش دوم را فقط به دلیل تاریخچه موبایل ممنوع کند.');
+mustContain(app, 'تا وقتی میز در صندوق سفارش باز یا در حال ثبت نداشته باشد، مشتری می‌تواند با همین QR سفارش جدید ثبت کند.', 'پیام QR باید توضیح دهد فقط وضعیت فعلی میز مهم است.');
+mustContain(app, 'hall-qr-table-current-state-only-136', 'لینک‌های QR باید token جدید رفع قفل موبایل را داشته باشند.');
 mustContain(app, 'function renderPublicQrReceipt(order, table)', 'بعد از ثبت سفارش QR مشتری باید رسید موبایلی با جزئیات فیش ببیند.');
 mustContain(app, 'function publicReceiptLink(customerId, orderId, tableId = \'\')', 'رسید QR باید لینک مستقل داشته باشد تا با refresh از بین نرود.');
 mustContain(app, 'function renderPublicReceipt(customerId)', 'رسید QR باید route مستقل داشته باشد و از state آنلاین order را دوباره بخواند.');
