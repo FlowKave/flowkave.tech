@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-register-toggle-128');
+  url.searchParams.set('v', 'pos-register-shared-open-close-137');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1268,7 +1268,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-register-toggle-128');
+  url.searchParams.set('v', 'pos-register-shared-open-close-137');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2124,7 +2124,7 @@ async function closeCashierRegister(customer, shiftId, print = false) {
     await persistCriticalState();
     document.querySelector('#cashierCloseChoiceModalRoot')?.remove();
     render();
-    if (print) showDailyClosingPrintPreview({ report: result.report });
+    if (print) showDailyClosingPrintPreview({ shiftId, report: result.report });
   } catch (err) {
     alert(err.message === 'SHIFT_NOT_FOUND' ? 'صندوق باز پیدا نشد' : err.message === 'OPEN_HALL_TABLES_EXIST' ? 'برای بستن صندوق، اول همه میزها و سفارش‌های تسویه‌نشده را تسویه کنید.' : err.message === 'HALL_TABLE_LOCKS_EXIST' ? 'یک میز در حال ثبت سفارش است؛ اول میزهای در حال انتخاب را آزاد کنید.' : err.message);
   }

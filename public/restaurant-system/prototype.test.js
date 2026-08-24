@@ -81,6 +81,31 @@ function testVatReappliesToExistingOpenHallOrder() {
 
 testVatReappliesToExistingOpenHallOrder();
 
+function testClosingRegisterRequiresSettledTablesAndResetsWorkday() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000003', email:'register-close@test.local', password:'123456' });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'چلو', price:100000 });
+  const [table] = RestaurantCore.configureHallTables(state, customer.id, { count:1, startNumber:2, customNames:[] });
+  const shift = RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-24T08:00:00.000Z' });
+  const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }]);
+  assert.equal(order.trackingNumber, 1001);
+  assert.throws(() => RestaurantCore.closeCashierShiftAndResetWorkday(state, customer.id, shift.id, { closedAt:'2026-08-24T23:00:00.000Z' }), /OPEN_HALL_TABLES_EXIST/);
+  const remaining = RestaurantCore.getRemainingPaymentItems(state.orders[0]);
+  RestaurantCore.recordOrderPayment(state, customer.id, order.id, remaining.map(line => ({ lineId: line.lineId, qty: line.remainingQty })), { paymentMethod:'کارت‌خوان', freeTableAfterPayment:true, idempotencyKey:'close-test-payment' });
+  const result = RestaurantCore.closeCashierShiftAndResetWorkday(state, customer.id, shift.id, { closedAt:'2026-08-24T23:30:00.000Z' });
+  assert.equal(result.report.orderCount, 1);
+  assert.equal(result.removedOrderCount, 1);
+  assert.equal(state.orders.filter(o => o.customerId === customer.id).length, 0);
+  assert.equal(state.ledger.filter(entry => entry.customerId === customer.id && entry.sourceId === order.id).length, 0);
+  const nextShift = RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-25T08:00:00.000Z' });
+  const nextOrder = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }]);
+  assert.equal(nextShift.receiptStartNumber, 1001);
+  assert.equal(nextOrder.trackingNumber, 1001);
+}
+
+testClosingRegisterRequiresSettledTablesAndResetsWorkday();
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();

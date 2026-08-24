@@ -1026,6 +1026,52 @@
     return shift;
   }
 
+  function openHallOrdersForWorkdayClose(state, customerId) {
+    return (state.orders || []).filter((order) => {
+      if (order.customerId !== customerId || order.hallSale !== true) return false;
+      const posStatus = normalizePosStatus(order.posStatus);
+      if (['paid', 'cancelled'].includes(posStatus)) return false;
+      return Number(order.remainingTotal ?? order.grandTotal ?? order.total ?? 0) > 0;
+    });
+  }
+
+  function closeCashierShiftAndResetWorkday(state, customerId, shiftId, options = {}) {
+    requireCustomer(state, customerId);
+    if (!Array.isArray(state.shifts)) state.shifts = [];
+    if (!Array.isArray(state.orders)) state.orders = [];
+    if (!Array.isArray(state.ledger)) state.ledger = [];
+    if (!Array.isArray(state.hallTableLocks)) state.hallTableLocks = [];
+    const shift = state.shifts.find((s) => s.id === shiftId && s.customerId === customerId);
+    if (!shift) throw new Error('SHIFT_NOT_FOUND');
+    if (shift.closedAt) throw new Error('SHIFT_ALREADY_CLOSED');
+    const openHallOrders = openHallOrdersForWorkdayClose(state, customerId);
+    if (openHallOrders.length) throw new Error('OPEN_HALL_TABLES_EXIST');
+    const activeLocks = state.hallTableLocks.filter((lock) => lock.customerId === customerId);
+    if (activeLocks.length) throw new Error('HALL_TABLE_LOCKS_EXIST');
+    const requestedClosedAt = options.closedAt || new Date().toISOString();
+    const fromMs = new Date(shift.openedAt || 0).getTime();
+    const latestActivityMs = (state.orders || [])
+      .filter((order) => order.customerId === customerId && new Date(order.createdAt || 0).getTime() >= fromMs)
+      .reduce((max, order) => Math.max(max, new Date(order.createdAt || 0).getTime(), new Date(order.paidAt || order.completedAt || order.statusUpdatedAt || 0).getTime()), 0);
+    const closedAtMs = Math.max(new Date(requestedClosedAt).getTime(), latestActivityMs || 0);
+    const closedAt = new Date(Number.isFinite(closedAtMs) ? closedAtMs : Date.now()).toISOString();
+    const report = getDailyClosingReport(state, customerId, new Date(closedAt), { shiftId, toDate: closedAt });
+    const toMs = new Date(closedAt).getTime();
+    const isInClosedWorkday = (value) => {
+      const ts = new Date(value || 0).getTime();
+      return Number.isFinite(ts) && ts >= fromMs && ts <= toMs;
+    };
+    const closedOrderIds = new Set(state.orders
+      .filter((order) => order.customerId === customerId && isInClosedWorkday(order.createdAt))
+      .map((order) => order.id));
+    state.orders = state.orders.filter((order) => !(order.customerId === customerId && closedOrderIds.has(order.id)));
+    state.ledger = state.ledger.filter((entry) => !(entry.customerId === customerId && closedOrderIds.has(entry.sourceId)));
+    state.hallTableLocks = state.hallTableLocks.filter((lock) => lock.customerId !== customerId);
+    shift.closedAt = closedAt;
+    shift.nextReceiptNumber = 1001;
+    return { shift: cloneJson(shift), report: cloneJson(report), removedOrderCount: closedOrderIds.size };
+  }
+
   function getCurrentCashierShift(state, customerId) {
     requireCustomer(state, customerId);
     return (state.shifts || []).find((shift) => shift.customerId === customerId && !shift.closedAt) || null;
@@ -2761,6 +2807,7 @@
     logout,
     openCashierShift,
     closeCashierShift,
+    closeCashierShiftAndResetWorkday,
     getCurrentCashierShift,
     nextDailyReceiptNumber,
     normalizeDailyReceiptNumbers,
