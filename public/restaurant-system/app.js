@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-remote-release-clear-local-134');
+  url.searchParams.set('v', 'hall-table-qr-print-sizes-135');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-remote-release-clear-local-134');
+  url.searchParams.set('v', 'hall-table-qr-print-sizes-135');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1286,6 +1286,30 @@ function tablePublicMenuLink(customer, table) {
 }
 function qrImageUrl(link) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data=${encodeURIComponent(link)}`;
+}
+function qrImageSizeForPrint(size = 'medium') {
+  return size === 'small' ? 132 : (size === 'large' ? 300 : 210);
+}
+function qrPrintSizeLabel(size = 'medium') {
+  return size === 'small' ? 'کوچک' : (size === 'large' ? 'بزرگ' : 'متوسط');
+}
+function showHallTableQrPrintPreview(link, tableName, size = 'medium') {
+  const px = qrImageSizeForPrint(size);
+  const label = `میز ${tableName || ''}`.trim();
+  document.querySelector('#tableQrPrintModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'tableQrPrintModalRoot';
+  modal.className = 'print-modal-overlay table-qr-print-overlay';
+  modal.innerHTML = `<section class="print-modal table-qr-print-modal" role="dialog" aria-modal="true"><div class="print-actions"><button type="button" class="modal-close-icon" data-close-table-qr-print aria-label="بستن">×</button>${actionDecalButton('print', 'data-do-table-qr-print', 'modal-print-decal')}</div><div class="table-qr-print-sheet table-qr-print-${esc(size)}"><div class="table-qr-print-card" style="--qr-print-size:${px}px"><img src="${esc(qrImageUrl(link))}" alt="QR ${esc(label)}"><strong>${esc(label)}</strong><small>برای سفارش، QR را اسکن کنید</small></div><p class="table-qr-print-size-note">اندازه چاپ: ${esc(qrPrintSizeLabel(size))}</p></div></section>`;
+  document.body.appendChild(modal);
+  modal.querySelector('[data-close-table-qr-print]').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  modal.querySelector('[data-do-table-qr-print]').addEventListener('click', () => {
+    const previousTitle = document.title;
+    document.title = '';
+    window.print();
+    setTimeout(() => { document.title = previousTitle; }, 300);
+  });
 }
 
 
@@ -2046,7 +2070,11 @@ function renderHallTableConfigForm(customer) {
   const tables = RestaurantCore.getHallTables(state, customer.id);
   const settings = customer.hallTableSettings || { count: tables.length || 8, startNumber: 1, customNames: [] };
   const hasOnlineTenant = Boolean(customer.portalTenantId || portalIdentity?.tenantId);
-  const qrCards = tables.map((table) => { const link = tablePublicMenuLink(customer, table); return `<article class="hall-table-qr-card ${hasOnlineTenant ? '' : 'missing-tenant'}"><img src="${esc(qrImageUrl(link))}" alt="QR میز ${esc(table.name)}"><div><b>میز ${esc(table.name)}</b><input readonly dir="ltr" value="${esc(link)}"><div class="hall-table-qr-actions"><a class="secondary" href="${esc(link)}" target="_blank" rel="noopener">تست لینک</a><button type="button" class="secondary" data-copy-table-qr="${esc(link)}">کپی لینک</button></div>${hasOnlineTenant ? '' : '<small class="hall-table-qr-warning">برای موبایل اول از پنل آنلاین رستوران وارد شو تا QR شناسه آنلاین داشته باشد.</small>'}</div></article>`; }).join('');
+  const qrCards = tables.map((table) => {
+    const link = tablePublicMenuLink(customer, table);
+    const tableLabel = `میز ${table.name}`;
+    return `<article class="hall-table-qr-card ${hasOnlineTenant ? '' : 'missing-tenant'}"><div class="hall-table-qr-visual"><img src="${esc(qrImageUrl(link))}" alt="QR میز ${esc(table.name)}"><strong class="hall-table-qr-label">${esc(tableLabel)}</strong></div><div><b>${esc(tableLabel)}</b><input readonly dir="ltr" value="${esc(link)}"><div class="hall-table-qr-actions"><a class="secondary" href="${esc(link)}" target="_blank" rel="noopener">تست لینک</a><button type="button" class="secondary" data-copy-table-qr="${esc(link)}">کپی لینک</button><button type="button" class="secondary" data-print-table-qr="${esc(link)}" data-table-name="${esc(table.name)}" data-print-size="small">چاپ کوچک</button><button type="button" class="secondary" data-print-table-qr="${esc(link)}" data-table-name="${esc(table.name)}" data-print-size="medium">چاپ متوسط</button><button type="button" class="secondary" data-print-table-qr="${esc(link)}" data-table-name="${esc(table.name)}" data-print-size="large">چاپ بزرگ</button></div>${hasOnlineTenant ? '' : '<small class="hall-table-qr-warning">برای موبایل اول از پنل آنلاین رستوران وارد شو تا QR شناسه آنلاین داشته باشد.</small>'}</div></article>`;
+  }).join('');
   return `<form class="panel hall-table-config-form" id="hallTableConfigForm"><div class="section-title"><h2>چیدمان میزهای سالن</h2><span class="badge">صندوق</span></div><p>تعداد میزهای شماره‌ای را تعیین کن؛ نام‌های دستی اگر وارد شوند به تعداد میزها اضافه می‌شوند و اول لیست نمایش داده می‌شوند.</p><div class="hall-table-config-grid"><label>تعداد میز${numInput('count', settings.count || 8)}</label><label>شروع شماره${numInput('startNumber', settings.startNumber || 1)}</label></div><label>نام‌گذاری دستی اختیاری<textarea name="customNames" rows="۲" placeholder="مثلاً VIP، رضا، آزاد">${esc((settings.customNames || []).join('، '))}</textarea></label><button class="secondary">ذخیره چیدمان میزها</button><section class="hall-table-qr-section"><div class="section-title"><h3>QR تست منوی میزها</h3><span>برای چاپ یا تست با موبایل</span></div><p>هر QR منوی همین رستوران را برای همان میز باز می‌کند و سفارش ثبت‌شده به فیش باز همان میز اضافه می‌شود.</p><div class="hall-table-qr-grid">${qrCards || '<p>هنوز میزی تعریف نشده است.</p>'}</div></section></form>`;
 }
 
@@ -3524,6 +3552,7 @@ function bindCommon() {
     }
   }));
   document.querySelectorAll('[data-copy-table-qr]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyTableQr || ''); btn.textContent = 'کپی شد'; setTimeout(() => { btn.textContent = 'کپی لینک'; }, 1200); } catch { alert('کپی خودکار نشد؛ لینک را دستی انتخاب کن.'); } }));
+  document.querySelectorAll('[data-print-table-qr]').forEach(btn => btn.addEventListener('click', () => showHallTableQrPrintPreview(btn.dataset.printTableQr || '', btn.dataset.tableName || '', btn.dataset.printSize || 'medium')));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
     if (!selectedHallTableId) return;

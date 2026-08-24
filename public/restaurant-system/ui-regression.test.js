@@ -188,6 +188,13 @@ mustContain(app, 'اگر بعد از چند ثانیه منو باز نشد، QR
 assert(!app.includes('publicQrMode && sharedSyncStarted'), 'QR موبایل نباید قبل از شروع sync، premature منو پیدا نشد نشان دهد.');
 mustContain(app, 'QR بدون شناسه آنلاین رستوران ساخته شده است', 'اگر QR بدون tenant آنلاین باشد باید پیام خطای درست بدهد.');
 mustContain(app, 'qrImageUrl(link)', 'کارت QR باید تصویر QR قابل اسکن بسازد.');
+mustContain(app, 'hall-table-qr-label', 'شماره/نام میز باید زیر خود QR چاپی دیده شود.');
+mustContain(app, 'data-print-table-qr', 'QR هر میز باید دکمه چاپ داشته باشد.');
+mustContain(app, 'data-print-size="small"', 'QR میز باید چاپ کوچک داشته باشد.');
+mustContain(app, 'data-print-size="medium"', 'QR میز باید چاپ متوسط داشته باشد.');
+mustContain(app, 'data-print-size="large"', 'QR میز باید چاپ بزرگ داشته باشد.');
+mustContain(app, 'function showHallTableQrPrintPreview', 'چاپ QR میز باید پیش‌نمایش اختصاصی داشته باشد.');
+mustContain(app, 'function qrImageSizeForPrint', 'اندازه‌های چاپ QR باید helper مستقل داشته باشند.');
 mustContain(app, 'QR تست منوی میزها', 'چیدمان میزها باید بخش QR تست منوی هر میز داشته باشد.');
 mustContain(app, 'data-copy-table-qr', 'لینک QR هر میز باید قابل کپی باشد.');
 mustContain(app, '?table=${encodeURIComponent(table.id)}', 'لینک QR باید table id داخلی/تصادفی میز را داخل hash داشته باشد.');
@@ -213,6 +220,10 @@ mustContain(app, "form.querySelectorAll('[data-number]').forEach(input => { inpu
 mustContain(app, 'public-qr-lock', 'صفحه QR باید وقتی سفارش بسته است پیام واضح نشان بدهد.');
 mustContain(app, 'hall-table-qr-warning', 'کارت QR بدون tenant آنلاین باید هشدار بدهد که روی موبایل معتبر نیست.');
 mustContain(styles, 'hall-table-qr-card.missing-tenant', 'QR بدون tenant آنلاین باید در UI مشخص شود.');
+mustContain(styles, '.hall-table-qr-label', 'شماره میز زیر QR باید CSS واضح داشته باشد.');
+mustContain(styles, '.table-qr-print-card', 'کارت چاپ QR میز باید CSS اختصاصی داشته باشد.');
+mustContain(styles, '--qr-print-size', 'چاپ QR میز باید اندازه قابل تغییر داشته باشد.');
+mustContain(styles, '@media print{body:has(#tableQrPrintModalRoot)', 'چاپ QR میز باید فقط کارت QR را چاپ کند.');
 mustContain(styles, '.public-table-notice.blocked,.public-qr-lock', 'پیام بسته بودن سفارش QR باید ظاهر هشدار واضح داشته باشد.');
 mustContain(styles, '.public-qr-receipt', 'رسید موبایل QR باید CSS اختصاصی و شبیه فیش داشته باشد.');
 mustContain(styles, '.order-panel-scroll', 'لیست وضعیت سفارشات و پرداخت شده باید بعد از حدود پنج آیتم اسکرول داخلی داشته باشد.');
