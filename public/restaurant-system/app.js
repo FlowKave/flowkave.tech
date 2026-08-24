@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-draft-release-button-133');
+  url.searchParams.set('v', 'hall-remote-release-clear-local-134');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-draft-release-button-133');
+  url.searchParams.set('v', 'hall-remote-release-clear-local-134');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2080,6 +2080,11 @@ function renderHallSales(customer) {
   if (selectedHallTableId && !tables.some(table => table.id === selectedHallTableId)) selectedHallTableId = '';
   let selectedTable = selectedHallTableId ? tables.find(table => table.id === selectedHallTableId) : null;
   let activeOrder = selectedTable ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedTable.id) : null;
+  if (selectedHallTableId && selectedTable?.status === 'free' && !activeOrder && activeHallTableLock(customer.id, selectedHallTableId)?.ownerId !== hallTableLockOwnerId()) {
+    selectedHallTableId = '';
+    selectedTable = null;
+    activeOrder = null;
+  }
   if (selectedHallTableId && !activeOrder && hallTableLockedByOther(customer.id, selectedHallTableId)) {
     selectedHallTableId = '';
     selectedTable = null;
