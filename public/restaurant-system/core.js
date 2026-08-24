@@ -2117,15 +2117,19 @@
 
   function getActiveHallOrder(state, customerId, tableId) {
     requireCustomer(state, customerId);
-    return (state.orders || []).find((order) => order.customerId === customerId && order.hallSale === true && order.tableId === tableId && !['paid','cancelled'].includes(normalizePosStatus(order.posStatus))) || null;
+    return (state.orders || []).find((order) => {
+      if (order.customerId !== customerId || order.hallSale !== true || order.tableId !== tableId) return false;
+      const posStatus = normalizePosStatus(order.posStatus);
+      return !['paid','cancelled'].includes(posStatus) || (posStatus === 'paid' && order.tableHeldAfterPayment === true);
+    }) || null;
   }
 
   function getHallTables(state, customerId) {
     return ensureHallTables(state, customerId).map((table) => {
       const activeOrder = getActiveHallOrder(state, customerId, table.id);
       const posStatus = activeOrder ? normalizePosStatus(activeOrder.posStatus) : 'free';
-      const status = !table.active ? 'inactive' : (posStatus === 'partially-paid' ? 'waiting-payment' : activeOrder ? 'open-order' : 'free');
-      const label = ({ free: 'آزاد', 'open-order': 'دارای سفارش باز', 'waiting-payment': 'در انتظار پرداخت', paid: 'تسویه‌شده', inactive: 'غیرفعال' })[status] || 'آزاد';
+      const status = !table.active ? 'inactive' : (posStatus === 'paid' && activeOrder?.tableHeldAfterPayment === true ? 'paid-held' : (posStatus === 'partially-paid' ? 'waiting-payment' : activeOrder ? 'open-order' : 'free'));
+      const label = ({ free: 'آزاد', 'open-order': 'دارای سفارش باز', 'waiting-payment': 'در انتظار پرداخت', 'paid-held': 'پرداخت‌شده؛ میز نگه داشته شده', paid: 'تسویه‌شده', inactive: 'غیرفعال' })[status] || 'آزاد';
       return { ...cloneJson(table), status, statusLabel: label, activeOrderId: activeOrder?.id || '', remainingTotal: activeOrder?.remainingTotal || 0 };
     });
   }
@@ -2257,6 +2261,7 @@
     };
     const existing = getActiveHallOrder(state, customerId, tableId);
     if (existing) {
+      if (normalizePosStatus(existing.posStatus) === 'paid') throw new Error('TABLE_HELD_AFTER_PAYMENT');
       const addition = createSale(state, customerId, lines, existing.paymentMethod || options.paymentMethod || 'در انتظار', { status: 'received', orderNote: options.orderNote || existing.orderNote || '' });
       state.orders = state.orders.filter((order) => order.id !== addition.id);
       state.ledger = state.ledger.filter((entry) => !(entry.customerId === customerId && entry.sourceId === addition.id && entry.type === 'revenue'));
@@ -2372,9 +2377,24 @@
     if (order.posStatus === 'paid') {
       order.status = 'completed';
       order.completedAt = payment.confirmedAt;
+      order.paidAt = payment.confirmedAt;
+      order.statusUpdatedAt = payment.confirmedAt;
+      order.tableHeldAfterPayment = input.freeTableAfterPayment === false;
+      order.tableHeldAfterPaymentAt = order.tableHeldAfterPayment ? payment.confirmedAt : '';
+      order.tableReleasedAt = order.tableHeldAfterPayment ? '' : payment.confirmedAt;
     }
     state.ledger.push({ id: uid('led'), customerId, type: 'revenue', direction: 'in', amount: payment.amount, sourceId: order.id, paymentId: payment.id, createdAt: payment.confirmedAt, paymentMethod: method });
     return { order: cloneJson(order), payment: cloneJson(payment), remainingItems: getRemainingPaymentItems(order) };
+  }
+
+  function releaseHeldHallTable(state, customerId, tableId, releasedAt = new Date().toISOString()) {
+    requireCustomer(state, customerId);
+    const order = (state.orders || []).find((item) => item.customerId === customerId && item.hallSale === true && item.tableId === tableId && normalizePosStatus(item.posStatus) === 'paid' && item.tableHeldAfterPayment === true);
+    if (!order) throw new Error('HELD_TABLE_NOT_FOUND');
+    order.tableHeldAfterPayment = false;
+    order.tableReleasedAt = releasedAt;
+    order.statusUpdatedAt = releasedAt;
+    return cloneJson(order);
   }
 
   function getOrderPayments(state, customerId, orderId) {
@@ -2816,6 +2836,7 @@
     getRemainingPaymentItems,
     previewOrderPayment,
     recordOrderPayment,
+    releaseHeldHallTable,
     getOrderPayments,
     hallPaymentMethods,
     createSale,

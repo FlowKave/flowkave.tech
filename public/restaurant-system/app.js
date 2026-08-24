@@ -1212,7 +1212,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-table-shared-lock-129');
+  url.searchParams.set('v', 'hall-payment-keep-table-130');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1256,7 +1256,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-table-shared-lock-129');
+  url.searchParams.set('v', 'hall-payment-keep-table-130');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2007,7 +2007,12 @@ function renderHallTablePicker(tables, selectedTable) {
 function renderOccupiedHallTablesBox(tables, selectedTable) {
   const customer = currentCustomer();
   const occupiedTables = tables.filter(table => table.active !== false && (table.status !== 'free' || table.id === selectedTable?.id || activeHallTableLock(customer?.id || table.customerId, table.id)));
-  const rows = occupiedTables.map(table => { const lock = activeHallTableLock(customer?.id || table.customerId, table.id); const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId(); return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" data-hall-occupied-table="${esc(table.id)}" ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`; }).join('');
+  const rows = occupiedTables.map(table => {
+    const lock = activeHallTableLock(customer?.id || table.customerId, table.id);
+    const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId();
+    const isPaidHeld = table.status === 'paid-held';
+    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${isPaidHeld ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b>${isPaidHeld ? '<small>آزاد کردن</small>' : ''}</button>`;
+  }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
 
@@ -2064,7 +2069,10 @@ function renderHallSales(customer) {
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش ${esc(selectedTable.name)}</div>` : '';
-  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label><button class="primary" ${selectedTable && items.length ? '' : 'disabled'}>${selectedTable ? (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش') : 'اول میز را انتخاب کنید'}</button>${activeOrder ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}</form>`;
+  const paidHeldTable = activeOrder && activeOrder.posStatus === 'paid' && activeOrder.tableHeldAfterPayment === true;
+  const canSubmitHallOrder = selectedTable && items.length && !paidHeldTable;
+  const hallSubmitLabel = selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید';
+  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>`;
   const payment = activeOrder ? renderHallPaymentPanel(activeOrder) : `<div class="panel hall-payment-panel"><h2>تقسیم فیش و پرداخت</h2><p>بعد از ثبت سفارش، اقلام پرداخت‌نشده همین‌جا برای تسویه کامل یا جزئی نمایش داده می‌شوند.</p></div>`;
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
@@ -2077,10 +2085,13 @@ function renderHallServiceChargeControls(order) {
 }
 
 function renderHallPaymentPanel(order) {
+  if (order.posStatus === 'paid' && order.tableHeldAfterPayment === true) {
+    return `<div class="panel hall-payment-panel hall-paid-held-panel"><div class="section-title"><h2>میز ${esc(order.tableName || '')} پرداخت شده</h2><span class="badge">میز نگه داشته شده</span></div><p>پرداخت این فیش ثبت شده، اما میز هنوز آزاد نشده و در لیست میزهای درگیر با رنگ سبز می‌ماند.</p><div class="hall-payment-summary"><div><span>شماره فیش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع پرداخت</span><b>${money(orderFinalTotal(order))}</b></div><div><span>زمان پرداخت</span><b>${formatDate(order.paidAt || order.completedAt || order.statusUpdatedAt || order.createdAt)}</b></div></div><button type="button" class="primary" data-release-hall-table="${esc(order.tableId || '')}">آزاد کردن میز</button></div>`;
+  }
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
   const paid = order.payments || [];
   const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}"><div class="section-title"><h2>تقسیم فیش و پرداخت ${esc(order.tableName || '')}</h2><span class="badge">${esc(order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز')}</span></div><div class="hall-payment-summary"><div><span>شماره سفارش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b data-hall-summary-service>${money(order.serviceChargeTotal || 0)}</b></div><div><span>مبلغ کل</span><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b data-hall-summary-remaining>${money(order.remainingTotal ?? order.total)}</b></div></div>${renderHallServiceChargeControls(order)}<div class="hall-remaining-list"><h3>اقلام باقیمانده برای پرداخت</h3><label class="hall-select-all"><input type="checkbox" data-hall-pay-all checked><span>انتخاب همه اقلام باقیمانده برای تسویه کامل</span><i aria-hidden="true"></i></label>${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><fieldset class="hall-table-release-choice"><legend>بعد از ثبت پرداخت</legend><label><input type="radio" name="freeTableAfterPayment" value="yes" checked><span>میز آزاد شود</span></label><label><input type="radio" name="freeTableAfterPayment" value="no"><span>میز درگیر بماند و سبز شود</span></label></fieldset><button class="primary" ${remaining.length ? '' : 'disabled'}>ثبت پرداخت</button><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
 }
 
 
@@ -3455,6 +3466,17 @@ function bindCommon() {
     hallTablePickerOpen = false;
     render();
   }));
+  document.querySelectorAll('[data-release-hall-table]').forEach(btn => btn.addEventListener('click', async () => {
+    const tableId = btn.dataset.releaseHallTable;
+    try {
+      RestaurantCore.releaseHeldHallTable(state, customer.id, tableId);
+      if (selectedHallTableId === tableId) selectedHallTableId = '';
+      await persistCriticalState('آزاد کردن میز روی سرور ناموفق بود؛ دوباره تلاش کنید.');
+      render();
+    } catch (err) {
+      alert(err.message === 'HELD_TABLE_NOT_FOUND' ? 'میز پرداخت‌شده نگه‌داشته‌شده پیدا نشد.' : err.message);
+    }
+  }));
   document.querySelectorAll('[data-copy-table-qr]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyTableQr || ''); btn.textContent = 'کپی شد'; setTimeout(() => { btn.textContent = 'کپی لینک'; }, 1200); } catch { alert('کپی خودکار نشد؛ لینک را دستی انتخاب کن.'); } }));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
@@ -3919,7 +3941,7 @@ function bindCommon() {
     hallPaymentForm: (f, form) => {
       const selected = [...form.querySelectorAll('[data-hall-pay-line]:checked')].map(ch => ({ lineId: ch.value, qty: parseFaNumber(form.querySelector(`[name=\"qty:${CSS.escape(ch.value)}\"]`)?.value || 0) }));
       if (!selected.length) throw new Error('حداقل یک قلم برای پرداخت انتخاب کنید');
-      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), idempotencyKey: `ui-${Date.now()}` });
+      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), freeTableAfterPayment: f.get('freeTableAfterPayment') !== 'no', idempotencyKey: `ui-${Date.now()}` });
     },
     saleForm: (f, form) => {
       const lines = collectSaleLines(form);
