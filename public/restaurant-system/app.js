@@ -1234,7 +1234,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-payment-release-popup-131');
+  url.searchParams.set('v', 'hall-local-release-refresh-132');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-payment-release-popup-131');
+  url.searchParams.set('v', 'hall-local-release-refresh-132');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -2033,7 +2033,11 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
     const lock = activeHallTableLock(customer?.id || table.customerId, table.id);
     const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId();
     const isPaidHeld = table.status === 'paid-held';
-    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${isPaidHeld ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
+    const ownDraftLock = lock && !lockedByOther && table.status === 'free';
+    const actionAttr = isPaidHeld
+      ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"`
+      : (ownDraftLock ? `data-release-hall-table-lock="${esc(table.id)}" title="آزاد کردن انتخاب ${esc(table.name)}"` : `data-hall-occupied-table="${esc(table.id)}"`);
+    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${actionAttr} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
   }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
@@ -3499,6 +3503,17 @@ function bindCommon() {
       alert(err.message === 'HELD_TABLE_NOT_FOUND' ? 'میز پرداخت‌شده نگه‌داشته‌شده پیدا نشد.' : err.message);
     }
   }));
+  document.querySelectorAll('[data-release-hall-table-lock]').forEach(btn => btn.addEventListener('click', async () => {
+    const tableId = btn.dataset.releaseHallTableLock;
+    try {
+      releaseHallTableLock(customer.id, tableId);
+      if (selectedHallTableId === tableId) selectedHallTableId = '';
+      await persistCriticalState('آزاد کردن انتخاب میز روی سرور ناموفق بود؛ دوباره تلاش کنید.');
+      render();
+    } catch (err) {
+      alert(err.message);
+    }
+  }));
   document.querySelectorAll('[data-copy-table-qr]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyTableQr || ''); btn.textContent = 'کپی شد'; setTimeout(() => { btn.textContent = 'کپی لینک'; }, 1200); } catch { alert('کپی خودکار نشد؛ لینک را دستی انتخاب کن.'); } }));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
@@ -3772,7 +3787,13 @@ function bindCommon() {
   document.querySelectorAll('[data-cancel-sale-edit]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = ''; render(); }));
   document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', async () => {
     if (!confirm('این فروش حذف شود؟ اثر موجودی و دفتر مالی همین فاکتور برگردانده می‌شود.')) return;
-    try { RestaurantCore.deleteSale(state, customer.id, btn.dataset.deleteSale); await persistCriticalState(); render(); }
+    try {
+      const order = (state.orders || []).find(item => item.id === btn.dataset.deleteSale && item.customerId === customer.id);
+      RestaurantCore.deleteSale(state, customer.id, btn.dataset.deleteSale);
+      if (order?.tableId && selectedHallTableId === order.tableId) selectedHallTableId = '';
+      await persistCriticalState();
+      render();
+    }
     catch (err) { alert(err.message === 'ORDER_NOT_FOUND' ? 'فروش پیدا نشد' : err.message); }
   }));
   document.querySelectorAll('[data-order-status]').forEach(select => select.addEventListener('change', () => {
@@ -4006,7 +4027,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; await persistCriticalState(); render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
