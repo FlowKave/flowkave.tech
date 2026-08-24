@@ -1,9 +1,12 @@
 const STORAGE_KEY = 'restaurant_os_real_نمونه اولیه_v1';
 const SESSION_KEY = 'restaurant_os_active_session_v1';
+const HALL_TABLE_LOCK_OWNER_KEY = 'restaurant_os_hall_table_lock_owner_v1';
 const THEME_KEY = 'restaurant_os_visual_theme_v1';
 const KITCHEN_FILTER_KEY = 'restaurant_os_kitchen_filter_v1';
 const KITCHEN_SNOOZE_KEY = 'restaurant_os_kitchen_snooze_v1';
 const SHARED_SYNC_INTERVAL_MS = 2500;
+const HALL_TABLE_LOCK_TTL_MS = 10 * 60 * 1000;
+const HALL_TABLE_LOCK_HEARTBEAT_MS = 30000;
 let sharedSyncEnabled = false;
 let sharedSyncStarted = false;
 let sharedApplyingRemote = false;
@@ -180,6 +183,8 @@ function migrateDisplayState(next) {
   if (!Array.isArray(next.passwordResetTokens)) next.passwordResetTokens = [];
   if (!Array.isArray(next.securityEvents)) next.securityEvents = [];
   if (!Array.isArray(next.backupExports)) next.backupExports = [];
+  if (!Array.isArray(next.hallTableLocks)) next.hallTableLocks = [];
+  next.hallTableLocks = next.hallTableLocks.filter(lock => !lock?.expiresAt || new Date(lock.expiresAt).getTime() > Date.now());
   next.customers?.forEach(c => { if (c.businessName === 'کافه تست واقعی') c.businessName = 'رستوران نمونه'; });
   next.purchases.forEach(p => { if (!p.paymentStatus) p.paymentStatus = 'unpaid'; });
   next.orders?.forEach((order, index) => {
@@ -780,6 +785,83 @@ function currentCustomer() {
   return session ? state.customers.find((c) => c.id === session.customerId) : null;
 }
 function currentRole() { return session?.role || 'manager'; }
+function currentStaffName() {
+  const staff = session?.staffUserId ? (state.staffUsers || []).find(user => user.id === session.staffUserId) : null;
+  return staff?.name || [staff?.firstName, staff?.lastName].filter(Boolean).join(' ').trim() || roleLabel(currentRole());
+}
+function hallTableLockOwnerId() {
+  let ownerId = localStorage.getItem(HALL_TABLE_LOCK_OWNER_KEY) || '';
+  if (!ownerId) {
+    ownerId = `hall-lock-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(HALL_TABLE_LOCK_OWNER_KEY, ownerId);
+  }
+  return ownerId;
+}
+function normalizeHallTableLocks() {
+  if (!Array.isArray(state.hallTableLocks)) state.hallTableLocks = [];
+  const now = Date.now();
+  state.hallTableLocks = state.hallTableLocks.filter(lock => {
+    if (!lock?.id || !lock.customerId || !lock.tableId) return false;
+    if (lock.active === false || lock.releasedAt) return now - new Date(lock.releasedAt || lock.expiresAt || 0).getTime() < 60 * 60 * 1000;
+    return !lock.expiresAt || new Date(lock.expiresAt).getTime() > now;
+  });
+  return state.hallTableLocks;
+}
+function activeHallTableLock(customerId, tableId) {
+  const now = Date.now();
+  return normalizeHallTableLocks().find(lock => lock.customerId === customerId && lock.tableId === tableId && lock.active !== false && (!lock.expiresAt || new Date(lock.expiresAt).getTime() > now)) || null;
+}
+function hallTableLockedByOther(customerId, tableId) {
+  const lock = activeHallTableLock(customerId, tableId);
+  return Boolean(lock && lock.ownerId !== hallTableLockOwnerId());
+}
+function acquireHallTableLock(customerId, tableId) {
+  const ownerId = hallTableLockOwnerId();
+  const existing = activeHallTableLock(customerId, tableId);
+  if (existing && existing.ownerId !== ownerId) return false;
+  const now = Date.now();
+  const lockId = `${customerId}:${tableId}`;
+  state.hallTableLocks = normalizeHallTableLocks().map(lock => (
+    lock.customerId === customerId && lock.ownerId === ownerId && lock.tableId !== tableId
+      ? { ...lock, active: false, releasedAt: new Date(now).toISOString(), expiresAt: new Date(now).toISOString() }
+      : lock
+  ));
+  const nextLock = {
+    ...(existing || {}),
+    id: lockId,
+    customerId,
+    tableId,
+    ownerId,
+    ownerLabel: currentStaffName(),
+    active: true,
+    lockedAt: existing?.lockedAt || new Date(now).toISOString(),
+    expiresAt: new Date(now + HALL_TABLE_LOCK_TTL_MS).toISOString(),
+  };
+  state.hallTableLocks = state.hallTableLocks.filter(lock => lock.id !== lockId).concat(nextLock);
+  saveState();
+  return true;
+}
+function releaseHallTableLock(customerId, tableId) {
+  const ownerId = hallTableLockOwnerId();
+  const now = new Date().toISOString();
+  state.hallTableLocks = normalizeHallTableLocks().map(lock => (
+    lock.customerId === customerId && lock.tableId === tableId && lock.ownerId === ownerId
+      ? { ...lock, active: false, releasedAt: now, expiresAt: now }
+      : lock
+  ));
+  saveState();
+}
+function refreshSelectedHallTableLock() {
+  const customer = currentCustomer();
+  if (!customer || !selectedHallTableId) return;
+  const order = RestaurantCore.getActiveHallOrder ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedHallTableId) : null;
+  if (order) return;
+  const lock = activeHallTableLock(customer.id, selectedHallTableId);
+  if (!lock || lock.ownerId !== hallTableLockOwnerId()) return;
+  lock.ownerLabel = currentStaffName();
+  lock.expiresAt = new Date(Date.now() + HALL_TABLE_LOCK_TTL_MS).toISOString();
+  saveState();
+}
 function roleLabel(role) { return RestaurantCore.roleLabel ? RestaurantCore.roleLabel(role) : (role === 'cashier' ? 'صندوق‌دار' : 'مدیر'); }
 function canAccessTab(tab) { return RestaurantCore.canAccess ? RestaurantCore.canAccess(currentRole(), tab) : true; }
 function defaultTabForRole(role = currentRole()) {
@@ -1130,7 +1212,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-receipt-visible-submit-label-128');
+  url.searchParams.set('v', 'hall-table-shared-lock-129');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1170,11 +1252,11 @@ function markPublicQrOrdered(customerId, tableId) {
   if (tableId) localStorage.setItem(publicQrOrderKey(customerId, tableId), '1');
 }
 function publicQrTableBlocked(table) {
-  return Boolean(table && table.activeOrderId);
+  return Boolean(table && (table.activeOrderId || activeHallTableLock(table.customerId, table.id)));
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'hall-receipt-visible-submit-label-128');
+  url.searchParams.set('v', 'hall-table-shared-lock-129');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1701,7 +1783,7 @@ function bindPublicMenu(customerId, items) {
     normalizeNumberFields(form);
     const data = new FormData(form);
     const table = publicMenuTable(customerId);
-    if (publicQrTableBlocked(table)) return alert('این میز الان در صندوق سفارش باز دارد و ثبت سفارش QR برای جلوگیری از مخلوط شدن سفارش‌ها بسته است.');
+    if (publicQrTableBlocked(table)) return alert('این میز الان در صندوق سفارش باز یا در حال ثبت دارد و ثبت سفارش QR برای جلوگیری از مخلوط شدن سفارش‌ها بسته است.');
     if (table && publicQrAlreadyOrdered(customerId, table.id)) return alert('از همین موبایل برای این میز قبلاً سفارش ثبت شده است. سفارش دوم از QR مجاز نیست.');
     const lines = items.map(i => ({ itemId: i.id, qty: parseFaNumber(data.get(`qty:${i.id}`) || 0) })).filter(l => l.qty > 0);
     if (!lines.length) return alert('حداقل یک آیتم را انتخاب کنید');
@@ -1916,14 +1998,16 @@ function renderHallOrderPicker(visibleItems, allItems, selectedTable) {
 
 function renderHallTablePicker(tables, selectedTable) {
   if (!hallTablePickerOpen) return '';
-  const openTables = tables.filter(table => table.active !== false && table.status === 'free' && table.id !== selectedTable?.id);
+  const customer = currentCustomer();
+  const openTables = tables.filter(table => table.active !== false && table.status === 'free' && table.id !== selectedTable?.id && !hallTableLockedByOther(customer?.id || table.customerId, table.id));
   const tableButtons = openTables.map(table => `<button type="button" class="hall-table-card ${table.status}" data-hall-table="${table.id}"><b>${esc(table.name)}</b>${table.remainingTotal ? `<small>باقی‌مانده: ${money(table.remainingTotal)}</small>` : ''}</button>`).join('') || '<p class="hall-table-picker-empty">همه میزها درگیر سفارش یا پرداخت هستند.</p>';
   return `<div class="modal-backdrop hall-table-picker-backdrop" data-close-hall-table-picker><div class="panel hall-table-picker-popup" role="dialog" aria-modal="true" aria-label="انتخاب میز"><div class="hall-table-picker-grid">${tableButtons}</div></div></div>`;
 }
 
 function renderOccupiedHallTablesBox(tables, selectedTable) {
-  const occupiedTables = tables.filter(table => table.active !== false && (table.status !== 'free' || table.id === selectedTable?.id));
-  const rows = occupiedTables.map(table => `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${table.status}" data-hall-occupied-table="${esc(table.id)}"><b>${esc(table.name)}</b></button>`).join('');
+  const customer = currentCustomer();
+  const occupiedTables = tables.filter(table => table.active !== false && (table.status !== 'free' || table.id === selectedTable?.id || activeHallTableLock(customer?.id || table.customerId, table.id)));
+  const rows = occupiedTables.map(table => { const lock = activeHallTableLock(customer?.id || table.customerId, table.id); const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId(); return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" data-hall-occupied-table="${esc(table.id)}" ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`; }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
 
@@ -1963,8 +2047,13 @@ function renderHallSales(customer) {
   const items = customerSaleItems();
   const tables = RestaurantCore.getHallTables(state, customer.id);
   if (selectedHallTableId && !tables.some(table => table.id === selectedHallTableId)) selectedHallTableId = '';
-  const selectedTable = selectedHallTableId ? tables.find(table => table.id === selectedHallTableId) : null;
-  const activeOrder = selectedTable ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedTable.id) : null;
+  let selectedTable = selectedHallTableId ? tables.find(table => table.id === selectedHallTableId) : null;
+  let activeOrder = selectedTable ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedTable.id) : null;
+  if (selectedHallTableId && !activeOrder && hallTableLockedByOther(customer.id, selectedHallTableId)) {
+    selectedHallTableId = '';
+    selectedTable = null;
+    activeOrder = null;
+  }
   const categories = [...new Set(items.map(item => item.category || 'بدون دسته‌بندی'))];
   if (!selectedHallCategory || !categories.includes(selectedHallCategory)) selectedHallCategory = categories[0] || '';
   const visibleItems = selectedHallCategory ? items.filter(item => (item.category || 'بدون دسته‌بندی') === selectedHallCategory) : items;
@@ -3347,8 +3436,25 @@ function bindCommon() {
   document.querySelectorAll('[data-open-hall-table-config]').forEach(btn => btn.addEventListener('click', () => { if (!canManageHallTableLayout()) return; hallTableConfigOpen = true; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-close-hall-table-picker]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-picker-popup')) return; hallTablePickerOpen = false; render(); }));
   document.querySelectorAll('[data-close-hall-table-config]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-table-config-popup')) return; hallTableConfigOpen = false; render(); }));
-  document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallTable; hallTablePickerOpen = false; render(); }));
-  document.querySelectorAll('[data-hall-occupied-table]').forEach(btn => btn.addEventListener('click', () => { selectedHallTableId = btn.dataset.hallOccupiedTable; hallTablePickerOpen = false; render(); }));
+  document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', async () => {
+    const tableId = btn.dataset.hallTable;
+    await pullSharedState();
+    const table = RestaurantCore.getHallTables(state, customer.id).find(item => item.id === tableId);
+    if (!table || table.status !== 'free' || hallTableLockedByOther(customer.id, tableId)) return alert('این میز همین الان در صندوق دیگری درگیر شد؛ میز دیگری را انتخاب کنید.');
+    selectedHallTableId = tableId;
+    hallTablePickerOpen = false;
+    hallTableConfigOpen = false;
+    if (!acquireHallTableLock(customer.id, tableId)) { selectedHallTableId = ''; return alert('این میز توسط صندوق دیگری انتخاب شده است.'); }
+    try { await persistCriticalState('قفل‌کردن میز روی سرور ناموفق بود؛ دوباره تلاش کنید.'); render(); }
+    catch (err) { releaseHallTableLock(customer.id, tableId); selectedHallTableId = ''; render(); alert(err.message); }
+  }));
+  document.querySelectorAll('[data-hall-occupied-table]').forEach(btn => btn.addEventListener('click', () => {
+    const tableId = btn.dataset.hallOccupiedTable;
+    if (hallTableLockedByOther(customer.id, tableId)) return alert('این میز توسط صندوق دیگری در حال ثبت است و تا ثبت سفارش یا آزاد شدن قابل انتخاب نیست.');
+    selectedHallTableId = tableId;
+    hallTablePickerOpen = false;
+    render();
+  }));
   document.querySelectorAll('[data-copy-table-qr]').forEach(btn => btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(btn.dataset.copyTableQr || ''); btn.textContent = 'کپی شد'; setTimeout(() => { btn.textContent = 'کپی لینک'; }, 1200); } catch { alert('کپی خودکار نشد؛ لینک را دستی انتخاب کن.'); } }));
   document.querySelectorAll('[data-hall-category]').forEach(btn => btn.addEventListener('click', () => { syncHallOrderDraftFromForm(); selectedHallCategory = btn.dataset.hallCategory; render(); }));
   document.querySelectorAll('[data-hall-add-item]').forEach(btn => btn.addEventListener('click', () => {
@@ -3805,6 +3911,7 @@ function bindCommon() {
       const lines = collectHallSaleLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
       const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
+      releaseHallTableLock(customer.id, tableId);
       delete hallOrderDrafts[tableId];
       notifyLowStock(order);
       return order;
@@ -3878,4 +3985,5 @@ if (portalMode) {
 }
 render();
 setInterval(updateBusinessDateLineDom, 15000);
+setInterval(refreshSelectedHallTableLock, HALL_TABLE_LOCK_HEARTBEAT_MS);
 initSharedStateSync();

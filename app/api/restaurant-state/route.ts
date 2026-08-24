@@ -197,7 +197,7 @@ function mergeRestaurantState(existingState: any, incomingState: any) {
   const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
   merged.deletedOrderIds = deletedOrderIds;
   merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
-  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
+  for (const key of ['shifts', 'ledger', 'restaurantTables', 'hallTableLocks']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }
   delete merged.sessions;

@@ -146,6 +146,7 @@
       backupExports: [],
       orders: [],
       deletedOrderIds: [],
+      hallTableLocks: [],
       restaurantTables: [],
       ledger: [],
       expenses: [],
@@ -180,7 +181,7 @@
     return state;
   }
 
-  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'shifts', 'staffUsers', 'staffSchedules', 'staffAttendance', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'deletedOrderIds', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
+  const stateCollections = ['customers', 'customerProfiles', 'menus', 'menuItems', 'inventory', 'recipes', 'purchases', 'purchaseInvoices', 'restaurantTables', 'hallTableLocks', 'shifts', 'staffUsers', 'staffSchedules', 'staffAttendance', 'staffInvitations', 'passwordResetTokens', 'securityEvents', 'backupExports', 'orders', 'deletedOrderIds', 'ledger', 'expenses', 'financialAccounts', 'cheques', 'sessions'];
   const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
   const mvpMigrationPlan = {
