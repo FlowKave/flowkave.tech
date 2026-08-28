@@ -114,6 +114,7 @@ function normalizePortalIdentity(input = {}) {
   const tenant = meta.tenant || {};
   return {
     tenantId: String(meta.tenantId || tenant.id || ''),
+    customerId: String(meta.customerId || ''),
     businessName: String(meta.businessName || tenant.name || 'رستوران جدید'),
     ownerName: String(meta.ownerName || 'مالک پکیج'),
     email: String(meta.ownerEmail || meta.email || `owner-${tenant.id || Date.now()}@flowkave.local`),
@@ -130,7 +131,8 @@ function ensurePortalCustomer(identityInput = portalIdentity) {
   if (!portalMode) return null;
   portalIdentity = normalizePortalIdentity(identityInput || portalIdentity || {});
   if (!Array.isArray(state.customers)) state.customers = [];
-  let customer = state.customers.find(c => c.portalTenantId && c.portalTenantId === portalIdentity.tenantId);
+  let customer = portalIdentity.customerId ? state.customers.find(c => c.id === portalIdentity.customerId) : null;
+  if (!customer) customer = state.customers.find(c => c.portalTenantId && c.portalTenantId === portalIdentity.tenantId);
   if (!customer && !portalIdentity.tenantId) customer = state.customers.find(c => String(c.email || '').toLowerCase() === portalIdentity.email.toLowerCase());
   if (!customer) {
     customer = RestaurantCore.createCustomer(state, {
@@ -1266,7 +1268,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-hall-table-state-machine-157');
+  url.searchParams.set('v', 'cashier-manager-staff-lock-sync-158');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1300,7 +1302,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-hall-table-state-machine-157');
+  url.searchParams.set('v', 'cashier-manager-staff-lock-sync-158');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1639,7 +1641,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-hall-table-state-machine-157" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-manager-staff-lock-sync-158" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>

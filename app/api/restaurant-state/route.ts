@@ -28,6 +28,7 @@ async function authContext() {
       tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId, owner_id: manager.staffUserId },
       identity: {
         tenantId: manager.tenantId,
+        customerId: manager.customerId,
         tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId },
         businessName: manager.restaurantName,
         ownerName: manager.managerName,
@@ -48,6 +49,7 @@ async function authContext() {
       tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
       identity: {
         tenantId: staff.tenantId,
+        customerId: staff.customerId,
         tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
         businessName: staff.restaurantName,
         ownerName: staff.staffName,
