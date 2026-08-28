@@ -49,6 +49,9 @@ let posSalesChannel = 'hall';
 let selectedHallTableId = '';
 let hallTablePickerOpen = false;
 let hallTableConfigOpen = false;
+let hallOrderNotePopupOpen = false;
+let cashierOrdersPopupMode = '';
+let editingHallOrderId = '';
 let selectedHallCategory = '';
 let hallOrderDrafts = {};
 let calculatorValue = '';
@@ -1242,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-yellow-lock-server-merge-166');
+  url.searchParams.set('v', 'cashier-ui-restore-yellow-merge-167');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1276,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-yellow-lock-server-merge-166');
+  url.searchParams.set('v', 'cashier-ui-restore-yellow-merge-167');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1615,7 +1618,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=attendance-early-late-choice-46" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-ui-restore-yellow-merge-167" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2093,8 +2096,11 @@ function renderCashierRegisterToggle(customer) {
     ? `<button type="button" class="pos-cashier-toggle close" data-request-close-cashier-register="${esc(currentShift.id)}">بستن صندوق</button>`
     : `<button type="button" class="pos-cashier-toggle open" data-open-cashier-register>بازکردن صندوق</button>`;
 }
+function renderCashierOrdersButton() {
+  return `<button type="button" class="pos-orders-launch" data-open-cashier-orders>سفارشات</button>`;
+}
 function renderPosChannelPanel(customer) {
-  return `<div class="pos-channel-settings-row">${posChannelTabs()}<div class="pos-channel-actions">${renderCashierRegisterToggle(customer)}${renderPosChargeSettings(customer)}</div></div>`;
+  return `<div class="pos-channel-settings-row">${posChannelTabs()}<div class="pos-channel-actions">${renderCashierRegisterToggle(customer)}${renderCashierOrdersButton()}${renderPosChargeSettings(customer)}</div></div>`;
 }
 
 function renderHallTableConfigPopup(customer) {
@@ -2138,6 +2144,13 @@ async function closeCashierRegister(customer, shiftId, print = false) {
   }
 }
 
+
+function renderHallOrderNotePopup() {
+  if (!hallOrderNotePopupOpen || !selectedHallTableId) return '';
+  const draft = hallDraftForSelectedTable();
+  return `<div class="modal-backdrop hall-order-note-backdrop" data-close-hall-order-note><section class="hall-order-note-popup" role="dialog" aria-modal="true" aria-label="یادداشت سفارش"><button type="button" class="modal-close-icon" data-close-hall-order-note aria-label="بستن">×</button><div class="section-title"><h2>یادداشت سفارش</h2></div><textarea name="hallOrderNotePopupText" rows="۵" placeholder="تغییرات، حساسیت/آلرژی، توضیحات آماده‌سازی یا هر نکته دیگر">${esc(draft.orderNote || '')}</textarea><div class="hall-order-edit-actions"><button type="button" class="primary" data-save-hall-order-note>ذخیره یادداشت</button><button type="button" class="secondary" data-close-hall-order-note>انصراف</button></div></section></div>`;
+}
+
 function renderHallSales(customer) {
   const items = customerSaleItems();
   const tables = RestaurantCore.getHallTables(state, customer.id);
@@ -2164,14 +2177,15 @@ function renderHallSales(customer) {
   const categoryTabs = `<div class="hall-category-tabs" role="tablist">${categories.map(cat => `<button type="button" class="${selectedHallCategory===cat?'active':''}" data-hall-category="${esc(cat)}">${esc(cat)}</button>`).join('') || '<span>بدون دسته‌بندی</span>'}</div>`;
   const itemList = renderHallOrderPicker(visibleItems, items, selectedTable);
   const currentShift = RestaurantCore.getCurrentCashierShift(state, customer.id);
-  const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title">ثبت سفارش میز ${esc(selectedTable.name)}</div>` : '';
   const paidHeldTable = activeOrder && activeOrder.posStatus === 'paid' && activeOrder.tableHeldAfterPayment === true;
   const canSubmitHallOrder = currentShift && selectedTable && items.length && !paidHeldTable;
-  const hallSubmitLabel = !currentShift ? 'اول صندوق را باز کنید' : (selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید');
+  const hallSubmitLabel = !currentShift ? 'اول صندوق را باز کنید' : (selectedTable ? (activeOrder && !paidHeldTable ? 'افزودن آیتم به همین سفارش' : (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید');
   const showReleaseDraftButton = selectedTable && !activeOrder && activeHallTableLock(customer.id, selectedTable.id)?.ownerId === hallTableLockOwnerId();
   const releaseDraftButton = showReleaseDraftButton ? `<button type="button" class="secondary hall-release-draft-table-btn" data-release-hall-table-lock="${esc(selectedTable.id)}">آزاد کردن</button>` : '';
-  const orderActions = `<div class="hall-order-actions"><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
-  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label>${orderActions}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>`;
+  const noteButton = selectedTable ? `<button type="button" class="secondary hall-order-note-btn" data-open-hall-order-note>یادداشت سفارش</button>` : '';
+  const orderActions = `<div class="hall-order-actions hall-order-title-actions">${noteButton}<button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
+  const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title"><span>ثبت سفارش میز ${esc(selectedTable.name)}</span>${orderActions}</div>` : '';
+  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>${renderHallOrderNotePopup()}`;
   const payment = activeOrder ? renderHallPaymentPanel(activeOrder) : `<div class="panel hall-payment-panel"><h2>تقسیم فیش و پرداخت</h2><p>بعد از ثبت سفارش، اقلام پرداخت‌نشده همین‌جا برای تسویه کامل یا جزئی نمایش داده می‌شوند.</p></div>`;
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
@@ -2218,20 +2232,71 @@ function isInCurrentWorkday(order, range) {
   return new Date(order.createdAt || 0).getTime() >= range.from;
 }
 
-function renderSales(customer) {
-  if (posSalesChannel !== 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}<h2>${posSalesChannel === 'delivery' ? 'دلیوری' : 'اسنپ‌فود'}</h2><p>در این مرحله فقط ورودی مستقل این بخش آماده شده و منطق آن در فاز بعد پیاده‌سازی می‌شود.</p></div></section>`;
-  const hall = renderHallSales(customer);
-  const items = customerSaleItems();
+function cashierWorkdayOrderGroups(customer) {
   const orders = RestaurantCore.getCustomerOrders ? RestaurantCore.getCustomerOrders(state, customer.id) : byCustomer(state.orders).slice().reverse();
   const workdayRange = currentWorkdayRange(customer);
   const visibleWorkdayOrders = orders.filter(o => isInCurrentWorkday(o, workdayRange));
   const openUnpaidOrders = visibleWorkdayOrders.filter(o => o.posStatus !== 'paid' && Number(o.remainingTotal ?? orderFinalTotal(o) ?? 0) > 0);
   const paidOrders = visibleWorkdayOrders.filter(o => o.posStatus === 'paid');
-  const orderRow = (o, paid = false) => `<div class="order-row order-status-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o)))}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${!paid ? actionDecalButton('edit', `data-edit-sale="${o.id}"`, 'sale-row-decal', 'ویرایش فروش') : ''}${actionDecalButton('delete', `data-delete-sale="${o.id}"`, 'sale-row-decal', paid ? 'حذف سفارش پرداخت‌شده' : 'حذف فروش')}</div></div>`;
+  return { orders, workdayRange, visibleWorkdayOrders, openUnpaidOrders, paidOrders };
+}
+function renderCashierOrderRow(o, paid = false) {
+  const amount = paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o));
+  const editButton = !paid ? actionDecalButton('edit', `data-edit-sale="${esc(o.id)}"`, 'sale-row-decal', 'ویرایش سفارش') : '';
+  return `<div class="order-row order-status-row cashier-popup-order-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(amount)}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${editButton}${actionDecalButton('delete', `data-delete-sale="${esc(o.id)}"`, 'sale-row-decal', paid ? 'حذف و بازپرداخت سفارش پرداخت‌شده' : 'حذف کل سفارش')}</div></div>`;
+}
+function cashierOrdersTotalText(rows, paid = null) {
+  const total = rows.reduce((sum, order) => {
+    const isPaid = paid === null ? order.posStatus === 'paid' : paid;
+    return sum + Number(isPaid ? orderFinalTotal(order) : (order.remainingTotal ?? orderFinalTotal(order)) || 0);
+  }, 0);
+  return money(total);
+}
+function renderCashierOrdersOverlay(customer) {
+  if (!cashierOrdersPopupMode) return '';
+  const { openUnpaidOrders, paidOrders } = cashierWorkdayOrderGroups(customer);
+  const isOpenMode = cashierOrdersPopupMode === 'open';
+  const rows = isOpenMode ? openUnpaidOrders : paidOrders;
+  const allRows = [...openUnpaidOrders, ...paidOrders];
+  const headerTitle = cashierOrdersPopupMode === 'menu'
+    ? `جمع کل: ${cashierOrdersTotalText(allRows)}`
+    : `جمع: ${cashierOrdersTotalText(rows, !isOpenMode)}`;
+  const listMarkup = cashierOrdersPopupMode === 'menu'
+    ? `<div class="cashier-orders-choice-actions"><button type="button" class="primary" data-cashier-orders-tab="open">سفارشات باز</button><button type="button" class="secondary" data-cashier-orders-tab="paid">تکمیل شده</button></div>`
+    : `<div class="cashier-orders-popup-list order-panel-scroll">${rows.map(o => renderCashierOrderRow(o, !isOpenMode)).join('') || '<p>سفارشی وجود ندارد</p>'}</div>`;
+  const editOrder = editingHallOrderId ? (state.orders || []).find(order => order.id === editingHallOrderId && order.customerId === customer.id && order.posStatus !== 'paid') : null;
+  return `<div class="modal-backdrop cashier-orders-backdrop" data-close-cashier-orders><section class="cashier-orders-popup" role="dialog" aria-modal="true" aria-label="سفارشات صندوق"><button type="button" class="modal-close-icon cashier-orders-close" data-close-cashier-orders aria-label="بستن">×</button><div class="section-title cashier-orders-title"><h2>${headerTitle}</h2>${cashierOrdersPopupMode === 'menu' ? '' : `<button type="button" class="secondary" data-cashier-orders-tab="menu">بازگشت</button>`}</div>${listMarkup}</section>${editOrder ? renderHallOrderEditPopup(customer, editOrder) : ''}</div>`;
+}
+function renderHallOrderEditPopup(customer, order) {
+  const menuItemsById = new Map(customerSaleItems().map(item => [item.id, item]));
+  const orderedLines = Object.values((order.lines || []).reduce((acc, line) => {
+    const itemId = line.itemId || '';
+    if (!itemId) return acc;
+    const menuItem = menuItemsById.get(itemId) || {};
+    if (!acc[itemId]) acc[itemId] = { id: itemId, name: line.name || menuItem.name || 'آیتم سفارش', price: Number(line.price ?? menuItem.price ?? 0), category: line.category || menuItem.category || 'آیتم‌های سفارش', qty: 0 };
+    acc[itemId].qty += Number(line.qty || line.quantity || 0);
+    return acc;
+  }, {}));
+  const tableTitle = order.tableName ? ` — میز ${esc(order.tableName)}` : '';
+  const rows = `<section class="hall-order-edit-category"><h3>آیتم‌های همین سفارش</h3>${orderedLines.map(item => `<label class="hall-order-edit-item"><span><b>${esc(item.name)}</b><small>${money(item.price)}</small></span>${renderHallQtyControl(item.id, item.qty || 0)}</label>`).join('')}</section>`;
+  return `<form class="hall-order-edit-popup" id="hallOrderEditForm" data-order-id="${esc(order.id)}" role="dialog" aria-modal="true" aria-label="ویرایش سفارش"><div class="section-title"><h2>ویرایش سفارش ${receiptNumberText(order.trackingNumber || 0)}${tableTitle}</h2><button type="button" class="modal-close-icon" data-cancel-hall-order-edit aria-label="بستن">×</button></div><div class="hall-order-edit-scroll">${rows}</div><div class="hall-order-edit-actions"><button class="primary">ذخیره ویرایش سفارش</button><button type="button" class="secondary" data-cancel-hall-order-edit>انصراف</button></div></form>`;
+}
+function collectHallOrderEditLines(form) {
+  return [...form.querySelectorAll('.hall-order-edit-item')].map(row => {
+    const input = row.querySelector('input[name^="qty:"]');
+    const itemId = input?.name?.slice(4) || '';
+    return { itemId, qty: parseFaNumber(input?.value || 0) };
+  }).filter(line => line.itemId && line.qty > 0);
+}
+
+function renderSales(customer) {
+  if (posSalesChannel !== 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}<h2>${posSalesChannel === 'delivery' ? 'دلیوری' : 'اسنپ‌فود'}</h2><p>در این مرحله فقط ورودی مستقل این بخش آماده شده و منطق آن در فاز بعد پیاده‌سازی می‌شود.</p></div></section>`;
+  const hall = renderHallSales(customer);
+  const items = customerSaleItems();
+  const { orders } = cashierWorkdayOrderGroups(customer);
   const completionSummary = RestaurantCore.getOrderCompletionSummary ? RestaurantCore.getOrderCompletionSummary(state, customer.id) : { completedTodayCount: orders.filter(o => o.status === 'completed').length };
-  const statusPanel = `<div class="panel wide order-status-panel"><h2>وضعیت سفارشات</h2><div class="order-panel-scroll">${openUnpaidOrders.map(o=>orderRow(o, false)).join('') || '<p>سفارشی وجود ندارد</p>'}</div></div>`;
-  const paidPanel = `<div class="panel wide order-completion-summary paid-orders-panel"><h2>پرداخت شده</h2>${paidOrders.length ? `<p>${esc(orderCompletionSummaryText({ completedTodayCount: paidOrders.length, lastCompletedAt: paidOrders[0]?.paidAt || paidOrders[0]?.completedAt || paidOrders[0]?.statusUpdatedAt || '', lastTrackingNumber: paidOrders[0]?.trackingNumber || 0 }))}</p>` : ''}<div class="order-panel-scroll">${paidOrders.map(o=>orderRow(o, true)).join('') || '<p>سفارشی وجود ندارد</p>'}</div></div>`;
-  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${statusPanel}${paidPanel}</section>`;
+  const ordersOverlay = renderCashierOrdersOverlay(customer);
+  if (posSalesChannel === 'hall') return `<section class="workspace pos-workspace"><div class="panel wide">${renderPosChannelPanel(customer)}</div><div class="panel wide pos-hall-shell">${hall}</div>${ordersOverlay}</section>`;
   const editingOrder = orders.find(o => o.id === editingSaleOrderId);
   const starterRows = editingOrder ? editingOrder.lines.map((line, idx) => renderSaleLineRow(items, idx + 1, line)).join('') : [1, 2].map(i => renderSaleLineRow(items, i)).join('');
   const paymentSelected = value => (editingOrder?.paymentMethod || 'card') === value ? 'selected' : '';
@@ -3374,6 +3439,13 @@ function bindCommon() {
   document.querySelectorAll('[data-request-close-cashier-register]').forEach(btn => btn.addEventListener('click', () => requestCloseCashierRegister(customer, btn.dataset.requestCloseCashierRegister)));
   document.querySelectorAll('[data-close-cashier-register]').forEach(btn => btn.addEventListener('click', () => closeCashierRegister(customer, btn.dataset.closeCashierRegister, false)));
   document.querySelectorAll('[data-close-cashier-register-print]').forEach(btn => btn.addEventListener('click', () => closeCashierRegister(customer, btn.dataset.closeCashierRegisterPrint, true)));
+  document.querySelectorAll('[data-open-cashier-orders]').forEach(btn => btn.addEventListener('click', () => { cashierOrdersPopupMode = 'menu'; editingHallOrderId = ''; render(); }));
+  document.querySelectorAll('[data-cashier-orders-tab]').forEach(btn => btn.addEventListener('click', () => { cashierOrdersPopupMode = btn.dataset.cashierOrdersTab || 'menu'; editingHallOrderId = ''; render(); }));
+  document.querySelectorAll('[data-close-cashier-orders]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.cashier-orders-popup,.hall-order-edit-popup')) return; cashierOrdersPopupMode = ''; editingHallOrderId = ''; render(); }));
+  document.querySelectorAll('[data-cancel-hall-order-edit]').forEach(btn => btn.addEventListener('click', () => { editingHallOrderId = ''; render(); }));
+  document.querySelectorAll('[data-open-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { hallOrderNotePopupOpen = true; render(); }));
+  document.querySelectorAll('[data-close-hall-order-note]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-order-note-popup')) return; hallOrderNotePopupOpen = false; render(); }));
+  document.querySelectorAll('[data-save-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { if (!selectedHallTableId) return; hallDraftForSelectedTable().orderNote = document.querySelector('[name="hallOrderNotePopupText"]')?.value || ''; hallOrderNotePopupOpen = false; render(); }));
   const inventoryPrintButton = document.querySelector('[data-print-inventory]');
   if (inventoryPrintButton) inventoryPrintButton.addEventListener('click', showInventoryPrintPreview);
   const printableMenuButton = document.querySelector('[data-printable-menu]');
@@ -3854,7 +3926,7 @@ function bindCommon() {
     try { RestaurantCore.updateInventoryPurchasePaymentStatus(state, customer.id, purchase.id, nextStatus); saveState(); render(); }
     catch (err) { alert(err.message === 'PURCHASE_NOT_FOUND' ? 'خرید پیدا نشد' : err.message); }
   }));
-  document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { const order = (state.orders || []).find(item => item.id === btn.dataset.editSale && item.customerId === customer.id); if (posSalesChannel === 'hall' && order?.tableId) { selectedHallTableId = order.tableId; hallTablePickerOpen = false; hallTableConfigOpen = false; render(); requestAnimationFrame(() => document.querySelector('#hallSaleForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); return; } editingSaleOrderId = btn.dataset.editSale; render(); }));
+  document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { const order = (state.orders || []).find(item => item.id === btn.dataset.editSale && item.customerId === customer.id); if (posSalesChannel === 'hall' && order?.tableId) { cashierOrdersPopupMode = 'open'; editingHallOrderId = order.id; hallTablePickerOpen = false; hallTableConfigOpen = false; render(); return; } editingSaleOrderId = btn.dataset.editSale; render(); }));
   document.querySelectorAll('[data-cancel-sale-edit]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = ''; render(); }));
   document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', async () => {
     if (!confirm('این فروش حذف شود؟ اثر موجودی و دفتر مالی همین فاکتور برگردانده می‌شود.')) return;
@@ -4047,7 +4119,7 @@ function bindCommon() {
       if (!tableId) throw new Error('اول میز را انتخاب کنید');
       const lines = collectHallSaleLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
-      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
+      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: hallOrderDrafts[tableId]?.orderNote || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
       releaseHallTableLock(customer.id, tableId);
       delete hallOrderDrafts[tableId];
       notifyLowStock(order);
@@ -4057,6 +4129,15 @@ function bindCommon() {
       const selected = [...form.querySelectorAll('[data-hall-pay-line]:checked')].map(ch => ({ lineId: ch.value, qty: parseFaNumber(form.querySelector(`[name=\"qty:${CSS.escape(ch.value)}\"]`)?.value || 0) }));
       if (!selected.length) throw new Error('حداقل یک قلم برای پرداخت انتخاب کنید');
       return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), freeTableAfterPayment: form.dataset.freeTableAfterPaymentChoice !== 'no', idempotencyKey: `ui-${Date.now()}` });
+    },
+    hallOrderEditForm: (f, form) => {
+      const lines = collectHallOrderEditLines(form);
+      if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
+      const existingOrder = (state.orders || []).find(order => order.id === form.dataset.orderId && order.customerId === customer.id);
+      const order = RestaurantCore.updateHallOrderLines(state, customer.id, form.dataset.orderId, lines, { orderNote: existingOrder?.orderNote || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
+      editingHallOrderId = '';
+      notifyLowStock(order);
+      return order;
     },
     saleForm: (f, form) => {
       const lines = collectSaleLines(form);
@@ -4099,7 +4180,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
