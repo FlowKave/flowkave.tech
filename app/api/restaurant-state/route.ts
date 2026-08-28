@@ -16,9 +16,32 @@ type RestaurantStateRow = {
   device_id: string | null;
 };
 
-async function authContext() {
+async function authContext(request?: NextRequest) {
   const supabase = await createClient();
+  const staffLogin = request?.nextUrl.searchParams.get('staffLogin') === '1';
+  const staff = await getStaffSession();
   const manager = await getManagerSession();
+  if (staffLogin && staff) {
+    const admin = createAdminClient();
+    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
+    return {
+      supabase: admin,
+      user: { id: staff.staffUserId },
+      tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
+      identity: {
+        tenantId: staff.tenantId,
+        customerId: staff.customerId,
+        tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
+        businessName: staff.restaurantName,
+        ownerName: staff.staffName,
+        ownerEmail: '',
+        phone: '',
+        tenantChoices: [],
+      },
+      manager: null,
+      staff,
+    };
+  }
   if (manager) {
     const admin = createAdminClient();
     if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
@@ -37,9 +60,9 @@ async function authContext() {
         tenantChoices: manager.tenantChoices || [],
       },
       manager,
+      staff: null,
     };
   }
-  const staff = await getStaffSession();
   if (staff) {
     const admin = createAdminClient();
     if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
@@ -259,9 +282,9 @@ function mergeRestaurantState(existingState: any, incomingState: any) {
   return merged;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { supabase, user, tenant, identity } = await authContext();
+    const { supabase, user, tenant, identity } = await authContext(request);
     if (!user || !tenant || !identity) return unauthorized();
 
     const { data, error } = await supabase
@@ -289,7 +312,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { supabase, user, tenant, identity, manager, staff } = await authContext();
+    const { supabase, user, tenant, identity, manager, staff } = await authContext(request);
     if (!user || !tenant || !identity) return unauthorized();
 
     const body = await request.json();
