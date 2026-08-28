@@ -21,7 +21,7 @@ async function authContext(request?: NextRequest) {
   const staffLogin = request?.nextUrl.searchParams.get('staffLogin') === '1';
   const staff = await getStaffSession();
   const manager = await getManagerSession();
-  if (staffLogin && staff) {
+  if (staff) {
     const admin = createAdminClient();
     if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
     return {
@@ -61,27 +61,6 @@ async function authContext(request?: NextRequest) {
       },
       manager,
       staff: null,
-    };
-  }
-  if (staff) {
-    const admin = createAdminClient();
-    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
-    return {
-      supabase: admin,
-      user: { id: staff.staffUserId },
-      tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
-      identity: {
-        tenantId: staff.tenantId,
-        customerId: staff.customerId,
-        tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
-        businessName: staff.restaurantName,
-        ownerName: staff.staffName,
-        ownerEmail: '',
-        phone: '',
-        tenantChoices: [],
-      },
-      manager: null,
-      staff,
     };
   }
   const { data, error } = await supabase.auth.getUser();
