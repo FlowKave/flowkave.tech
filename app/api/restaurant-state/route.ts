@@ -131,6 +131,37 @@ function mergeArrayById(existing: any[] = [], incoming: any[] = []) {
   return Array.from(byId.values());
 }
 
+
+function hallLockTime(lock: any) {
+  return Math.max(timeValue(lock?.updatedAt), timeValue(lock?.releasedAt), timeValue(lock?.lockedAt), timeValue(lock?.expiresAt));
+}
+
+function isActiveHallLock(lock: any) {
+  if (!lock?.id || lock.active === false || lock.releasedAt) return false;
+  return !lock.expiresAt || timeValue(lock.expiresAt) > Date.now();
+}
+
+function hallLockReleaseTime(lock: any) {
+  return Math.max(timeValue(lock?.releasedAt), timeValue(lock?.updatedAt));
+}
+
+function mergeHallTableLock(existing: any, incoming: any) {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  const existingActive = isActiveHallLock(existing);
+  const incomingActive = isActiveHallLock(incoming);
+  if (existingActive && !incomingActive) return hallLockReleaseTime(incoming) >= timeValue(existing.lockedAt) ? incoming : existing;
+  if (incomingActive && !existingActive) return hallLockReleaseTime(existing) >= timeValue(incoming.lockedAt) ? existing : incoming;
+  return hallLockTime(incoming) >= hallLockTime(existing) ? { ...existing, ...incoming } : { ...incoming, ...existing };
+}
+
+function mergeHallTableLocks(existing: any[] = [], incoming: any[] = []) {
+  const byId = new Map<string, any>();
+  for (const lock of existing || []) if (lock?.id) byId.set(String(lock.id), lock);
+  for (const lock of incoming || []) if (lock?.id) byId.set(String(lock.id), mergeHallTableLock(byId.get(String(lock.id)), lock));
+  return Array.from(byId.values());
+}
+
 function timeValue(value: any) {
   const ms = new Date(value || 0).getTime();
   return Number.isFinite(ms) ? ms : 0;
@@ -197,9 +228,10 @@ function mergeRestaurantState(existingState: any, incomingState: any) {
   const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
   merged.deletedOrderIds = deletedOrderIds;
   merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
-  for (const key of ['shifts', 'ledger', 'restaurantTables', 'hallTableLocks']) {
+  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }
+  merged.hallTableLocks = mergeHallTableLocks(Array.isArray(existingState?.hallTableLocks) ? existingState.hallTableLocks : [], Array.isArray(incomingState?.hallTableLocks) ? incomingState.hallTableLocks : []);
   delete merged.sessions;
   return merged;
 }
