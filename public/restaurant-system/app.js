@@ -1244,7 +1244,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-order-edit-items-143');
+  url.searchParams.set('v', 'cashier-edit-title-table-144');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-order-edit-items-143');
+  url.searchParams.set('v', 'cashier-edit-title-table-144');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1617,7 +1617,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-order-edit-items-143" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-edit-title-table-144" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2268,8 +2268,9 @@ function renderHallOrderEditPopup(customer, order) {
     acc[itemId].qty += Number(line.qty || line.quantity || 0);
     return acc;
   }, {}));
+  const tableTitle = order.tableName ? ` — میز ${esc(order.tableName)}` : '';
   const rows = `<section class="hall-order-edit-category"><h3>آیتم‌های همین سفارش</h3>${orderedLines.map(item => `<label class="hall-order-edit-item"><span><b>${esc(item.name)}</b><small>${money(item.price)}</small></span>${renderHallQtyControl(item.id, item.qty || 0)}</label>`).join('')}</section>`;
-  return `<form class="hall-order-edit-popup" id="hallOrderEditForm" data-order-id="${esc(order.id)}" role="dialog" aria-modal="true" aria-label="ویرایش سفارش"><div class="section-title"><h2>ویرایش سفارش ${receiptNumberText(order.trackingNumber || 0)}</h2><button type="button" class="modal-close-icon" data-cancel-hall-order-edit aria-label="بستن">×</button></div><p>فقط آیتم‌هایی که مشتری قبلاً سفارش داده نمایش داده می‌شود؛ تعداد را کم‌وزیاد کنید یا صفر بگذارید تا همان آیتم حذف شود.</p><div class="hall-order-edit-scroll">${rows}</div><label>یادداشت سفارش<textarea name="orderNote" rows="۲">${esc(order.orderNote || '')}</textarea></label><div class="hall-order-edit-actions"><button class="primary">ذخیره ویرایش سفارش</button><button type="button" class="secondary" data-cancel-hall-order-edit>انصراف</button></div></form>`;
+  return `<form class="hall-order-edit-popup" id="hallOrderEditForm" data-order-id="${esc(order.id)}" role="dialog" aria-modal="true" aria-label="ویرایش سفارش"><div class="section-title"><h2>ویرایش سفارش ${receiptNumberText(order.trackingNumber || 0)}${tableTitle}</h2><button type="button" class="modal-close-icon" data-cancel-hall-order-edit aria-label="بستن">×</button></div><div class="hall-order-edit-scroll">${rows}</div><div class="hall-order-edit-actions"><button class="primary">ذخیره ویرایش سفارش</button><button type="button" class="secondary" data-cancel-hall-order-edit>انصراف</button></div></form>`;
 }
 function collectHallOrderEditLines(form) {
   return [...form.querySelectorAll('.hall-order-edit-item')].map(row => {
@@ -4120,7 +4121,8 @@ function bindCommon() {
     hallOrderEditForm: (f, form) => {
       const lines = collectHallOrderEditLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
-      const order = RestaurantCore.updateHallOrderLines(state, customer.id, form.dataset.orderId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
+      const existingOrder = (state.orders || []).find(order => order.id === form.dataset.orderId && order.customerId === customer.id);
+      const order = RestaurantCore.updateHallOrderLines(state, customer.id, form.dataset.orderId, lines, { orderNote: existingOrder?.orderNote || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
       editingHallOrderId = '';
       notifyLowStock(order);
       return order;
