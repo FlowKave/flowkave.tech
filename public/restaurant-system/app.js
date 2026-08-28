@@ -1244,7 +1244,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-orders-total-142');
+  url.searchParams.set('v', 'cashier-order-edit-items-143');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-orders-total-142');
+  url.searchParams.set('v', 'cashier-order-edit-items-143');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1617,7 +1617,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-orders-total-142" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-order-edit-items-143" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2259,11 +2259,17 @@ function renderCashierOrdersOverlay(customer) {
   return `<div class="modal-backdrop cashier-orders-backdrop" data-close-cashier-orders><section class="cashier-orders-popup" role="dialog" aria-modal="true" aria-label="سفارشات صندوق"><button type="button" class="modal-close-icon cashier-orders-close" data-close-cashier-orders aria-label="بستن">×</button><div class="section-title cashier-orders-title"><h2>${headerTitle}</h2>${cashierOrdersPopupMode === 'menu' ? '' : `<button type="button" class="secondary" data-cashier-orders-tab="menu">بازگشت</button>`}</div>${listMarkup}</section>${editOrder ? renderHallOrderEditPopup(customer, editOrder) : ''}</div>`;
 }
 function renderHallOrderEditPopup(customer, order) {
-  const items = customerSaleItems();
-  const orderQtyByItem = (order.lines || []).reduce((acc, line) => { acc[line.itemId] = Number(acc[line.itemId] || 0) + Number(line.qty || line.quantity || 0); return acc; }, {});
-  const categories = [...new Set(items.map(item => item.category || 'بدون دسته‌بندی'))];
-  const rows = categories.map(cat => `<section class="hall-order-edit-category"><h3>${esc(cat)}</h3>${items.filter(item => (item.category || 'بدون دسته‌بندی') === cat).map(item => `<label class="hall-order-edit-item"><span><b>${esc(item.name)}</b><small>${money(item.price)}</small></span>${renderHallQtyControl(item.id, orderQtyByItem[item.id] || 0)}</label>`).join('')}</section>`).join('');
-  return `<form class="hall-order-edit-popup" id="hallOrderEditForm" data-order-id="${esc(order.id)}" role="dialog" aria-modal="true" aria-label="ویرایش سفارش"><div class="section-title"><h2>ویرایش سفارش ${receiptNumberText(order.trackingNumber || 0)}</h2><button type="button" class="modal-close-icon" data-cancel-hall-order-edit aria-label="بستن">×</button></div><p>تعداد هر آیتم را کم‌وزیاد کنید؛ صفر یعنی حذف آیتم از فیش. آیتم جدید هم با زیاد کردن تعداد اضافه می‌شود.</p><div class="hall-order-edit-scroll">${rows}</div><label>یادداشت سفارش<textarea name="orderNote" rows="۲">${esc(order.orderNote || '')}</textarea></label><div class="hall-order-edit-actions"><button class="primary">ذخیره ویرایش سفارش</button><button type="button" class="secondary" data-cancel-hall-order-edit>انصراف</button></div></form>`;
+  const menuItemsById = new Map(customerSaleItems().map(item => [item.id, item]));
+  const orderedLines = Object.values((order.lines || []).reduce((acc, line) => {
+    const itemId = line.itemId || '';
+    if (!itemId) return acc;
+    const menuItem = menuItemsById.get(itemId) || {};
+    if (!acc[itemId]) acc[itemId] = { id: itemId, name: line.name || menuItem.name || 'آیتم سفارش', price: Number(line.price ?? menuItem.price ?? 0), category: line.category || menuItem.category || 'آیتم‌های سفارش', qty: 0 };
+    acc[itemId].qty += Number(line.qty || line.quantity || 0);
+    return acc;
+  }, {}));
+  const rows = `<section class="hall-order-edit-category"><h3>آیتم‌های همین سفارش</h3>${orderedLines.map(item => `<label class="hall-order-edit-item"><span><b>${esc(item.name)}</b><small>${money(item.price)}</small></span>${renderHallQtyControl(item.id, item.qty || 0)}</label>`).join('')}</section>`;
+  return `<form class="hall-order-edit-popup" id="hallOrderEditForm" data-order-id="${esc(order.id)}" role="dialog" aria-modal="true" aria-label="ویرایش سفارش"><div class="section-title"><h2>ویرایش سفارش ${receiptNumberText(order.trackingNumber || 0)}</h2><button type="button" class="modal-close-icon" data-cancel-hall-order-edit aria-label="بستن">×</button></div><p>فقط آیتم‌هایی که مشتری قبلاً سفارش داده نمایش داده می‌شود؛ تعداد را کم‌وزیاد کنید یا صفر بگذارید تا همان آیتم حذف شود.</p><div class="hall-order-edit-scroll">${rows}</div><label>یادداشت سفارش<textarea name="orderNote" rows="۲">${esc(order.orderNote || '')}</textarea></label><div class="hall-order-edit-actions"><button class="primary">ذخیره ویرایش سفارش</button><button type="button" class="secondary" data-cancel-hall-order-edit>انصراف</button></div></form>`;
 }
 function collectHallOrderEditLines(form) {
   return [...form.querySelectorAll('.hall-order-edit-item')].map(row => {

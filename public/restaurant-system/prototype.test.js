@@ -115,13 +115,13 @@ function testOpenHallOrderCanBeEditedAndPaidDeleteRefunds() {
   const [table] = RestaurantCore.configureHallTables(state, customer.id, { count:1, startNumber:5, customNames:[] });
   RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-25T08:00:00.000Z' });
   const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:tea.id, qty:2 }]);
-  const edited = RestaurantCore.updateHallOrderLines(state, customer.id, order.id, [{ itemId:cake.id, qty:1 }]);
+  const edited = RestaurantCore.updateHallOrderLines(state, customer.id, order.id, [{ itemId:tea.id, qty:1 }]);
   assert.equal(edited.id, order.id);
   assert.equal(edited.trackingNumber, 1001);
   assert.equal(edited.tableId, table.id);
   assert.equal(edited.lines.length, 1);
-  assert.equal(edited.lines[0].itemId, cake.id);
-  assert.equal(edited.remainingTotal, 50000);
+  assert.equal(edited.lines[0].itemId, tea.id);
+  assert.equal(edited.remainingTotal, 10000);
   const remaining = RestaurantCore.getRemainingPaymentItems(edited);
   RestaurantCore.recordOrderPayment(state, customer.id, edited.id, remaining.map(line => ({ lineId: line.lineId, qty: line.remainingQty })), { paymentMethod:'کارت‌خوان', freeTableAfterPayment:true, idempotencyKey:'popup-delete-refund' });
   const deleted = RestaurantCore.deleteSale(state, customer.id, edited.id);
@@ -129,8 +129,8 @@ function testOpenHallOrderCanBeEditedAndPaidDeleteRefunds() {
   assert(!state.orders.some(item => item.id === edited.id));
   assert(state.deletedOrderIds.includes(edited.id));
   const relatedLedger = state.ledger.filter(entry => entry.customerId === customer.id && entry.sourceId === edited.id);
-  assert(relatedLedger.some(entry => entry.type === 'revenue' && entry.direction === 'in' && entry.amount === 50000));
-  assert(relatedLedger.some(entry => entry.type === 'refund' && entry.direction === 'out' && entry.amount === 50000));
+  assert(relatedLedger.some(entry => entry.type === 'revenue' && entry.direction === 'in' && entry.amount === 10000));
+  assert(relatedLedger.some(entry => entry.type === 'refund' && entry.direction === 'out' && entry.amount === 10000));
 }
 
 testOpenHallOrderCanBeEditedAndPaidDeleteRefunds();
