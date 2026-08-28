@@ -1245,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-auto-width-buttons-149');
+  url.searchParams.set('v', 'cashier-button-frame-lock-150');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1279,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-auto-width-buttons-149');
+  url.searchParams.set('v', 'cashier-button-frame-lock-150');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1618,7 +1618,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-auto-width-buttons-149" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-button-frame-lock-150" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2157,7 +2157,9 @@ function renderHallSales(customer) {
   if (selectedHallTableId && !tables.some(table => table.id === selectedHallTableId)) selectedHallTableId = '';
   let selectedTable = selectedHallTableId ? tables.find(table => table.id === selectedHallTableId) : null;
   let activeOrder = selectedTable ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedTable.id) : null;
-  if (selectedHallTableId && selectedTable?.status === 'free' && !activeOrder && activeHallTableLock(customer.id, selectedHallTableId)?.ownerId !== hallTableLockOwnerId()) {
+  const selectedTableLock = selectedHallTableId ? activeHallTableLock(customer.id, selectedHallTableId) : null;
+  const hasSelectedHallDraft = selectedHallTableId && Boolean(hallOrderDrafts[selectedHallTableId]);
+  if (selectedHallTableId && selectedTable?.status === 'free' && !activeOrder && ((selectedTableLock && selectedTableLock.ownerId !== hallTableLockOwnerId()) || (!selectedTableLock && !hasSelectedHallDraft))) {
     selectedHallTableId = '';
     selectedTable = null;
     activeOrder = null;
