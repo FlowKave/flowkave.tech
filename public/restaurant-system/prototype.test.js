@@ -146,6 +146,29 @@ function testCashierCloseIgnoresDraftHallTableLocks() {
   assert.equal(state.hallTableLocks.filter(lock => lock.customerId === customer.id).length, 0);
 }
 
+
+testCashierCloseIgnoresDraftHallTableLocks();
+
+function testHallTableStatusStateMachine() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'تست وضعیت میز', ownerName:'مدیر', email:'table-state@test.local', password:'123456' });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'چای', category:'نوشیدنی', price:100000, available:true });
+  RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-24T08:00:00.000Z' });
+  const table = RestaurantCore.getHallTables(state, customer.id).find((x) => x.status === 'free');
+  assert.ok(table, 'free hall table required');
+  state.hallTableLocks.push({ id:`${customer.id}:${table.id}`, customerId:customer.id, tableId:table.id, ownerId:'cashier-a', active:true, lockedAt:'2026-08-24T09:00:00.000Z', expiresAt:'2026-08-24T09:10:00.000Z' });
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find((x) => x.id === table.id).status, 'free', 'draft/yellow lock must not change core table status before submit');
+  const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }], {});
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find((x) => x.id === table.id).status, 'open-order', 'submitted hall order must make table red/open-order even if a stale lock exists');
+  RestaurantCore.recordOrderPayment(state, customer.id, order.id, [{ lineId:order.lines[0].id, qty:1 }], { paymentMethod:'نقدی', freeTableAfterPayment:false });
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find((x) => x.id === table.id).status, 'paid-held', 'pay-and-hold must make table green/paid-held');
+  RestaurantCore.releaseHeldHallTable(state, customer.id, table.id, '2026-08-24T10:00:00.000Z');
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find((x) => x.id === table.id).status, 'free', 'releasing paid-held table must free it');
+}
+
+testHallTableStatusStateMachine();
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();

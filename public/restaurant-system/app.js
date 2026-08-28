@@ -290,6 +290,12 @@ function preserveLocalBrowserSessions(remoteState) {
     if (!remoteState.sessions.some(remote => remote?.id === local.id)) remoteState.sessions.push({ ...local });
   });
 }
+function isActiveRemoteHallOrderForTable(order, tableId) {
+  if (!order || order.tableId !== tableId || order.hallSale !== true) return false;
+  const posStatus = order.posStatus || 'submitted';
+  if (posStatus === 'cancelled') return false;
+  return posStatus !== 'paid' || order.tableHeldAfterPayment === true;
+}
 function preserveLocalHallTableLocks(remoteState) {
   if (!remoteState || !selectedHallTableId) return;
   const ownerId = hallTableLockOwnerId();
@@ -297,7 +303,7 @@ function preserveLocalHallTableLocks(remoteState) {
   const selectedLocalLock = localLocks.find(lock => lock.tableId === selectedHallTableId);
   if (!selectedLocalLock) return;
   const remoteOrders = Array.isArray(remoteState.orders) ? remoteState.orders : [];
-  const remoteActiveOrder = remoteOrders.find(order => order?.tableId === selectedHallTableId && order.hallSale === true && order.posStatus !== 'paid');
+  const remoteActiveOrder = remoteOrders.find(order => isActiveRemoteHallOrderForTable(order, selectedHallTableId));
   if (remoteActiveOrder) return;
   const remoteLocks = Array.isArray(remoteState.hallTableLocks) ? remoteState.hallTableLocks : [];
   const remoteOtherActiveLock = remoteLocks.find(lock => lock?.tableId === selectedHallTableId && lock.customerId === selectedLocalLock.customerId && lock.ownerId !== ownerId && lock.active !== false && !lock.releasedAt && (!lock.expiresAt || new Date(lock.expiresAt).getTime() > Date.now()));
@@ -1260,7 +1266,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-close-ignores-draft-locks-156');
+  url.searchParams.set('v', 'cashier-hall-table-state-machine-157');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1294,7 +1300,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-close-ignores-draft-locks-156');
+  url.searchParams.set('v', 'cashier-hall-table-state-machine-157');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1633,7 +1639,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-close-ignores-draft-locks-156" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-hall-table-state-machine-157" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2069,10 +2075,11 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
     const lock = activeHallTableLock(customer?.id || table.customerId, table.id);
     const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId();
     const isPaidHeld = table.status === 'paid-held';
+    const isSubmittedHallOrder = ['open-order','waiting-payment'].includes(table.status);
     const isDraftLocked = table.status === 'free' && Boolean(lock);
     const ownDraftLock = isDraftLocked && !lockedByOther;
     const blockedByOtherDraft = isDraftLocked && lockedByOther;
-    const visualStatus = isDraftLocked ? 'draft-locked' : table.status;
+    const visualStatus = isPaidHeld ? 'paid-held' : (isSubmittedHallOrder ? table.status : (isDraftLocked ? 'draft-locked' : table.status));
     const actionAttr = isPaidHeld
       ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"`
       : `data-hall-occupied-table="${esc(table.id)}"${ownDraftLock ? ` title="${esc(table.name)} انتخاب شده"` : ''}`;
