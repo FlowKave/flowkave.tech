@@ -85,6 +85,24 @@ function isActiveManager(staff: any, email = '') {
   return matchesEmail && staff?.role === 'manager' && staff?.active !== false;
 }
 
+function canonicalPortalCustomer(sharedState: any, tenantId: string, identity: any = {}) {
+  const customers = Array.isArray(sharedState?.customers) ? sharedState.customers : [];
+  const identityCustomer = identity?.customerId ? customers.find((customer: any) => customer?.id === identity.customerId) : null;
+  const tenantCustomer = customers.find((customer: any) => customer?.portalTenantId === tenantId);
+  const email = normalizeEmail(identity?.ownerEmail || identity?.email || '');
+  const emailCustomer = email ? customers.find((customer: any) => normalizeEmail(customer?.email) === email) : null;
+  const customer = tenantCustomer || identityCustomer || emailCustomer || customers[0] || null;
+  if (!customer) return identity;
+  return {
+    ...identity,
+    customerId: String(customer.id || identity.customerId || ''),
+    businessName: String(customer.businessName || identity.businessName || 'رستوران'),
+    ownerName: String(customer.ownerName || identity.ownerName || ''),
+    ownerEmail: String(customer.email || identity.ownerEmail || ''),
+    phone: String(customer.phone || identity.phone || ''),
+  };
+}
+
 async function hydrateExistingManagerCredentials(sharedState: any, currentTenantId: string) {
   const staffUsers = Array.isArray(sharedState?.staffUsers) ? sharedState.staffUsers : [];
   const managerEmailsNeedingCredentials = [...new Set(staffUsers
@@ -254,8 +272,9 @@ export async function GET() {
 
     if (error) throw new Error(error.message);
 
+    const responseIdentity = canonicalPortalCustomer(data?.state, tenant.id, identity);
     return NextResponse.json({
-      ...identity,
+      ...responseIdentity,
       exists: Boolean(data),
       data: data?.state ?? null,
       updatedAt: data?.version ? Number(data.version) : 0,
@@ -315,8 +334,9 @@ export async function PUT(request: NextRequest) {
       payload: { version: data?.version ?? version },
     });
 
+    const responseIdentity = canonicalPortalCustomer(sharedState, tenant.id, identity);
     return NextResponse.json({
-      ...identity,
+      ...responseIdentity,
       ok: true,
       exists: true,
       updatedAt: data?.version ? Number(data.version) : version,
