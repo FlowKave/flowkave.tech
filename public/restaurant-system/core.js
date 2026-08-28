@@ -1046,8 +1046,6 @@
     if (shift.closedAt) throw new Error('SHIFT_ALREADY_CLOSED');
     const openHallOrders = openHallOrdersForWorkdayClose(state, customerId);
     if (openHallOrders.length) throw new Error('OPEN_HALL_TABLES_EXIST');
-    const activeLocks = state.hallTableLocks.filter((lock) => lock.customerId === customerId);
-    if (activeLocks.length) throw new Error('HALL_TABLE_LOCKS_EXIST');
     const requestedClosedAt = options.closedAt || new Date().toISOString();
     const fromMs = new Date(shift.openedAt || 0).getTime();
     const latestActivityMs = (state.orders || [])

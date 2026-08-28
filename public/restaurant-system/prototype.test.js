@@ -135,6 +135,17 @@ function testOpenHallOrderCanBeEditedAndPaidDeleteRefunds() {
 
 testOpenHallOrderCanBeEditedAndPaidDeleteRefunds();
 
+
+function testCashierCloseIgnoresDraftHallTableLocks() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'تست قفل زرد', ownerName:'مدیر', email:'draft-close@test.local', password:'123456' });
+  const shift = RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-24T08:00:00.000Z' });
+  state.hallTableLocks.push({ id:'draft-lock-1', customerId:customer.id, tableId:'tbl-x', ownerId:'cashier-a', active:true, lockedAt:'2026-08-24T09:00:00.000Z', expiresAt:'2026-08-24T09:10:00.000Z' });
+  const result = RestaurantCore.closeCashierShiftAndResetWorkday(state, customer.id, shift.id, { closedAt:'2026-08-24T10:00:00.000Z' });
+  assert.equal(result.report.orderCount, 0);
+  assert.equal(state.hallTableLocks.filter(lock => lock.customerId === customer.id).length, 0);
+}
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();
