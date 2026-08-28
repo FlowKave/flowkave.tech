@@ -1244,7 +1244,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-orders-popup-141');
+  url.searchParams.set('v', 'cashier-orders-total-142');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1278,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-orders-popup-141');
+  url.searchParams.set('v', 'cashier-orders-total-142');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1617,7 +1617,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-orders-popup-141" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-orders-total-142" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2236,17 +2236,27 @@ function renderCashierOrderRow(o, paid = false) {
   const editButton = !paid ? actionDecalButton('edit', `data-edit-sale="${esc(o.id)}"`, 'sale-row-decal', 'ویرایش سفارش') : '';
   return `<div class="order-row order-status-row cashier-popup-order-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(amount)}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${editButton}${actionDecalButton('delete', `data-delete-sale="${esc(o.id)}"`, 'sale-row-decal', paid ? 'حذف و بازپرداخت سفارش پرداخت‌شده' : 'حذف کل سفارش')}</div></div>`;
 }
+function cashierOrdersTotalText(rows, paid = null) {
+  const total = rows.reduce((sum, order) => {
+    const isPaid = paid === null ? order.posStatus === 'paid' : paid;
+    return sum + Number(isPaid ? orderFinalTotal(order) : (order.remainingTotal ?? orderFinalTotal(order)) || 0);
+  }, 0);
+  return money(total);
+}
 function renderCashierOrdersOverlay(customer) {
   if (!cashierOrdersPopupMode) return '';
   const { openUnpaidOrders, paidOrders } = cashierWorkdayOrderGroups(customer);
   const isOpenMode = cashierOrdersPopupMode === 'open';
   const rows = isOpenMode ? openUnpaidOrders : paidOrders;
-  const title = isOpenMode ? 'سفارشات باز' : 'تکمیل شده';
+  const allRows = [...openUnpaidOrders, ...paidOrders];
+  const headerTitle = cashierOrdersPopupMode === 'menu'
+    ? `جمع کل: ${cashierOrdersTotalText(allRows)}`
+    : `جمع: ${cashierOrdersTotalText(rows, !isOpenMode)}`;
   const listMarkup = cashierOrdersPopupMode === 'menu'
     ? `<div class="cashier-orders-choice-actions"><button type="button" class="primary" data-cashier-orders-tab="open">سفارشات باز</button><button type="button" class="secondary" data-cashier-orders-tab="paid">تکمیل شده</button></div>`
     : `<div class="cashier-orders-popup-list order-panel-scroll">${rows.map(o => renderCashierOrderRow(o, !isOpenMode)).join('') || '<p>سفارشی وجود ندارد</p>'}</div>`;
   const editOrder = editingHallOrderId ? (state.orders || []).find(order => order.id === editingHallOrderId && order.customerId === customer.id && order.posStatus !== 'paid') : null;
-  return `<div class="modal-backdrop cashier-orders-backdrop" data-close-cashier-orders><section class="cashier-orders-popup" role="dialog" aria-modal="true" aria-label="سفارشات صندوق"><button type="button" class="modal-close-icon cashier-orders-close" data-close-cashier-orders aria-label="بستن">×</button><div class="section-title"><h2>${cashierOrdersPopupMode === 'menu' ? 'سفارشات' : title}</h2>${cashierOrdersPopupMode === 'menu' ? '<span class="badge">صندوق</span>' : `<button type="button" class="secondary" data-cashier-orders-tab="menu">بازگشت</button>`}</div>${listMarkup}</section>${editOrder ? renderHallOrderEditPopup(customer, editOrder) : ''}</div>`;
+  return `<div class="modal-backdrop cashier-orders-backdrop" data-close-cashier-orders><section class="cashier-orders-popup" role="dialog" aria-modal="true" aria-label="سفارشات صندوق"><button type="button" class="modal-close-icon cashier-orders-close" data-close-cashier-orders aria-label="بستن">×</button><div class="section-title cashier-orders-title"><h2>${headerTitle}</h2>${cashierOrdersPopupMode === 'menu' ? '' : `<button type="button" class="secondary" data-cashier-orders-tab="menu">بازگشت</button>`}</div>${listMarkup}</section>${editOrder ? renderHallOrderEditPopup(customer, editOrder) : ''}</div>`;
 }
 function renderHallOrderEditPopup(customer, order) {
   const items = customerSaleItems();
