@@ -1245,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-button-frame-lock-150');
+  url.searchParams.set('v', 'cashier-keep-empty-table-draft-151');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1279,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-button-frame-lock-150');
+  url.searchParams.set('v', 'cashier-keep-empty-table-draft-151');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1618,7 +1618,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-button-frame-lock-150" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-keep-empty-table-draft-151" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -3622,11 +3622,12 @@ function bindCommon() {
     const table = RestaurantCore.getHallTables(state, customer.id).find(item => item.id === tableId);
     if (!table || table.status !== 'free' || hallTableLockedByOther(customer.id, tableId)) return alert('این میز همین الان در صندوق دیگری درگیر شد؛ میز دیگری را انتخاب کنید.');
     selectedHallTableId = tableId;
+    hallDraftForSelectedTable();
     hallTablePickerOpen = false;
     hallTableConfigOpen = false;
-    if (!acquireHallTableLock(customer.id, tableId)) { selectedHallTableId = ''; return alert('این میز توسط صندوق دیگری انتخاب شده است.'); }
+    if (!acquireHallTableLock(customer.id, tableId)) { delete hallOrderDrafts[tableId]; selectedHallTableId = ''; return alert('این میز توسط صندوق دیگری انتخاب شده است.'); }
     try { await persistCriticalState('قفل‌کردن میز روی سرور ناموفق بود؛ دوباره تلاش کنید.'); render(); }
-    catch (err) { releaseHallTableLock(customer.id, tableId); selectedHallTableId = ''; render(); alert(err.message); }
+    catch (err) { releaseHallTableLock(customer.id, tableId); delete hallOrderDrafts[tableId]; selectedHallTableId = ''; render(); alert(err.message); }
   }));
   document.querySelectorAll('[data-hall-occupied-table]').forEach(btn => btn.addEventListener('click', () => {
     const tableId = btn.dataset.hallOccupiedTable;
