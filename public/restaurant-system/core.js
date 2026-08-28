@@ -2076,17 +2076,10 @@
   function deleteSale(state, customerId, orderId) {
     requireCustomer(state, customerId);
     if (!Array.isArray(state.deletedOrderIds)) state.deletedOrderIds = [];
-    if (!Array.isArray(state.ledger)) state.ledger = [];
     const index = state.orders.findIndex((order) => order.id === orderId && order.customerId === customerId);
     if (index === -1) throw new Error('ORDER_NOT_FOUND');
     const [removed] = state.orders.splice(index, 1);
-    const paidAmount = normalizePosStatus(removed.posStatus) === 'paid' ? Math.round(Number(removed.paidTotal || removed.grandTotal || removed.total || 0)) : 0;
-    const revenueEntries = paidAmount > 0 ? state.ledger.filter((entry) => entry.customerId === customerId && entry.sourceId === removed.id && entry.type === 'revenue') : [];
     reverseOrderEffects(state, customerId, removed);
-    if (paidAmount > 0) {
-      state.ledger.push(...revenueEntries.map(cloneJson));
-      state.ledger.push({ id: uid('led'), customerId, type: 'refund', direction: 'out', amount: paidAmount, sourceId: removed.id, createdAt: new Date().toISOString(), paymentMethod: 'بازپرداخت مشتری', note: 'بازپرداخت حذف سفارش پرداخت‌شده' });
-    }
     if (!state.deletedOrderIds.includes(orderId)) state.deletedOrderIds.push(orderId);
     return removed;
   }
@@ -2101,25 +2094,6 @@
     state.orders = state.orders.filter((order) => order.id !== temp.id);
     Object.assign(existing, temp, oldMeta, { paymentMethod });
     state.ledger.forEach((entry) => { if (entry.sourceId === temp.id && entry.customerId === customerId) { entry.sourceId = oldMeta.id; entry.createdAt = oldMeta.createdAt; } });
-    return existing;
-  }
-
-  function updateHallOrderLines(state, customerId, orderId, lines, options = {}) {
-    requireCustomer(state, customerId);
-    const existing = state.orders.find((order) => order.id === orderId && order.customerId === customerId && order.hallSale === true);
-    if (!existing) throw new Error('ORDER_NOT_FOUND');
-    if (normalizePosStatus(existing.posStatus) === 'paid') throw new Error('ORDER_ALREADY_PAID');
-    if (Number(existing.paidTotal || 0) > 0) throw new Error('PARTIALLY_PAID_ORDER_EDIT_UNSUPPORTED');
-    const meta = { id: existing.id, trackingNumber: existing.trackingNumber, createdAt: existing.createdAt, status: existing.status, statusUpdatedAt: existing.statusUpdatedAt, completedAt: existing.completedAt, tableId: existing.tableId, tableName: existing.tableName, hallSale: true };
-    reverseOrderEffects(state, customerId, existing);
-    const temp = createSale(state, customerId, lines, existing.paymentMethod || 'در انتظار', { status: meta.status, orderNote: options.orderNote || '' });
-    state.orders = state.orders.filter((order) => order.id !== temp.id);
-    state.ledger = state.ledger.filter((entry) => !(entry.customerId === customerId && entry.sourceId === temp.id && entry.type === 'revenue'));
-    state.ledger.forEach((entry) => { if (entry.customerId === customerId && entry.sourceId === temp.id && entry.type === 'cost') { entry.sourceId = meta.id; entry.createdAt = meta.createdAt; } });
-    Object.assign(existing, temp, meta, { paymentMethod: existing.paymentMethod || 'در انتظار', posStatus: 'submitted', paidTotal: 0, remainingTotal: temp.total, subtotal: temp.total, discountTotal: 0, payments: [], paymentAllocations: [], orderNote: options.orderNote || '' });
-    applyOrderChargeSettings(existing, options.chargeSettings || getPosChargeSettings(state, customerId));
-    existing.remainingTotal = Math.max(0, Math.round(Number(existing.grandTotal ?? existing.total ?? 0)));
-    existing.lines.forEach((line) => { line.paidQty = 0; line.paidQuantity = 0; line.sentToPreparationAt = line.sentToPreparationAt || new Date().toISOString(); line.preparationStatus = 'sent'; });
     return existing;
   }
 
@@ -2914,7 +2888,6 @@
     hallPaymentMethods,
     createSale,
     updateSale,
-    updateHallOrderLines,
     deleteSale,
     updateOrderStatus,
     advanceOrderStatus,
