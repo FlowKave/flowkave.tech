@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       const restaurantName = String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.businessName || customer?.name || 'رستوران').trim() || 'رستوران';
       await setStaffSession({
         tenantId: row.tenant_id,
-        customerId: String(customer?.id || staff.customerId || ''),
+        customerId: String(staff.customerId || customer?.id || ''),
         staffUserId: String(staff.id || ''),
         restaurantName,
         staffName: staffName(staff),
@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
         ok: true,
         version: STAFF_LOGIN_VERSION,
         tenantId: row.tenant_id,
-        customerId: String(customer?.id || staff.customerId || ''),
         tenant: { id: row.tenant_id, name: restaurantName, slug: row.tenant_id },
         businessName: restaurantName,
         ownerName: staffName(staff),
@@ -107,7 +106,7 @@ export async function POST(request: NextRequest) {
         exists: true,
         data: state,
         updatedAt: row.version ? Number(row.version) : 0,
-        staff: { id: staff.id, customerId: String(customer?.id || staff.customerId || ''), name: staffName(staff), personnelCode, role: staff.role || 'cashier' },
+        staff: { id: staff.id, customerId: staff.customerId, name: staffName(staff), personnelCode, role: staff.role || 'cashier' },
       });
     }
 

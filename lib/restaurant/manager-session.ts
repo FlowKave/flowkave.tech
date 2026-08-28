@@ -133,7 +133,7 @@ async function collectManagerRestaurantChoices(email: string, pin = ''): Promise
       const restaurantName = String(restaurantNames.get(row.tenant_id) || tenantNames.get(row.tenant_id) || customer?.businessName || customer?.name || 'رستوران').trim() || 'رستوران';
       choices.push({
         tenantId: row.tenant_id,
-        customerId: String(customer?.id || staff.customerId || ''),
+        customerId: String(staff.customerId || customer?.id || ''),
         staffUserId: String(staff.id || ''),
         restaurantName,
         managerName: String(staff.name || `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'مدیر'),

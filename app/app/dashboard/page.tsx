@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '../../../lib/supabase/server';
 import { getManagerSession } from '../../../lib/restaurant/manager-session';
-import { getStaffSession } from '../../../lib/restaurant/staff-session';
 
 type DashboardProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -12,14 +11,13 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage({ searchParams }: DashboardProps) {
   const params = await searchParams;
   const managerSession = await getManagerSession();
-  const staffSession = await getStaffSession();
   const supabase = await createClient();
   const { data: authData, error: authError } = await supabase.auth.getUser();
-  const staffLogin = Boolean(staffSession) || params?.staffLogin === '1' || params?.staff === '1';
+  const staffLogin = params?.staffLogin === '1' || params?.staff === '1';
 
-  if ((authError || !authData.user) && !managerSession && !staffSession && !staffLogin) redirect('/login');
+  if ((authError || !authData.user) && !managerSession && !staffLogin) redirect('/login');
 
-  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=cashier-yellow-lock-canonical-customer-163`;
+  const iframeSrc = `/restaurant-system/index.html?portal=1${staffLogin ? '&staffLogin=1' : ''}&v=cashier-rollback-5h-164`;
 
   return (
     <main dir="rtl" className="min-h-screen bg-[#05070d] text-white">

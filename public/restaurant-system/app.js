@@ -18,12 +18,11 @@ let sharedPendingSince = 0;
 let sharedLastSerialized = '';
 const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
+const portalMode = portalParams.get('portal') === '1';
+const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
 const publicTenantId = portalParams.get('publicTenant') || '';
 const publicQrMode = Boolean(publicTenantId);
-const onlinePortalHost = /(^|\.)flowkave\.tech$/i.test(window.location.hostname);
-const portalMode = !publicQrMode && (portalParams.get('portal') === '1' || onlinePortalHost);
-const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
-const SHARED_STATE_API = `${window.location.origin}${portalMode ? `/api/restaurant-state${portalStaffLoginMode ? '?staffLogin=1' : ''}` : (publicQrMode ? `/api/public-restaurant-state?tenantId=${encodeURIComponent(publicTenantId)}` : '/api/state')}`;
+const SHARED_STATE_API = `${window.location.origin}${portalMode ? '/api/restaurant-state' : (publicQrMode ? `/api/public-restaurant-state?tenantId=${encodeURIComponent(publicTenantId)}` : '/api/state')}`;
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
 let state = loadState();
@@ -115,7 +114,6 @@ function normalizePortalIdentity(input = {}) {
   const tenant = meta.tenant || {};
   return {
     tenantId: String(meta.tenantId || tenant.id || ''),
-    customerId: String(meta.customerId || ''),
     businessName: String(meta.businessName || tenant.name || 'رستوران جدید'),
     ownerName: String(meta.ownerName || 'مالک پکیج'),
     email: String(meta.ownerEmail || meta.email || `owner-${tenant.id || Date.now()}@flowkave.local`),
@@ -132,8 +130,7 @@ function ensurePortalCustomer(identityInput = portalIdentity) {
   if (!portalMode) return null;
   portalIdentity = normalizePortalIdentity(identityInput || portalIdentity || {});
   if (!Array.isArray(state.customers)) state.customers = [];
-  let customer = portalIdentity.customerId ? state.customers.find(c => c.id === portalIdentity.customerId) : null;
-  if (!customer) customer = state.customers.find(c => c.portalTenantId && c.portalTenantId === portalIdentity.tenantId);
+  let customer = state.customers.find(c => c.portalTenantId && c.portalTenantId === portalIdentity.tenantId);
   if (!customer && !portalIdentity.tenantId) customer = state.customers.find(c => String(c.email || '').toLowerCase() === portalIdentity.email.toLowerCase());
   if (!customer) {
     customer = RestaurantCore.createCustomer(state, {
@@ -293,26 +290,6 @@ function preserveLocalBrowserSessions(remoteState) {
     if (!remoteState.sessions.some(remote => remote?.id === local.id)) remoteState.sessions.push({ ...local });
   });
 }
-function isActiveRemoteHallOrderForTable(order, tableId) {
-  if (!order || order.tableId !== tableId || order.hallSale !== true) return false;
-  const posStatus = order.posStatus || 'submitted';
-  if (posStatus === 'cancelled') return false;
-  return posStatus !== 'paid' || order.tableHeldAfterPayment === true;
-}
-function preserveLocalHallTableLocks(remoteState) {
-  if (!remoteState || !selectedHallTableId) return;
-  const ownerId = hallTableLockOwnerId();
-  const localLocks = normalizeHallTableLocks().filter(lock => lock?.ownerId === ownerId && lock.active !== false && !lock.releasedAt);
-  const selectedLocalLock = localLocks.find(lock => lock.tableId === selectedHallTableId);
-  if (!selectedLocalLock) return;
-  const remoteOrders = Array.isArray(remoteState.orders) ? remoteState.orders : [];
-  const remoteActiveOrder = remoteOrders.find(order => isActiveRemoteHallOrderForTable(order, selectedHallTableId));
-  if (remoteActiveOrder) return;
-  const remoteLocks = Array.isArray(remoteState.hallTableLocks) ? remoteState.hallTableLocks : [];
-  const remoteOtherActiveLock = remoteLocks.find(lock => lock?.tableId === selectedHallTableId && lock.customerId === selectedLocalLock.customerId && lock.ownerId !== ownerId && lock.active !== false && !lock.releasedAt && (!lock.expiresAt || new Date(lock.expiresAt).getTime() > Date.now()));
-  if (remoteOtherActiveLock) return;
-  remoteState.hallTableLocks = remoteLocks.filter(lock => lock?.id !== selectedLocalLock.id).concat({ ...selectedLocalLock, ownerLabel: currentStaffName(), expiresAt: new Date(Date.now() + HALL_TABLE_LOCK_TTL_MS).toISOString() });
-}
 function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   if (!remoteState || !Array.isArray(remoteState.customers)) return;
   const serialized = JSON.stringify(remoteState);
@@ -322,7 +299,6 @@ function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   }
   sharedApplyingRemote = true;
   preserveLocalBrowserSessions(remoteState);
-  preserveLocalHallTableLocks(remoteState);
   migrateDisplayState(remoteState);
   state = remoteState;
   if (portalMode) ensurePortalCustomerSession(identity || portalIdentity);
@@ -817,10 +793,7 @@ function bindPersianNumberInputs(scope = document) {
 }
 function currentCustomer() {
   if (session?.id && RestaurantCore.validateSession) session = RestaurantCore.validateSession(state, session.id);
-  const sessionCustomer = session ? state.customers.find((c) => c.id === session.customerId) : null;
-  if (sessionCustomer) return sessionCustomer;
-  if (portalMode) return ensurePortalCustomer(portalIdentity);
-  return null;
+  return session ? state.customers.find((c) => c.id === session.customerId) : null;
 }
 function currentRole() { return session?.role || 'manager'; }
 function currentStaffName() {
@@ -1272,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-yellow-lock-canonical-customer-163');
+  url.searchParams.set('v', 'cashier-rollback-5h-164');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1306,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-yellow-lock-canonical-customer-163');
+  url.searchParams.set('v', 'cashier-rollback-5h-164');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1645,7 +1618,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-yellow-lock-canonical-customer-163" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-rollback-5h-164" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2081,15 +2054,11 @@ function renderOccupiedHallTablesBox(tables, selectedTable) {
     const lock = activeHallTableLock(customer?.id || table.customerId, table.id);
     const lockedByOther = lock && lock.ownerId !== hallTableLockOwnerId();
     const isPaidHeld = table.status === 'paid-held';
-    const isSubmittedHallOrder = ['open-order','waiting-payment'].includes(table.status);
-    const isDraftLocked = table.status === 'free' && Boolean(lock);
-    const ownDraftLock = isDraftLocked && !lockedByOther;
-    const blockedByOtherDraft = isDraftLocked && lockedByOther;
-    const visualStatus = isPaidHeld ? 'paid-held' : (isSubmittedHallOrder ? table.status : (isDraftLocked ? 'draft-locked' : table.status));
+    const ownDraftLock = lock && !lockedByOther && table.status === 'free';
     const actionAttr = isPaidHeld
       ? `data-release-hall-table="${esc(table.id)}" title="آزاد کردن ${esc(table.name)}"`
       : `data-hall-occupied-table="${esc(table.id)}"${ownDraftLock ? ` title="${esc(table.name)} انتخاب شده"` : ''}`;
-    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${visualStatus}" ${actionAttr} ${blockedByOtherDraft ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
+    return `<button type="button" class="hall-occupied-table-chip ${table.id === selectedTable?.id ? 'active' : ''} ${lock ? 'draft-locked' : table.status}" ${actionAttr} ${lockedByOther ? 'disabled' : ''}><b>${esc(table.name)}</b></button>`;
   }).join('');
   return `<div class="hall-occupied-tables-box" aria-label="میزهای انتخاب‌شده"><div class="hall-occupied-tables-scroll">${rows}</div></div>`;
 }
@@ -2188,9 +2157,7 @@ function renderHallSales(customer) {
   if (selectedHallTableId && !tables.some(table => table.id === selectedHallTableId)) selectedHallTableId = '';
   let selectedTable = selectedHallTableId ? tables.find(table => table.id === selectedHallTableId) : null;
   let activeOrder = selectedTable ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedTable.id) : null;
-  const selectedTableLock = selectedHallTableId ? activeHallTableLock(customer.id, selectedHallTableId) : null;
-  const hasSelectedHallDraft = selectedHallTableId && Boolean(hallOrderDrafts[selectedHallTableId]);
-  if (selectedHallTableId && selectedTable?.status === 'free' && !activeOrder && ((selectedTableLock && selectedTableLock.ownerId !== hallTableLockOwnerId()) || (!selectedTableLock && !hasSelectedHallDraft))) {
+  if (selectedHallTableId && selectedTable?.status === 'free' && !activeOrder && activeHallTableLock(customer.id, selectedHallTableId)?.ownerId !== hallTableLockOwnerId()) {
     selectedHallTableId = '';
     selectedTable = null;
     activeOrder = null;
@@ -3650,16 +3617,14 @@ function bindCommon() {
   document.querySelectorAll('[data-hall-table]').forEach(btn => btn.addEventListener('click', async () => {
     const tableId = btn.dataset.hallTable;
     await pullSharedState();
-    const lockCustomer = currentCustomer() || customer;
-    const table = RestaurantCore.getHallTables(state, lockCustomer.id).find(item => item.id === tableId);
-    if (!table || table.status !== 'free' || hallTableLockedByOther(lockCustomer.id, tableId)) return alert('این میز همین الان در صندوق دیگری درگیر شد؛ میز دیگری را انتخاب کنید.');
+    const table = RestaurantCore.getHallTables(state, customer.id).find(item => item.id === tableId);
+    if (!table || table.status !== 'free' || hallTableLockedByOther(customer.id, tableId)) return alert('این میز همین الان در صندوق دیگری درگیر شد؛ میز دیگری را انتخاب کنید.');
     selectedHallTableId = tableId;
-    hallDraftForSelectedTable();
     hallTablePickerOpen = false;
     hallTableConfigOpen = false;
-    if (!acquireHallTableLock(lockCustomer.id, tableId)) { delete hallOrderDrafts[tableId]; selectedHallTableId = ''; return alert('این میز توسط صندوق دیگری انتخاب شده است.'); }
+    if (!acquireHallTableLock(customer.id, tableId)) { selectedHallTableId = ''; return alert('این میز توسط صندوق دیگری انتخاب شده است.'); }
     try { await persistCriticalState('قفل‌کردن میز روی سرور ناموفق بود؛ دوباره تلاش کنید.'); render(); }
-    catch (err) { releaseHallTableLock(customer.id, tableId); delete hallOrderDrafts[tableId]; selectedHallTableId = ''; render(); alert(err.message); }
+    catch (err) { releaseHallTableLock(customer.id, tableId); selectedHallTableId = ''; render(); alert(err.message); }
   }));
   document.querySelectorAll('[data-hall-occupied-table]').forEach(btn => btn.addEventListener('click', () => {
     const tableId = btn.dataset.hallOccupiedTable;

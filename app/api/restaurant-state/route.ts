@@ -16,32 +16,9 @@ type RestaurantStateRow = {
   device_id: string | null;
 };
 
-async function authContext(request?: NextRequest) {
+async function authContext() {
   const supabase = await createClient();
-  const staffLogin = request?.nextUrl.searchParams.get('staffLogin') === '1';
-  const staff = await getStaffSession();
   const manager = await getManagerSession();
-  if (staff) {
-    const admin = createAdminClient();
-    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
-    return {
-      supabase: admin,
-      user: { id: staff.staffUserId },
-      tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
-      identity: {
-        tenantId: staff.tenantId,
-        customerId: staff.customerId,
-        tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
-        businessName: staff.restaurantName,
-        ownerName: staff.staffName,
-        ownerEmail: '',
-        phone: '',
-        tenantChoices: [],
-      },
-      manager: null,
-      staff,
-    };
-  }
   if (manager) {
     const admin = createAdminClient();
     if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
@@ -51,7 +28,6 @@ async function authContext(request?: NextRequest) {
       tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId, owner_id: manager.staffUserId },
       identity: {
         tenantId: manager.tenantId,
-        customerId: manager.customerId,
         tenant: { id: manager.tenantId, name: manager.restaurantName, slug: manager.tenantId },
         businessName: manager.restaurantName,
         ownerName: manager.managerName,
@@ -60,7 +36,27 @@ async function authContext(request?: NextRequest) {
         tenantChoices: manager.tenantChoices || [],
       },
       manager,
-      staff: null,
+    };
+  }
+  const staff = await getStaffSession();
+  if (staff) {
+    const admin = createAdminClient();
+    if (!admin) return { supabase, user: null, tenant: null, identity: null, manager: null };
+    return {
+      supabase: admin,
+      user: { id: staff.staffUserId },
+      tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId, owner_id: staff.staffUserId },
+      identity: {
+        tenantId: staff.tenantId,
+        tenant: { id: staff.tenantId, name: staff.restaurantName, slug: staff.tenantId },
+        businessName: staff.restaurantName,
+        ownerName: staff.staffName,
+        ownerEmail: '',
+        phone: '',
+        tenantChoices: [],
+      },
+      manager: null,
+      staff,
     };
   }
   const { data, error } = await supabase.auth.getUser();
@@ -85,24 +81,6 @@ function hasManagerPassword(staff: any) {
 function isActiveManager(staff: any, email = '') {
   const matchesEmail = !email || normalizeEmail(staff?.email) === email;
   return matchesEmail && staff?.role === 'manager' && staff?.active !== false;
-}
-
-function canonicalPortalCustomer(sharedState: any, tenantId: string, identity: any = {}) {
-  const customers = Array.isArray(sharedState?.customers) ? sharedState.customers : [];
-  const identityCustomer = identity?.customerId ? customers.find((customer: any) => customer?.id === identity.customerId) : null;
-  const tenantCustomer = customers.find((customer: any) => customer?.portalTenantId === tenantId);
-  const email = normalizeEmail(identity?.ownerEmail || identity?.email || '');
-  const emailCustomer = email ? customers.find((customer: any) => normalizeEmail(customer?.email) === email) : null;
-  const customer = tenantCustomer || identityCustomer || emailCustomer || customers[0] || null;
-  if (!customer) return identity;
-  return {
-    ...identity,
-    customerId: String(customer.id || identity.customerId || ''),
-    businessName: String(customer.businessName || identity.businessName || 'رستوران'),
-    ownerName: String(customer.ownerName || identity.ownerName || ''),
-    ownerEmail: String(customer.email || identity.ownerEmail || ''),
-    phone: String(customer.phone || identity.phone || ''),
-  };
 }
 
 async function hydrateExistingManagerCredentials(sharedState: any, currentTenantId: string) {
@@ -150,40 +128,6 @@ function mergeArrayById(existing: any[] = [], incoming: any[] = []) {
   const byId = new Map<string, any>();
   for (const item of existing || []) if (item?.id) byId.set(String(item.id), item);
   for (const item of incoming || []) if (item?.id) byId.set(String(item.id), { ...(byId.get(String(item.id)) || {}), ...item });
-  return Array.from(byId.values());
-}
-
-function hallLockTime(lock: any) {
-  return Math.max(
-    timeValue(lock?.updatedAt),
-    timeValue(lock?.releasedAt),
-    timeValue(lock?.lockedAt),
-    timeValue(lock?.expiresAt),
-  );
-}
-
-function isActiveHallLock(lock: any) {
-  return Boolean(lock?.id && lock.active !== false && !lock.releasedAt && (!lock.expiresAt || timeValue(lock.expiresAt) > Date.now()));
-}
-
-function hallLockReleaseTime(lock: any) {
-  return Math.max(timeValue(lock?.releasedAt), timeValue(lock?.updatedAt));
-}
-
-function mergeHallTableLock(existing: any, incoming: any) {
-  if (!existing) return incoming;
-  if (!incoming) return existing;
-  const existingActive = isActiveHallLock(existing);
-  const incomingActive = isActiveHallLock(incoming);
-  if (existingActive && !incomingActive) return hallLockReleaseTime(incoming) >= timeValue(existing.lockedAt) ? { ...existing, ...incoming } : existing;
-  if (incomingActive && !existingActive) return hallLockReleaseTime(existing) >= timeValue(incoming.lockedAt) ? existing : { ...existing, ...incoming };
-  return hallLockTime(incoming) >= hallLockTime(existing) ? { ...existing, ...incoming } : { ...incoming, ...existing };
-}
-
-function mergeHallTableLocks(existing: any[] = [], incoming: any[] = []) {
-  const byId = new Map<string, any>();
-  for (const lock of existing || []) if (lock?.id) byId.set(String(lock.id), lock);
-  for (const lock of incoming || []) if (lock?.id) byId.set(String(lock.id), mergeHallTableLock(byId.get(String(lock.id)), lock));
   return Array.from(byId.values());
 }
 
@@ -253,17 +197,16 @@ function mergeRestaurantState(existingState: any, incomingState: any) {
   const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
   merged.deletedOrderIds = deletedOrderIds;
   merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
-  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
+  for (const key of ['shifts', 'ledger', 'restaurantTables', 'hallTableLocks']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }
-  merged.hallTableLocks = mergeHallTableLocks(Array.isArray(existingState?.hallTableLocks) ? existingState.hallTableLocks : [], Array.isArray(incomingState?.hallTableLocks) ? incomingState.hallTableLocks : []);
   delete merged.sessions;
   return merged;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { supabase, user, tenant, identity } = await authContext(request);
+    const { supabase, user, tenant, identity } = await authContext();
     if (!user || !tenant || !identity) return unauthorized();
 
     const { data, error } = await supabase
@@ -274,9 +217,8 @@ export async function GET(request: NextRequest) {
 
     if (error) throw new Error(error.message);
 
-    const responseIdentity = canonicalPortalCustomer(data?.state, tenant.id, identity);
     return NextResponse.json({
-      ...responseIdentity,
+      ...identity,
       exists: Boolean(data),
       data: data?.state ?? null,
       updatedAt: data?.version ? Number(data.version) : 0,
@@ -291,7 +233,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { supabase, user, tenant, identity, manager, staff } = await authContext(request);
+    const { supabase, user, tenant, identity, manager, staff } = await authContext();
     if (!user || !tenant || !identity) return unauthorized();
 
     const body = await request.json();
@@ -336,9 +278,8 @@ export async function PUT(request: NextRequest) {
       payload: { version: data?.version ?? version },
     });
 
-    const responseIdentity = canonicalPortalCustomer(sharedState, tenant.id, identity);
     return NextResponse.json({
-      ...responseIdentity,
+      ...identity,
       ok: true,
       exists: true,
       updatedAt: data?.version ? Number(data.version) : version,
