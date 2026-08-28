@@ -290,6 +290,20 @@ function preserveLocalBrowserSessions(remoteState) {
     if (!remoteState.sessions.some(remote => remote?.id === local.id)) remoteState.sessions.push({ ...local });
   });
 }
+function preserveLocalHallTableLocks(remoteState) {
+  if (!remoteState || !selectedHallTableId) return;
+  const ownerId = hallTableLockOwnerId();
+  const localLocks = normalizeHallTableLocks().filter(lock => lock?.ownerId === ownerId && lock.active !== false && !lock.releasedAt);
+  const selectedLocalLock = localLocks.find(lock => lock.tableId === selectedHallTableId);
+  if (!selectedLocalLock) return;
+  const remoteOrders = Array.isArray(remoteState.orders) ? remoteState.orders : [];
+  const remoteActiveOrder = remoteOrders.find(order => order?.tableId === selectedHallTableId && order.hallSale === true && order.posStatus !== 'paid');
+  if (remoteActiveOrder) return;
+  const remoteLocks = Array.isArray(remoteState.hallTableLocks) ? remoteState.hallTableLocks : [];
+  const remoteOtherActiveLock = remoteLocks.find(lock => lock?.tableId === selectedHallTableId && lock.customerId === selectedLocalLock.customerId && lock.ownerId !== ownerId && lock.active !== false && !lock.releasedAt && (!lock.expiresAt || new Date(lock.expiresAt).getTime() > Date.now()));
+  if (remoteOtherActiveLock) return;
+  remoteState.hallTableLocks = remoteLocks.filter(lock => lock?.id !== selectedLocalLock.id).concat({ ...selectedLocalLock, ownerLabel: currentStaffName(), expiresAt: new Date(Date.now() + HALL_TABLE_LOCK_TTL_MS).toISOString() });
+}
 function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   if (!remoteState || !Array.isArray(remoteState.customers)) return;
   const serialized = JSON.stringify(remoteState);
@@ -299,6 +313,7 @@ function applyRemoteState(remoteState, updatedAt = 0, identity = null) {
   }
   sharedApplyingRemote = true;
   preserveLocalBrowserSessions(remoteState);
+  preserveLocalHallTableLocks(remoteState);
   migrateDisplayState(remoteState);
   state = remoteState;
   if (portalMode) ensurePortalCustomerSession(identity || portalIdentity);
@@ -1245,7 +1260,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-keep-empty-table-draft-151');
+  url.searchParams.set('v', 'cashier-preserve-local-table-lock-152');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1279,7 +1294,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-keep-empty-table-draft-151');
+  url.searchParams.set('v', 'cashier-preserve-local-table-lock-152');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1618,7 +1633,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-keep-empty-table-draft-151" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-preserve-local-table-lock-152" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
