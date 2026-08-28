@@ -144,13 +144,17 @@ function isActiveHallLock(lock: any) {
   return Boolean(lock?.id && lock.active !== false && !lock.releasedAt && (!lock.expiresAt || timeValue(lock.expiresAt) > Date.now()));
 }
 
+function hallLockReleaseTime(lock: any) {
+  return Math.max(timeValue(lock?.releasedAt), timeValue(lock?.updatedAt));
+}
+
 function mergeHallTableLock(existing: any, incoming: any) {
   if (!existing) return incoming;
   if (!incoming) return existing;
   const existingActive = isActiveHallLock(existing);
   const incomingActive = isActiveHallLock(incoming);
-  if (existingActive && !incomingActive && hallLockTime(incoming) < timeValue(existing.lockedAt)) return existing;
-  if (incomingActive && !existingActive && hallLockTime(existing) < timeValue(incoming.lockedAt)) return incoming;
+  if (existingActive && !incomingActive) return hallLockReleaseTime(incoming) >= timeValue(existing.lockedAt) ? { ...existing, ...incoming } : existing;
+  if (incomingActive && !existingActive) return hallLockReleaseTime(existing) >= timeValue(incoming.lockedAt) ? existing : { ...existing, ...incoming };
   return hallLockTime(incoming) >= hallLockTime(existing) ? { ...existing, ...incoming } : { ...incoming, ...existing };
 }
 
