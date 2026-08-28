@@ -18,10 +18,11 @@ let sharedPendingSince = 0;
 let sharedLastSerialized = '';
 const app = document.querySelector('#app');
 const portalParams = new URLSearchParams(window.location.search);
-const portalMode = portalParams.get('portal') === '1';
-const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
 const publicTenantId = portalParams.get('publicTenant') || '';
 const publicQrMode = Boolean(publicTenantId);
+const onlinePortalHost = /(^|\.)flowkave\.tech$/i.test(window.location.hostname);
+const portalMode = !publicQrMode && (portalParams.get('portal') === '1' || onlinePortalHost);
+const portalStaffLoginMode = portalMode && portalParams.get('staffLogin') === '1';
 const SHARED_STATE_API = `${window.location.origin}${portalMode ? `/api/restaurant-state${portalStaffLoginMode ? '?staffLogin=1' : ''}` : (publicQrMode ? `/api/public-restaurant-state?tenantId=${encodeURIComponent(publicTenantId)}` : '/api/state')}`;
 const PORTAL_SESSION_PASSWORD = 'flowkave-portal-session-only';
 let portalIdentity = null;
@@ -1268,7 +1269,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-staff-cookie-sync-161');
+  url.searchParams.set('v', 'cashier-online-direct-sync-162');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1302,7 +1303,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-staff-cookie-sync-161');
+  url.searchParams.set('v', 'cashier-online-direct-sync-162');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1641,7 +1642,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-staff-cookie-sync-161" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-online-direct-sync-162" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
