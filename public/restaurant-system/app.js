@@ -49,6 +49,7 @@ let posSalesChannel = 'hall';
 let selectedHallTableId = '';
 let hallTablePickerOpen = false;
 let hallTableConfigOpen = false;
+let hallOrderNotePopupOpen = false;
 let cashierOrdersPopupMode = '';
 let editingHallOrderId = '';
 let selectedHallCategory = '';
@@ -1244,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-actions-header-145');
+  url.searchParams.set('v', 'cashier-order-note-popup-146');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1278,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-actions-header-145');
+  url.searchParams.set('v', 'cashier-order-note-popup-146');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1617,7 +1618,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-actions-header-145" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-order-note-popup-146" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2143,6 +2144,13 @@ async function closeCashierRegister(customer, shiftId, print = false) {
   }
 }
 
+
+function renderHallOrderNotePopup() {
+  if (!hallOrderNotePopupOpen || !selectedHallTableId) return '';
+  const draft = hallDraftForSelectedTable();
+  return `<div class="modal-backdrop hall-order-note-backdrop" data-close-hall-order-note><section class="hall-order-note-popup" role="dialog" aria-modal="true" aria-label="یادداشت سفارش"><button type="button" class="modal-close-icon" data-close-hall-order-note aria-label="بستن">×</button><div class="section-title"><h2>یادداشت سفارش</h2></div><textarea name="hallOrderNotePopupText" rows="۵" placeholder="تغییرات، حساسیت/آلرژی، توضیحات آماده‌سازی یا هر نکته دیگر">${esc(draft.orderNote || '')}</textarea><div class="hall-order-edit-actions"><button type="button" class="primary" data-save-hall-order-note>ذخیره یادداشت</button><button type="button" class="secondary" data-close-hall-order-note>انصراف</button></div></section></div>`;
+}
+
 function renderHallSales(customer) {
   const items = customerSaleItems();
   const tables = RestaurantCore.getHallTables(state, customer.id);
@@ -2174,9 +2182,10 @@ function renderHallSales(customer) {
   const hallSubmitLabel = !currentShift ? 'اول صندوق را باز کنید' : (selectedTable ? (paidHeldTable ? 'اول میز پرداخت‌شده را آزاد کنید' : (activeOrder ? 'افزودن آیتم به فیش همین میز' : 'ثبت سفارش')) : 'اول میز را انتخاب کنید');
   const showReleaseDraftButton = selectedTable && !activeOrder && activeHallTableLock(customer.id, selectedTable.id)?.ownerId === hallTableLockOwnerId();
   const releaseDraftButton = showReleaseDraftButton ? `<button type="button" class="secondary hall-release-draft-table-btn" data-release-hall-table-lock="${esc(selectedTable.id)}">آزاد کردن</button>` : '';
-  const orderActions = `<div class="hall-order-actions hall-order-title-actions"><button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
+  const noteButton = selectedTable ? `<button type="button" class="secondary hall-order-note-btn" data-open-hall-order-note>یادداشت سفارش</button>` : '';
+  const orderActions = `<div class="hall-order-actions hall-order-title-actions">${noteButton}<button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title"><span>ثبت سفارش میز ${esc(selectedTable.name)}</span>${orderActions}</div>` : '';
-  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}<label>یادداشت سفارش<textarea name="orderNote" rows="۳" placeholder="مثلاً عجله‌ای، بدون کارد و چنگال">${esc(selectedHallTableId ? hallOrderDrafts[selectedHallTableId]?.orderNote || '' : '')}</textarea></label>${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>`;
+  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>${renderHallOrderNotePopup()}`;
   const payment = activeOrder ? renderHallPaymentPanel(activeOrder) : `<div class="panel hall-payment-panel"><h2>تقسیم فیش و پرداخت</h2><p>بعد از ثبت سفارش، اقلام پرداخت‌نشده همین‌جا برای تسویه کامل یا جزئی نمایش داده می‌شوند.</p></div>`;
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
@@ -3434,6 +3443,9 @@ function bindCommon() {
   document.querySelectorAll('[data-cashier-orders-tab]').forEach(btn => btn.addEventListener('click', () => { cashierOrdersPopupMode = btn.dataset.cashierOrdersTab || 'menu'; editingHallOrderId = ''; render(); }));
   document.querySelectorAll('[data-close-cashier-orders]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.cashier-orders-popup,.hall-order-edit-popup')) return; cashierOrdersPopupMode = ''; editingHallOrderId = ''; render(); }));
   document.querySelectorAll('[data-cancel-hall-order-edit]').forEach(btn => btn.addEventListener('click', () => { editingHallOrderId = ''; render(); }));
+  document.querySelectorAll('[data-open-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { hallOrderNotePopupOpen = true; render(); }));
+  document.querySelectorAll('[data-close-hall-order-note]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-order-note-popup')) return; hallOrderNotePopupOpen = false; render(); }));
+  document.querySelectorAll('[data-save-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { if (!selectedHallTableId) return; hallDraftForSelectedTable().orderNote = document.querySelector('[name="hallOrderNotePopupText"]')?.value || ''; hallOrderNotePopupOpen = false; render(); }));
   const inventoryPrintButton = document.querySelector('[data-print-inventory]');
   if (inventoryPrintButton) inventoryPrintButton.addEventListener('click', showInventoryPrintPreview);
   const printableMenuButton = document.querySelector('[data-printable-menu]');
@@ -4107,7 +4119,7 @@ function bindCommon() {
       if (!tableId) throw new Error('اول میز را انتخاب کنید');
       const lines = collectHallSaleLines(form);
       if (!lines.length) throw new Error('حداقل یک آیتم با تعداد مثبت لازم است');
-      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: f.get('orderNote') || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
+      const order = RestaurantCore.createHallOrder(state, customer.id, tableId, lines, { orderNote: hallOrderDrafts[tableId]?.orderNote || '', chargeSettings: { ...(customer.posChargeSettings || {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } });
       releaseHallTableLock(customer.id, tableId);
       delete hallOrderDrafts[tableId];
       notifyLowStock(order);
