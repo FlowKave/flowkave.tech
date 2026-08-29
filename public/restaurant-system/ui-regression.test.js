@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=cashier-ui-restore-yellow-merge-167');
-mustContain(html, 'core.js?v=cashier-ui-restore-yellow-merge-167');
-mustContain(html, 'app.js?v=cashier-ui-restore-yellow-merge-167');
-mustContain(html, 'core.js?v=cashier-ui-restore-yellow-merge-167');
+mustContain(html, 'styles.css?v=cashier-top-metrics-clean-168');
+mustContain(html, 'core.js?v=cashier-top-metrics-clean-168');
+mustContain(html, 'app.js?v=cashier-top-metrics-clean-168');
+mustContain(html, 'core.js?v=cashier-top-metrics-clean-168');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(app, 'function cashierWorkdayOrderGroups(customer)', 'وضعیت سفارشات و پرداخت شده باید از helper روز کاری فعلی تغذیه شوند.');
@@ -126,15 +126,22 @@ assert(!app.includes('value="${numberText(percentValue,2)}"') && !app.includes('
 mustContain(styles, 'Hall payment-panel service charge controls for cashier', 'حق سرویس داخل فرم پرداخت باید CSS اختصاصی داشته باشد.');
 mustContain(app, 'function dailyClosingCategoryRows(report)', 'UI بستن حساب روز کاری باید جدول دسته‌بندی‌های منو بسازد.');
 mustContain(app, 'function renderCashierRegisterToggle(customer)', 'باز/بستن صندوق باید با یک دکمه واحد داخل ردیف تنظیمات صندوق رندر شود.');
-mustContain(app, 'function currentRegisterTurnoverSummary(customer)', 'کارت‌های بالای صفحه باید فقط ترنوور صندوق روز کاری باز را محاسبه کنند.');
+mustContain(app, 'function currentRegisterTurnoverSummary(customer)', 'کارت‌های بالای صفحه باید از صندوق روز کاری باز محاسبه شوند.');
 mustContain(app, 'register-turnover-stats', 'کارت‌های بالای صفحه باید حالت ترنوور صندوق داشته باشند.');
+mustContain(app, '<article><span>درآمد تقریبی</span><strong>${money(registerTurnover.revenue)}</strong></article>', 'باکس درآمد باید متن درآمد تقریبی داشته باشد و کپشن ترنوور صندوق باز نداشته باشد.');
+mustContain(app, '<article><span>قیمت تمام‌شده</span><strong>${money(registerTurnover.cost)}</strong></article>', 'باکس قیمت تمام‌شده نباید کپشن ترنوور صندوق باز داشته باشد.');
+mustContain(app, "${registerTurnover.shift ? '' : '<em>صندوق بسته است</em>'}", 'در سود تقریبی فقط وقتی صندوق بسته است متن صندوق بسته است نمایش داده شود.');
+assert(!app.includes('<em>ترنوور صندوق باز</em>'), 'کپشن ترنوور صندوق باز باید از کارت‌های بالای صفحه حذف شود.');
+assert(!app.includes("registerTurnover.profit >= 0 ? 'مثبت' : 'منفی'"), 'وقتی صندوق باز است زیر سود تقریبی نباید مثبت/منفی نوشته شود.');
+mustContain(styles, 'Top register metric cards: larger centered text', 'CSS متن کارت‌های درآمد/قیمت تمام‌شده/سود باید بزرگ‌تر و وسط‌چین شود.');
+mustContain(styles, '.register-turnover-stats article strong{', 'مبلغ کارت‌های بالای صفحه باید سایز بزرگ‌تر اختصاصی داشته باشد.');
 mustContain(styles, '.register-turnover-stats{width:min(1220px,100%);margin-inline:auto!important;justify-content:center!important;grid-template-columns:repeat(3,minmax(260px,1fr))!important', 'سه کارت ترنوور باید وسط‌چین باشند و به سمت راست نچسبند.');
 assert(!app.includes('<article><span>هزینه‌ها</span>'), 'کارت هزینه‌ها باید از کارت‌های بالای صفحه حذف شود.');
 mustContain(app, 'const statsMarkup = isCashier ? \'\' : `<section class="grid stats register-turnover-stats">', 'فقط سه کارت درآمد، قیمت تمام‌شده و سود تقریبی باید باقی بمانند.');
 mustContain(app, 'data-open-cashier-register', 'وقتی صندوق بسته است دکمه بازکردن صندوق باید نمایش داده شود.');
 mustContain(app, 'data-request-close-cashier-register', 'وقتی صندوق باز است همان دکمه باید به بستن صندوق تبدیل شود.');
 mustContain(app, '${renderCashierRegisterToggle(customer)}${renderCashierOrdersButton()}${renderPosChargeSettings(customer)}', 'دکمه باز/بستن صندوق باید سمت راست/قبل از مالیات بر ارزش افزوده قرار بگیرد.');
-mustContain(app, 'cashier-ui-restore-yellow-merge-167', 'لینک‌های QR/رسید باید token جدید باز/بستن صندوق shared را داشته باشند.');
+mustContain(app, 'cashier-top-metrics-clean-168', 'لینک‌های QR/رسید باید token جدید باز/بستن صندوق shared را داشته باشند.');
 mustContain(app, "confirm('آیا از بازکردن صندوق اطمینان دارید؟')", 'بازکردن صندوق باید قبل از انجام از کاربر تأیید بگیرد.');
 mustContain(app, "confirm('آیا از بستن صندوق اطمینان دارید؟')", 'بستن صندوق باید قبل از پاپ‌آپ نهایی از کاربر تأیید بگیرد.');
 mustContain(app, 'function hasUnsettledHallOrders(customer)', 'قبل از بستن صندوق باید سفارش‌ها و میزهای تسویه‌نشده بررسی شوند.');
@@ -262,7 +269,7 @@ assert(!app.includes('markPublicQrOrdered'), 'بعد از سفارش QR نبای
 assert(!app.includes('از همین موبایل برای این میز قبلاً سفارش ثبت شده است'), 'پیام سفارش قبلی همین موبایل نباید به مشتری نمایش داده شود.');
 assert(!app.includes('سفارش دوم از QR مجاز نیست'), 'QR نباید سفارش دوم را فقط به دلیل تاریخچه موبایل ممنوع کند.');
 mustContain(app, 'تا وقتی میز در صندوق سفارش باز یا در حال ثبت نداشته باشد، مشتری می‌تواند با همین QR سفارش جدید ثبت کند.', 'پیام QR باید توضیح دهد فقط وضعیت فعلی میز مهم است.');
-mustContain(app, 'cashier-ui-restore-yellow-merge-167', 'لینک‌های QR و صندوق باید token جدید نسخه جاری را داشته باشند.');
+mustContain(app, 'cashier-top-metrics-clean-168', 'لینک‌های QR و صندوق باید token جدید نسخه جاری را داشته باشند.');
 mustContain(app, 'function renderPublicQrReceipt(order, table)', 'بعد از ثبت سفارش QR مشتری باید رسید موبایلی با جزئیات فیش ببیند.');
 mustContain(app, 'function publicReceiptLink(customerId, orderId, tableId = \'\')', 'رسید QR باید لینک مستقل داشته باشد تا با refresh از بین نرود.');
 mustContain(app, 'function renderPublicReceipt(customerId)', 'رسید QR باید route مستقل داشته باشد و از state آنلاین order را دوباره بخواند.');
@@ -417,7 +424,7 @@ mustContain(restaurantStateApiSource, 'const version = Date.now();', 'endpoint �
 mustContain(restaurantStateApiSource, 'existingRow?.state', 'endpoint اصلی باید قبل از upsert state فعلی سرور را بخواند و merge کند.');
 assert(!restaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint اصلی نباید version قدیمی دستگاه را revision سرور کند.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'cashier-ui-restore-yellow-merge-167', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'cashier-top-metrics-clean-168', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -535,7 +542,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=cashier-ui-restore-yellow-merge-167') && index.includes('core.js?v=cashier-ui-restore-yellow-merge-167') && index.includes('app.js?v=cashier-ui-restore-yellow-merge-167'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=cashier-top-metrics-clean-168') && index.includes('core.js?v=cashier-top-metrics-clean-168') && index.includes('app.js?v=cashier-top-metrics-clean-168'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();

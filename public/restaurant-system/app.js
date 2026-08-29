@@ -1245,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-ui-restore-yellow-merge-167');
+  url.searchParams.set('v', 'cashier-top-metrics-clean-168');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1279,7 +1279,7 @@ function publicQrTableBlocked(table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-ui-restore-yellow-merge-167');
+  url.searchParams.set('v', 'cashier-top-metrics-clean-168');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1611,14 +1611,14 @@ function render() {
   ].filter(([id]) => canAccessTab(id));
   const registerTurnover = currentRegisterTurnoverSummary(customer);
   const statsMarkup = isCashier ? '' : `<section class="grid stats register-turnover-stats">
-          <article><span>درآمد</span><strong>${money(registerTurnover.revenue)}</strong><em>ترنوور صندوق باز</em></article>
-          <article><span>قیمت تمام‌شده</span><strong>${money(registerTurnover.cost)}</strong><em>ترنوور صندوق باز</em></article>
-          <article><span>سود تقریبی</span><strong>${money(registerTurnover.profit)}</strong><em>${registerTurnover.shift ? (registerTurnover.profit >= 0 ? 'مثبت' : 'منفی') : 'صندوق بسته است'}</em></article>
+          <article><span>درآمد تقریبی</span><strong>${money(registerTurnover.revenue)}</strong></article>
+          <article><span>قیمت تمام‌شده</span><strong>${money(registerTurnover.cost)}</strong></article>
+          <article><span>سود تقریبی</span><strong>${money(registerTurnover.profit)}</strong>${registerTurnover.shift ? '' : '<em>صندوق بسته است</em>'}</article>
         </section>`;
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-ui-restore-yellow-merge-167" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-top-metrics-clean-168" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>

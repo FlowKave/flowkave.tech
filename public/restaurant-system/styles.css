@@ -1579,3 +1579,30 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
   filter:saturate(.75)!important;
 }
 
+/* Top register metric cards: larger centered text, no open-register turnover captions */
+.register-turnover-stats article{
+  display:grid!important;
+  place-items:center!important;
+  text-align:center!important;
+  align-content:center!important;
+  gap:8px!important;
+}
+.register-turnover-stats article span{
+  font-size:18px!important;
+  line-height:1.35!important;
+  font-weight:950!important;
+  text-align:center!important;
+}
+.register-turnover-stats article strong{
+  font-size:28px!important;
+  line-height:1.25!important;
+  font-weight:950!important;
+  text-align:center!important;
+}
+.register-turnover-stats article em{
+  font-size:15px!important;
+  line-height:1.4!important;
+  font-weight:900!important;
+  text-align:center!important;
+}
+
