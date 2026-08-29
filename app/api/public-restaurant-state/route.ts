@@ -57,11 +57,59 @@ function mergeHallTableLocks(existing: any[] = [], incoming: any[] = []) {
   return Array.from(byId.values());
 }
 
+function openHallOrderTableIds(orders: any[] = []) {
+  return new Set((orders || [])
+    .filter((order: any) => order?.hallSale === true && order?.tableId && !['paid', 'cancelled'].includes(String(order?.posStatus || 'submitted')))
+    .map((order: any) => String(order.tableId)));
+}
+
+function tableMatchesHallSettings(table: any, settings: any, activeOrderTableIds: Set<string>) {
+  if (!table?.id || !settings || typeof settings !== 'object') return true;
+  if (activeOrderTableIds.has(String(table.id))) return true;
+  const customNames = Array.isArray(settings.customNames) ? settings.customNames.map((item: any) => String(item || '').trim()).filter(Boolean) : [];
+  const count = Math.max(1, Math.min(80, Math.floor(Number(settings.count || 8))));
+  const startNumber = Math.max(1, Math.floor(Number(settings.startNumber || 1)));
+  const tableName = String(table.name || '').trim();
+  if (customNames.includes(tableName)) return true;
+  const tableNumber = Math.floor(Number(table.number || 0));
+  return tableNumber >= startNumber && tableNumber < startNumber + count && !customNames.includes(tableName);
+}
+
+function mergeRestaurantTables(existingTables: any[] = [], incomingTables: any[] = [], customers: any[] = [], orders: any[] = []) {
+  const mergedTables = mergeArrayById(existingTables, incomingTables);
+  const activeOrderTableIds = openHallOrderTableIds(orders);
+  const settingsByCustomer = new Map<string, any>();
+  for (const customer of customers || []) {
+    if (customer?.id && customer?.hallTableSettings) settingsByCustomer.set(String(customer.id), customer.hallTableSettings);
+  }
+  return mergedTables.filter((table: any) => tableMatchesHallSettings(table, settingsByCustomer.get(String(table?.customerId || '')), activeOrderTableIds));
+}
+
 function timeValue(value: any) {
   const ms = new Date(value || 0).getTime();
   return Number.isFinite(ms) ? ms : 0;
 }
 
+
+function mergeCustomer(existing: any, incoming: any) {
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+  const merged = { ...existing, ...incoming };
+  const existingLayoutTime = timeValue(existing?.hallTableSettingsUpdatedAt);
+  const incomingLayoutTime = timeValue(incoming?.hallTableSettingsUpdatedAt);
+  if (existing?.hallTableSettings && existingLayoutTime > incomingLayoutTime) {
+    merged.hallTableSettings = existing.hallTableSettings;
+    merged.hallTableSettingsUpdatedAt = existing.hallTableSettingsUpdatedAt;
+  }
+  return merged;
+}
+
+function mergeCustomers(existing: any[] = [], incoming: any[] = []) {
+  const byId = new Map<string, any>();
+  for (const customer of existing || []) if (customer?.id) byId.set(String(customer.id), customer);
+  for (const customer of incoming || []) if (customer?.id) byId.set(String(customer.id), mergeCustomer(byId.get(String(customer.id)), customer));
+  return Array.from(byId.values());
+}
 function orderFreshness(order: any) {
   return Math.max(
     timeValue(order?.updatedAt),
@@ -122,10 +170,12 @@ function mergePublicRestaurantState(existingState: any, incomingState: any) {
   const merged = { ...existingState, ...incomingState };
   const deletedOrderIds = mergedDeletedOrderIds(existingState, incomingState);
   merged.deletedOrderIds = deletedOrderIds;
+  merged.customers = mergeCustomers(Array.isArray(existingState?.customers) ? existingState.customers : [], Array.isArray(incomingState?.customers) ? incomingState.customers : []);
   merged.orders = mergeOrders(Array.isArray(existingState?.orders) ? existingState.orders : [], Array.isArray(incomingState?.orders) ? incomingState.orders : [], deletedOrderIds);
-  for (const key of ['shifts', 'ledger', 'restaurantTables']) {
+  for (const key of ['shifts', 'ledger']) {
     merged[key] = mergeArrayById(Array.isArray(existingState?.[key]) ? existingState[key] : [], Array.isArray(incomingState?.[key]) ? incomingState[key] : []);
   }
+  merged.restaurantTables = mergeRestaurantTables(Array.isArray(existingState?.restaurantTables) ? existingState.restaurantTables : [], Array.isArray(incomingState?.restaurantTables) ? incomingState.restaurantTables : [], Array.isArray(merged.customers) ? merged.customers : [], Array.isArray(merged.orders) ? merged.orders : []);
   merged.hallTableLocks = mergeHallTableLocks(Array.isArray(existingState?.hallTableLocks) ? existingState.hallTableLocks : [], Array.isArray(incomingState?.hallTableLocks) ? incomingState.hallTableLocks : []);
   delete merged.sessions;
   return merged;

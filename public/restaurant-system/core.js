@@ -2179,7 +2179,7 @@
     });
     current.filter((table) => activeOrderTableIds.has(table.id) && !nextTables.some((next) => next.id === table.id)).forEach((table) => nextTables.push({ ...table, active: true }));
     state.restaurantTables = state.restaurantTables.filter((table) => table.customerId !== customerId).concat(nextTables);
-    if (customer) customer.hallTableSettings = { count, startNumber, customNames };
+    if (customer) { customer.hallTableSettings = { count, startNumber, customNames }; customer.hallTableSettingsUpdatedAt = new Date().toISOString(); }
     return nextTables.map((table) => cloneJson(table));
   }
 
