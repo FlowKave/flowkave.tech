@@ -53,6 +53,7 @@ let hallOrderNotePopupOpen = false;
 let cashierOrdersPopupMode = '';
 let editingHallOrderId = '';
 let hallPaymentPopupOrderId = '';
+let hallPaymentItemsDropdownOpen = false;
 let selectedHallCategory = '';
 let hallOrderDrafts = {};
 const publicQrSubmittedTableLocks = new Set();
@@ -1247,7 +1248,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-items-dropdown-183');
+  url.searchParams.set('v', 'cashier-payment-dropdown-controls-184');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1295,7 +1296,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-items-dropdown-183');
+  url.searchParams.set('v', 'cashier-payment-dropdown-controls-184');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1634,7 +1635,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-items-dropdown-183" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-dropdown-controls-184" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2242,7 +2243,7 @@ function renderHallPaymentPanel(order) {
   const paid = order.payments || [];
   const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
   const remainingSubtotal = remaining.reduce((sum, line) => sum + Number(line.remainingAmount ?? (Number(line.remainingQty || 0) * Number(line.unitPrice || 0))), 0);
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"${hallPaymentItemsDropdownOpen ? ' open' : ''}><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label><div class="hall-payment-history"><h3>پرداخت‌های انجام‌شده</h3>${paid.map(payment => `<div class="hall-payment-row"><b>${money(payment.amount)}</b><span>${esc(payment.transactionReference)} — ${esc(payment.paymentMethod)} — ${esc(payment.cashierName || 'صندوق‌دار')} — ${formatDate(payment.createdAt)}</span><small>${(payment.allocations || []).map(a => `${esc(a.name)} × ${numberText(a.qty,0)}`).join('، ') || 'تراکنش ناموفق/بدون تخصیص'}</small></div>`).join('') || '<p>هنوز پرداختی ثبت نشده است.</p>'}</div></form>`;
 }
 
 
@@ -3671,12 +3672,14 @@ function bindCommon() {
     const activeOrder = table ? RestaurantCore.getActiveHallOrder(state, customer.id, table.id) : null;
     selectedHallTableId = tableId;
     hallPaymentPopupOrderId = activeOrder?.id || '';
+    hallPaymentItemsDropdownOpen = false;
     hallTablePickerOpen = false;
     render();
   }));
   document.querySelectorAll('[data-close-hall-payment-popup]').forEach(btn => btn.addEventListener('click', (event) => {
     if (event.target !== btn && event.target.closest('.hall-payment-popup')) return;
     hallPaymentPopupOrderId = '';
+    hallPaymentItemsDropdownOpen = false;
     render();
   }));
   document.querySelectorAll('[data-release-hall-table]').forEach(btn => btn.addEventListener('click', async () => {
@@ -3790,6 +3793,8 @@ function bindCommon() {
     try { const updatedOrder = applyHallServiceChargeFromForm(); if (updatedOrder) { const paymentScope = hallPaymentFormLive.closest('.hall-payment-popup') || hallPaymentFormLive; const serviceEl = paymentScope.querySelector('[data-hall-summary-service]'); const grandEl = paymentScope.querySelector('[data-hall-summary-grand]'); const remainingEl = paymentScope.querySelector('[data-hall-summary-remaining]'); if (serviceEl) serviceEl.textContent = money(updatedOrder.serviceChargeTotal || 0); if (grandEl) grandEl.textContent = money(updatedOrder.grandTotal || updatedOrder.total || 0); if (remainingEl) remainingEl.textContent = money(updatedOrder.remainingTotal ?? updatedOrder.total ?? 0); const serviceAmountInput = hallPaymentFormLive.querySelector('[name="serviceAmount"]'); if (serviceAmountInput && updatedOrder.serviceChargeMode === 'percent') { serviceAmountInput.value = numberText(updatedOrder.serviceChargeTotal || 0, 0); serviceAmountInput.readOnly = true; } else if (serviceAmountInput) serviceAmountInput.readOnly = false; const discountAmountInput = hallPaymentFormLive.querySelector('[name="discountAmount"]'); if (discountAmountInput && updatedOrder.discountMode === 'percent') { discountAmountInput.value = numberText(updatedOrder.discountTotal || 0, 0); discountAmountInput.readOnly = true; } else if (discountAmountInput) discountAmountInput.readOnly = false; } const preview = RestaurantCore.previewOrderPayment(state, customer.id, orderId, selected); hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = `مبلغ انتخاب‌شده: ${money(preview.finalAmount)} — جمع اقلام: ${money(preview.itemSubtotal)} — سهم تخفیف: ${money(preview.discountShare)} — سهم مالیات: ${money(preview.taxShare)} — سهم حق سرویس: ${money(preview.serviceChargeShare)}`; saveState(); } catch { hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = 'برای محاسبه، یک یا چند قلم با تعداد معتبر انتخاب کنید.'; }
   };
   if (hallPaymentFormLive) {
+    hallPaymentFormLive.querySelector('.hall-remaining-dropdown')?.addEventListener('toggle', (event) => { hallPaymentItemsDropdownOpen = event.currentTarget.open; });
+    hallPaymentFormLive.querySelector('[data-hall-pay-all]')?.addEventListener('click', (event) => { event.stopPropagation(); });
     hallPaymentFormLive.addEventListener('input', refreshHallPaymentPreview);
     hallPaymentFormLive.addEventListener('change', (event) => {
       if (event.target.matches('[data-clear-service-charge]')) {
