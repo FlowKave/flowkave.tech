@@ -320,6 +320,7 @@ mustContain(publicRestaurantStateApiSource, 'function mergeRestaurantTables(exis
 mustContain(publicRestaurantStateApiSource, 'existingLayoutTime > incomingLayoutTime', 'تنظیمات جدید چیدمان میز نباید با sync قدیمی دستگاه دیگر به تعداد قبلی برگردد.');
 mustContain(publicRestaurantStateApiSource, 'function mergeCustomers(existing: any[] = [], incoming: any[] = [])', 'endpoint باید customerها را با حفظ تنظیمات جدید چیدمان merge کند نه اینکه snapshot قدیمی کل customers را overwrite کند.');
 mustContain(publicRestaurantStateApiSource, 'tableMatchesHallSettings(table, settingsByCustomer.get', 'QR و انتخاب میز باید از چیدمان فعلی فیلتر شوند نه لیست قدیمی restaurantTables.');
+mustContain(publicRestaurantStateApiSource, 'data: normalizeRestaurantTablesForSettings(data?.state) ?? null,', 'GET هم باید state آلوده قدیمی را طبق چیدمان فعلی فیلتر کند تا QR و انتخاب میز بعد refresh تعداد قبلی را نشان ندهند.');
 mustContain(publicRestaurantStateApiSource, 'function mergeHallTableLocks(existing: any[] = [], incoming: any[] = [])', 'endpoint عمومی باید قفل انتخاب میز را با merge اختصاصی نگه دارد تا زرد با state قدیمی پاک نشود.');
 mustContain(publicRestaurantStateApiSource, 'merged.hallTableLocks = mergeHallTableLocks', 'public-restaurant-state باید hallTableLocks را با merge اختصاصی ذخیره کند.');
 mustContain(publicRestaurantStateApiSource, 'existingRow?.state', 'PUT عمومی باید قبل از upsert state فعلی سرور را بخواند تا سفارش تبلت با سفارش‌های صندوق merge شود.');
@@ -432,6 +433,7 @@ mustContain(restaurantStateApiSource, 'function mergeRestaurantTables(existingTa
 mustContain(restaurantStateApiSource, 'existingLayoutTime > incomingLayoutTime', 'تنظیمات جدید چیدمان میز نباید با sync قدیمی دستگاه دیگر به تعداد قبلی برگردد.');
 mustContain(restaurantStateApiSource, 'function mergeCustomers(existing: any[] = [], incoming: any[] = [])', 'endpoint باید customerها را با حفظ تنظیمات جدید چیدمان merge کند نه اینکه snapshot قدیمی کل customers را overwrite کند.');
 mustContain(restaurantStateApiSource, 'tableMatchesHallSettings(table, settingsByCustomer.get', 'انتخاب میز باید از چیدمان فعلی فیلتر شود نه لیست قدیمی restaurantTables.');
+mustContain(restaurantStateApiSource, 'data: normalizeRestaurantTablesForSettings(data?.state) ?? null,', 'GET هم باید state آلوده قدیمی را طبق چیدمان فعلی فیلتر کند تا QR و انتخاب میز بعد refresh تعداد قبلی را نشان ندهند.');
 mustContain(restaurantStateApiSource, 'function mergeHallTableLocks(existing: any[] = [], incoming: any[] = [])', 'endpoint اصلی باید قفل انتخاب میز را با merge اختصاصی نگه دارد تا زرد با state قدیمی پاک نشود.');
 mustContain(restaurantStateApiSource, 'merged.hallTableLocks = mergeHallTableLocks', 'restaurant-state باید hallTableLocks را با merge اختصاصی ذخیره کند.');
 mustContain(restaurantStateApiSource, 'const staff = await getStaffSession();', 'endpoint اصلی باید session صندوقدار را تشخیص دهد.');

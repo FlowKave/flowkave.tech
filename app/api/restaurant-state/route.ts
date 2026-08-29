@@ -190,6 +190,14 @@ function mergeRestaurantTables(existingTables: any[] = [], incomingTables: any[]
   return mergedTables.filter((table: any) => tableMatchesHallSettings(table, settingsByCustomer.get(String(table?.customerId || '')), activeOrderTableIds));
 }
 
+function normalizeRestaurantTablesForSettings(state: any) {
+  if (!state || typeof state !== 'object') return state;
+  return {
+    ...state,
+    restaurantTables: mergeRestaurantTables(Array.isArray(state?.restaurantTables) ? state.restaurantTables : [], [], Array.isArray(state?.customers) ? state.customers : [], Array.isArray(state?.orders) ? state.orders : []),
+  };
+}
+
 function timeValue(value: any) {
   const ms = new Date(value || 0).getTime();
   return Number.isFinite(ms) ? ms : 0;
@@ -302,7 +310,7 @@ export async function GET() {
     return NextResponse.json({
       ...identity,
       exists: Boolean(data),
-      data: data?.state ?? null,
+      data: normalizeRestaurantTablesForSettings(data?.state) ?? null,
       updatedAt: data?.version ? Number(data.version) : 0,
       updatedIso: data?.updated_at ?? null,
       updatedBy: data?.updated_by ?? null,
