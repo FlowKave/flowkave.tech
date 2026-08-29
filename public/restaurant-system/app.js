@@ -1249,7 +1249,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-popup-front-188');
+  url.searchParams.set('v', 'cashier-payment-popup-root-189');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1297,7 +1297,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-popup-front-188');
+  url.searchParams.set('v', 'cashier-payment-popup-root-189');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1633,10 +1633,12 @@ function render() {
           <article><span>قیمت تمام‌شده</span><strong>${money(registerTurnover.cost)}</strong></article>
           <article><span>سود تقریبی</span><strong>${money(registerTurnover.profit)}</strong>${registerTurnover.shift ? '' : '<em>صندوق بسته است</em>'}</article>
         </section>`;
+  const tabMarkup = renderTab(customer);
+  const floatingHallPaymentOverlay = currentTab === 'sales' ? renderHallPaymentOverlay(customer) : '';
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-popup-front-188" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-popup-root-189" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1647,9 +1649,10 @@ function render() {
       </aside>
       <main class="content" data-current-tab="${esc(currentTab)}">
         ${statsMarkup}
-        ${renderTab(customer)}
+        ${tabMarkup}
       </main>
     </div>
+    ${floatingHallPaymentOverlay}
     <div id="calculatorModalRoot"></div>${renderAttendanceModal()}`;
   bindCommon();
   bindPersianNumberInputs();
@@ -2206,7 +2209,7 @@ function renderHallSales(customer) {
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title"><span>ثبت سفارش میز ${esc(selectedTable.name)}</span>${orderActions}</div>` : '';
   const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>${renderHallOrderNotePopup()}`;
   const payment = `<div class="panel hall-payment-panel hall-payment-placeholder"><h2>تقسیم فیش و پرداخت</h2><p>برای پرداخت یا آزادسازی، روی میز دارای سفارش باز/پرداخت‌شده در لیست میزهای درگیر کلیک کنید.</p></div>`;
-  return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}${renderHallPaymentOverlay(customer)}`;
+  return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
 
 function renderHallPaymentOverlay(customer) {
