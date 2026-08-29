@@ -54,6 +54,7 @@ let cashierOrdersPopupMode = '';
 let editingHallOrderId = '';
 let selectedHallCategory = '';
 let hallOrderDrafts = {};
+const publicQrSubmittedTableLocks = new Set();
 let calculatorValue = '';
 let pendingAccountScrollFocus = null;
 let scheduleWeekOffset = 0;
@@ -1245,7 +1246,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-qr-preorder-table-lock-169');
+  url.searchParams.set('v', 'cashier-qr-no-relock-after-submit-170');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1283,7 +1284,7 @@ function publicQrTableBlocked(table) {
   return Boolean(table && (table.activeOrderId || (lock && lock.ownerId !== hallTableLockOwnerId())));
 }
 async function ensurePublicQrTableLock(customerId, table) {
-  if (!publicQrMode || !table || table.customerId !== customerId || table.activeOrderId || publicQrTableBlocked(table) || publicQrOwnActiveTableLock(table)) return;
+  if (!publicQrMode || !table || table.customerId !== customerId || publicQrSubmittedTableLocks.has(table.id) || table.activeOrderId || publicQrTableBlocked(table) || publicQrOwnActiveTableLock(table)) return;
   try {
     if (!acquireHallTableLock(customerId, table.id)) return;
     await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
@@ -1293,7 +1294,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-qr-preorder-table-lock-169');
+  url.searchParams.set('v', 'cashier-qr-no-relock-after-submit-170');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1632,7 +1633,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-qr-preorder-table-lock-169" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-qr-no-relock-after-submit-170" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1848,7 +1849,7 @@ function bindPublicMenu(customerId, items) {
     const order = table
       ? RestaurantCore.createHallOrder(state, customerId, table.id, lines, { paymentMethod: 'در انتظار', orderNote: data.get('orderNote') || '', chargeSettings: { ...(RestaurantCore.getPosChargeSettings ? RestaurantCore.getPosChargeSettings(state, customerId) : {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } })
       : RestaurantCore.createSale(state, customerId, lines, data.get('payment'), { status: 'received', guestName: data.get('guestName') || '', guestContact: toEnglishDigits(data.get('guestContact') || ''), orderNote: data.get('orderNote') || '' });
-    if (table) { order.source = 'table_qr'; order.guestName = data.get('guestName') || ''; order.guestContact = toEnglishDigits(data.get('guestContact') || ''); releaseHallTableLock(customerId, table.id); }
+    if (table) { order.source = 'table_qr'; order.guestName = data.get('guestName') || ''; order.guestContact = toEnglishDigits(data.get('guestContact') || ''); publicQrSubmittedTableLocks.add(table.id); releaseHallTableLock(customerId, table.id); }
     saveState();
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
