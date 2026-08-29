@@ -1247,7 +1247,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-header-buttons-175');
+  url.searchParams.set('v', 'cashier-payment-service-default-176');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1295,7 +1295,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-header-buttons-175');
+  url.searchParams.set('v', 'cashier-payment-service-default-176');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1634,7 +1634,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-header-buttons-175" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-service-default-176" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2217,10 +2217,11 @@ function renderHallPaymentOverlay(customer) {
 }
 
 function renderHallServiceChargeControls(order) {
-  const mode = order.serviceChargeMode || '';
-  const percentValue = mode === 'percent' ? Number(order.serviceChargePercent || 0) : 0;
+  const hasServiceChoice = Object.prototype.hasOwnProperty.call(order, 'serviceChargeMode');
+  const mode = hasServiceChoice ? (order.serviceChargeMode || '') : 'percent';
+  const percentValue = mode === 'percent' ? Number(hasServiceChoice ? (order.serviceChargePercent || 0) : 5) : 0;
   const amountValue = mode === 'amount' ? Number(order.serviceChargeAmount || order.serviceChargeTotal || 0) : 0;
-  return `<div class="hall-service-charge-box" data-hall-service-charge-box><h3>حق سرویس</h3><div class="hall-service-charge-controls"><label><span>محاسبه درصدی</span><input type="radio" name="serviceMode" value="percent" ${mode === 'percent' ? 'checked' : ''}><input name="servicePercent" data-number inputmode="decimal" value="${percentValue ? numberText(percentValue,2) : ''}" aria-label="درصد حق سرویس"><b>٪</b></label><label><span>مبلغ دستی</span><input type="radio" name="serviceMode" value="amount" ${mode === 'amount' ? 'checked' : ''}><input name="serviceAmount" data-number data-money inputmode="decimal" value="${amountValue ? numberText(amountValue,0) : ''}" aria-label="مبلغ حق سرویس"><b>تومان</b></label><button type="button" class="secondary" data-clear-service-charge>حذف حق سرویس</button></div></div>`;
+  return `<div class="hall-service-charge-box" data-hall-service-charge-box><div class="hall-service-charge-controls"><label><span>حق سرویس — محاسبه درصدی</span><input type="radio" name="serviceMode" value="percent" ${mode === 'percent' ? 'checked' : ''}><input name="servicePercent" data-number inputmode="decimal" value="${percentValue ? numberText(percentValue,2) : ''}" aria-label="درصد حق سرویس"><b>٪</b></label><label><span>مبلغ دستی</span><input type="radio" name="serviceMode" value="amount" ${mode === 'amount' ? 'checked' : ''}><input name="serviceAmount" data-number data-money inputmode="decimal" value="${amountValue ? numberText(amountValue,0) : ''}" aria-label="مبلغ حق سرویس"><b>تومان</b></label><button type="button" class="secondary" data-clear-service-charge>حذف حق سرویس</button></div></div>`;
 }
 
 function renderHallPaymentPanel(order) {
