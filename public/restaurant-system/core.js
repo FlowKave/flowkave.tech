@@ -2256,6 +2256,13 @@
     return { serviceMode: mode, servicePercent: mode === 'percent' ? percent : 0, serviceAmount: mode === 'amount' ? amount : 0 };
   }
 
+  function normalizeOrderDiscountInput(input = {}) {
+    const mode = input.discountMode === 'amount' ? 'amount' : (input.discountMode === 'percent' ? 'percent' : '');
+    const percent = normalizePercent(input.discountPercent);
+    const amount = Math.max(0, Math.round(Number(input.discountAmount || 0)));
+    return { discountMode: mode, discountPercent: mode === 'percent' ? percent : 0, discountAmount: mode === 'amount' ? amount : 0 };
+  }
+
   function applyOrderChargeSettings(order, settings = {}) {
     const normalized = normalizePosChargeSettings(settings);
     const subtotal = Math.round(Number(order.subtotal ?? order.total ?? 0));
@@ -2273,7 +2280,10 @@
     order.serviceChargeAmount = service.serviceMode === 'amount' ? service.serviceAmount : 0;
     order.serviceChargeEnabled = Boolean(service.serviceMode);
     order.serviceChargeTotal = service.serviceMode === 'percent' ? Math.round(subtotal * service.servicePercent / 100) : (service.serviceMode === 'amount' ? service.serviceAmount : 0);
-    order.discountTotal = Math.round(Number(order.discountTotal || 0));
+    order.discountMode = settings.discountMode ?? order.discountMode ?? '';
+    order.discountPercent = Number(settings.discountPercent ?? order.discountPercent ?? 0);
+    order.discountAmount = Number(settings.discountAmount ?? order.discountAmount ?? 0);
+    order.discountTotal = order.discountMode === 'percent' ? Math.round(subtotal * order.discountPercent / 100) : (order.discountMode === 'amount' ? Math.round(order.discountAmount) : Math.round(Number(order.discountTotal || 0)));
     order.grandTotal = Math.max(0, Math.round(subtotal - order.discountTotal + order.taxTotal + order.serviceChargeTotal));
     order.remainingTotal = Math.max(0, Math.round(order.grandTotal - Number(order.paidTotal || 0)));
     return order;
@@ -2289,6 +2299,19 @@
     order.serviceChargePercent = service.servicePercent;
     order.serviceChargeAmount = service.serviceAmount;
     return cloneJson(applyOrderChargeSettings(order, { ...getPosChargeSettings(state, customerId), ...service }));
+  }
+
+  function setOrderDiscount(state, customerId, orderId, input = {}) {
+    requireCustomer(state, customerId);
+    const order = (state.orders || []).find((item) => item.id === orderId && item.customerId === customerId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (normalizePosStatus(order.posStatus) === 'paid') throw new Error('ORDER_ALREADY_PAID');
+    const discount = normalizeOrderDiscountInput(input);
+    order.discountMode = discount.discountMode;
+    order.discountPercent = discount.discountPercent;
+    order.discountAmount = discount.discountAmount;
+    order.discountTotal = discount.discountMode === 'percent' ? Math.round(Number(order.subtotal ?? order.total ?? 0) * discount.discountPercent / 100) : discount.discountAmount;
+    return cloneJson(applyOrderChargeSettings(order, { ...getPosChargeSettings(state, customerId), ...discount }));
   }
 
   function applyPaymentChargeShares(order, allocations) {
@@ -2842,6 +2865,7 @@
     reapplyPosChargeSettingsToOpenOrders,
     applyOrderChargeSettings,
     setOrderServiceCharge,
+    setOrderDiscount,
     roleLabel,
     getRolePermissions,
     canAccess,

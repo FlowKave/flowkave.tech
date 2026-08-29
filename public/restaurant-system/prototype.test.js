@@ -62,6 +62,26 @@ function testHallOrderTaxAndServiceCharges() {
 
 testHallOrderTaxAndServiceCharges();
 
+function testHallOrderDiscountControls() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000005', email:'discount@test.local', password:'123456' });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'چای', price:100000 });
+  const [table] = RestaurantCore.configureHallTables(state, customer.id, { count:1, startNumber:1, customNames:[] });
+  const order = RestaurantCore.createHallOrder(state, customer.id, table.id, [{ itemId:item.id, qty:1 }]);
+  const percent = RestaurantCore.setOrderDiscount(state, customer.id, order.id, { discountMode:'percent', discountPercent:10 });
+  assert.equal(percent.discountTotal, 10000);
+  assert.equal(percent.grandTotal, 90000);
+  const amount = RestaurantCore.setOrderDiscount(state, customer.id, order.id, { discountMode:'amount', discountAmount:15000 });
+  assert.equal(amount.discountTotal, 15000);
+  assert.equal(amount.grandTotal, 85000);
+  const cleared = RestaurantCore.setOrderDiscount(state, customer.id, order.id, { discountMode:'', discountPercent:0, discountAmount:0 });
+  assert.equal(cleared.discountTotal, 0);
+  assert.equal(cleared.grandTotal, 100000);
+}
+
+testHallOrderDiscountControls();
+
 function testVatReappliesToExistingOpenHallOrder() {
   const state = RestaurantCore.createInitialState();
   const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000002', email:'vat-open@test.local', password:'123456' });
