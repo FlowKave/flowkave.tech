@@ -1245,7 +1245,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-top-metrics-clean-168');
+  url.searchParams.set('v', 'cashier-qr-preorder-table-lock-169');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1274,12 +1274,26 @@ function publicMenuTable(customerId) {
   if (!tableId) return null;
   return RestaurantCore.getHallTables(state, customerId).find((table) => table.id === tableId && table.active !== false) || null;
 }
+function publicQrOwnActiveTableLock(table) {
+  const lock = table ? activeHallTableLock(table.customerId, table.id) : null;
+  return Boolean(lock && lock.ownerId === hallTableLockOwnerId());
+}
 function publicQrTableBlocked(table) {
-  return Boolean(table && (table.activeOrderId || activeHallTableLock(table.customerId, table.id)));
+  const lock = table ? activeHallTableLock(table.customerId, table.id) : null;
+  return Boolean(table && (table.activeOrderId || (lock && lock.ownerId !== hallTableLockOwnerId())));
+}
+async function ensurePublicQrTableLock(customerId, table) {
+  if (!publicQrMode || !table || table.customerId !== customerId || table.activeOrderId || publicQrTableBlocked(table) || publicQrOwnActiveTableLock(table)) return;
+  try {
+    if (!acquireHallTableLock(customerId, table.id)) return;
+    await flushSharedStateSave(localStorage.getItem(STORAGE_KEY) || JSON.stringify(state));
+  } catch (error) {
+    console.warn('public QR table lock failed', error);
+  }
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-top-metrics-clean-168');
+  url.searchParams.set('v', 'cashier-qr-preorder-table-lock-169');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1618,7 +1632,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-top-metrics-clean-168" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-qr-preorder-table-lock-169" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -1784,6 +1798,7 @@ function renderPublicMenu(customerId) {
     : `<div class="public-table-notice"><b>این سفارش برای میز ${esc(table.name)} ثبت می‌شود.</b><span>تا وقتی میز در صندوق سفارش باز یا در حال ثبت نداشته باشد، مشتری می‌تواند با همین QR سفارش جدید ثبت کند.</span></div>`) : '';
   app.innerHTML = `<main class="public-page"><section class="public-hero">${tableBadge}<h1>${esc(publicMenu.customer.businessName)}</h1><p>غذاها را انتخاب کنید و سفارش تستی ثبت کنید. این سفارش در پنل رستوران ذخیره می‌شود و وضعیت آن همین‌جا قابل پیگیری است.</p>${publicMenu.customer.phone ? `<small>تماس: ${esc(publicMenu.customer.phone)}</small>` : ''}${tableNotice}</section><form id="publicTrackingForm" class="public-panel public-tracking-lookup"><div class="section-title"><h2>پیگیری سفارش</h2><span>بازبینی سریع</span></div><p>اگر شماره پیگیری دارید، همین‌جا وضعیت آخرین سفارش را ببینید.</p><label>شماره پیگیری${numInput('trackingNumber', '', 'placeholder="۱۲"')}</label><button class="secondary">نمایش وضعیت سفارش</button><div id="publicTrackingResult" class="order-tracking-card" hidden></div></form><form id="publicOrderForm" class="public-panel"><div class="section-title"><h2>انتخاب سفارش</h2><span>${numberText(publicMenu.items.length,0)} آیتم فعال</span></div>${categories.map(cat => `<div class="public-category"><h3>${esc(cat)}</h3>${publicMenu.items.filter(i => i.category === cat).map(i => `<label class="public-food"><span><b>${esc(i.name)}</b><small>${esc(i.description || 'بدون توضیح')}</small></span><strong>${money(i.price)}</strong>${numInput(`qty:${i.id}`, 0, `aria-label="تعداد ${esc(i.name)}"`)}</label>`).join('')}</div>`).join('') || '<p>فعلاً آیتم فعالی برای این منو منتشر نشده است.</p>'}<div class="public-guest-fields"><label>نام مهمان<input name="guestName" placeholder="اختیاری"></label><label>شماره تماس اختیاری<input name="guestContact" inputmode="tel" dir="ltr" autocomplete="tel" placeholder="۰۹۱۲۱۲۳۴۵۶۷" data-number></label></div><label>توضیح آماده‌سازی<textarea name="orderNote" rows="۳" placeholder="مثلا بدون پیاز یا بسته‌بندی جدا"></textarea></label><label>روش پرداخت<select name="payment"><option value="online">آنلاین</option><option value="card">کارتخوان در محل</option><option value="cash">نقدی</option></select></label><button class="primary" ${publicMenu.items.length && !qrOrderingLocked ? '' : 'disabled'}>ثبت سفارش</button>${qrOrderingLocked ? `<div class="order-tracking-card public-qr-lock"><b>ثبت سفارش برای این میز بسته است</b><span>این میز در صندوق فیش باز دارد و برای جلوگیری از مخلوط شدن سفارش‌ها نمی‌توان از QR سفارش جدید ثبت کرد.</span></div>` : ''}<div id="publicOrderMessage" class="success-message order-tracking-card" hidden></div><a class="public-link" href="#">بازگشت به پنل</a></form></main>`;
   bindPublicMenu(customerId, publicMenu.items);
+  if (table && !tableIsBlocked) ensurePublicQrTableLock(customerId, table);
   bindPersianNumberInputs();
   restoreInventoryScrollFocus();
   restoreMenuEditScrollFocus();
@@ -1833,7 +1848,7 @@ function bindPublicMenu(customerId, items) {
     const order = table
       ? RestaurantCore.createHallOrder(state, customerId, table.id, lines, { paymentMethod: 'در انتظار', orderNote: data.get('orderNote') || '', chargeSettings: { ...(RestaurantCore.getPosChargeSettings ? RestaurantCore.getPosChargeSettings(state, customerId) : {}), serviceMode: '', servicePercent: 0, serviceAmount: 0 } })
       : RestaurantCore.createSale(state, customerId, lines, data.get('payment'), { status: 'received', guestName: data.get('guestName') || '', guestContact: toEnglishDigits(data.get('guestContact') || ''), orderNote: data.get('orderNote') || '' });
-    if (table) { order.source = 'table_qr'; order.guestName = data.get('guestName') || ''; order.guestContact = toEnglishDigits(data.get('guestContact') || ''); }
+    if (table) { order.source = 'table_qr'; order.guestName = data.get('guestName') || ''; order.guestContact = toEnglishDigits(data.get('guestContact') || ''); releaseHallTableLock(customerId, table.id); }
     saveState();
     const message = document.querySelector('#publicOrderMessage');
     message.hidden = false;
