@@ -1148,6 +1148,7 @@ function showHallPaymentTableReleaseChoice(form) {
   document.querySelector('#hallPaymentReleaseChoiceModalRoot')?.remove();
   const modal = document.createElement('div');
   modal.id = 'hallPaymentReleaseChoiceModalRoot';
+  document.querySelector('#hallPaymentMethodChoiceModalRoot')?.remove();
   modal.className = 'receipt-choice-overlay hall-payment-release-choice-overlay';
   modal.innerHTML = `<section class="receipt-choice-modal hall-payment-release-choice-modal" role="dialog" aria-modal="true" aria-label="انتخاب وضعیت میز بعد از پرداخت">
     <h2>بعد از ثبت پرداخت</h2>
@@ -1163,6 +1164,27 @@ function showHallPaymentTableReleaseChoice(form) {
   modal.addEventListener('click', (event) => { if (event.target === modal) modal.remove(); });
   modal.querySelector('[data-pay-and-free-table]').addEventListener('click', () => submitWithChoice('yes'));
   modal.querySelector('[data-pay-and-hold-table]').addEventListener('click', () => submitWithChoice('no'));
+}
+
+
+function showHallPaymentMethodChoice(form) {
+  if (!form) return;
+  document.querySelector('#hallPaymentMethodChoiceModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'hallPaymentMethodChoiceModalRoot';
+  modal.className = 'receipt-choice-overlay hall-payment-method-choice-overlay';
+  modal.innerHTML = `<section class="receipt-choice-modal hall-payment-method-choice-modal" role="dialog" aria-modal="true" aria-label="انتخاب روش پرداخت">
+    <h2>روش پرداخت</h2>
+    <p>فعلاً فقط پرداخت نقدی فعال است؛ کارت‌خوان و کارت به کارت بعد از تعریف حسابداری فعال می‌شوند.</p>
+    <div class="receipt-choice-actions hall-payment-method-choice-actions"><button type="button" class="secondary" data-hall-payment-method-disabled="کارت‌خوان" disabled>کارت‌خوان</button><button type="button" class="secondary" data-hall-payment-method-disabled="کارت به کارت" disabled>کارت به کارت</button><button type="button" class="primary" data-hall-payment-method-cash>نقدی</button></div>
+  </section>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (event) => { if (event.target === modal) modal.remove(); });
+  modal.querySelector('[data-hall-payment-method-cash]').addEventListener('click', () => {
+    form.dataset.paymentMethodChoice = 'نقدی';
+    modal.remove();
+    showHallPaymentTableReleaseChoice(form);
+  });
 }
 
 function showKitchenTicketPrintPreview(orderId) {
@@ -1249,7 +1271,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-note-edit-196');
+  url.searchParams.set('v', 'cashier-payment-cash-method-197');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1297,7 +1319,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-note-edit-196');
+  url.searchParams.set('v', 'cashier-payment-cash-method-197');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1638,7 +1660,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-note-edit-196" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-cash-method-197" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -3714,6 +3736,7 @@ function bindCommon() {
   }));
   document.querySelectorAll('[data-release-hall-table]').forEach(btn => btn.addEventListener('click', async () => {
     const tableId = btn.dataset.releaseHallTable;
+    if (!confirm('مطمئن هستید می‌خواهید این میز آزاد شود؟')) return;
     try {
       RestaurantCore.releaseHeldHallTable(state, customer.id, tableId);
       if (selectedHallTableId === tableId) selectedHallTableId = '';
@@ -4247,7 +4270,7 @@ function bindCommon() {
     hallPaymentForm: (f, form) => {
       const selected = [...form.querySelectorAll('[data-hall-pay-line]:checked')].map(ch => ({ lineId: ch.value, qty: parseFaNumber(form.querySelector(`[name=\"qty:${CSS.escape(ch.value)}\"]`)?.value || 0) }));
       if (!selected.length) throw new Error('حداقل یک قلم برای پرداخت انتخاب کنید');
-      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: f.get('paymentMethod'), freeTableAfterPayment: form.dataset.freeTableAfterPaymentChoice !== 'no', idempotencyKey: `ui-${Date.now()}` });
+      return RestaurantCore.recordOrderPayment(state, customer.id, form.dataset.orderId, selected, { paymentMethod: form.dataset.paymentMethodChoice || f.get('paymentMethod') || 'نقدی', freeTableAfterPayment: form.dataset.freeTableAfterPaymentChoice !== 'no', idempotencyKey: `ui-${Date.now()}` });
     },
     hallOrderEditForm: (f, form) => {
       const lines = collectHallOrderEditLines(form);
@@ -4299,7 +4322,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true) hallPaymentPopupOrderId = ''; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') delete form.dataset.freeTableAfterPaymentChoice; alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.paymentMethodChoice) { showHallPaymentMethodChoice(form); return; } if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true) hallPaymentPopupOrderId = ''; delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') { delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {

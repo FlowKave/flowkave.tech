@@ -1634,3 +1634,7 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* Hall payment order note only when present; replaces selected amount preview/payment method UI. */
 .hall-payment-popup .hall-payment-order-note{display:block!important;margin-top:12px!important;padding:13px 16px!important;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border))!important;border-radius:16px!important;background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 94%,var(--primary) 6%),color-mix(in srgb,var(--surface-strong,#fff) 94%,var(--accent) 6%))!important;color:var(--text)!important;font-size:15px!important;font-weight:850!important;line-height:1.8!important;white-space:pre-wrap!important;text-align:right!important;direction:rtl!important}
+
+
+/* Hall payment cash method choice before table release choice. */
+.hall-payment-method-choice-modal{width:min(430px,92vw)!important;text-align:center!important}.hall-payment-method-choice-modal h2{margin:0 0 8px!important}.hall-payment-method-choice-modal p{margin:0 0 16px!important;color:var(--muted)!important;line-height:1.8!important}.hall-payment-method-choice-actions{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}.hall-payment-method-choice-actions button{min-height:48px!important;border-radius:16px!important;font-weight:900!important}.hall-payment-method-choice-actions button:disabled{opacity:.46!important;cursor:not-allowed!important;filter:grayscale(.25)!important}
