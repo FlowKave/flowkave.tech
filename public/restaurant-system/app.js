@@ -1249,7 +1249,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-hide-history-194');
+  url.searchParams.set('v', 'cashier-payment-note-box-195');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1297,7 +1297,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-hide-history-194');
+  url.searchParams.set('v', 'cashier-payment-note-box-195');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1638,7 +1638,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-hide-history-194" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-note-box-195" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2244,9 +2244,10 @@ function renderHallPaymentPanel(order) {
     return `<div class="panel hall-payment-panel hall-paid-held-panel"><div class="section-title"><h2>میز ${esc(order.tableName || '')} پرداخت شده</h2><span class="badge">میز نگه داشته شده</span></div><p>پرداخت این فیش ثبت شده، اما میز هنوز آزاد نشده و در لیست میزهای درگیر با رنگ سبز می‌ماند.</p><div class="hall-payment-summary"><div><span>شماره فیش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع پرداخت</span><b>${money(orderFinalTotal(order))}</b></div><div><span>زمان پرداخت</span><b>${formatDate(order.paidAt || order.completedAt || order.statusUpdatedAt || order.createdAt)}</b></div></div><button type="button" class="primary" data-release-hall-table="${esc(order.tableId || '')}">آزاد کردن میز</button></div>`;
   }
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
-  const methods = RestaurantCore.hallPaymentMethods ? RestaurantCore.hallPaymentMethods() : ['نقدی','کارت‌خوان','پرداخت آنلاین','کیف پول'];
   const remainingSubtotal = remaining.reduce((sum, line) => sum + Number(line.remainingAmount ?? (Number(line.remainingQty || 0) * Number(line.unitPrice || 0))), 0);
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"${hallPaymentItemsDropdownOpen ? ' open' : ''}><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details><div class="hall-payment-preview" data-hall-payment-preview>مبلغ انتخاب‌شده: ${money(0)} — سهم تخفیف/مالیات/حق سرویس: ${money(0)}</div><label>روش پرداخت<select name="paymentMethod">${methods.map(method => `<option value="${esc(method)}">${esc(method)}</option>`).join('')}</select></label></form>`;
+  const orderNote = String(order.orderNote || '').trim();
+  const orderNoteBox = orderNote ? `<div class="hall-payment-preview hall-payment-order-note" data-hall-payment-order-note>${esc(orderNote)}</div>` : '';
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"${hallPaymentItemsDropdownOpen ? ' open' : ''}><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details>${orderNoteBox}</form>`;
 }
 
 
