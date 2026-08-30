@@ -1642,3 +1642,7 @@ html body .app-shell .hall-table-picker-grid button.hall-table-card.free{backgro
 
 /* Hall payment method/release choices must sit above the payment popup. */
 .hall-payment-method-choice-overlay,.hall-payment-release-choice-overlay{z-index:1400!important;background:rgba(15,23,42,.48)!important;backdrop-filter:blur(8px)!important}.hall-payment-method-choice-modal,.hall-payment-release-choice-modal{position:relative!important;z-index:1401!important}
+
+
+/* Hall split payment qty steppers: clamp cashier selection to remaining quantity. */
+.hall-payment-popup .hall-pay-qty-stepper{display:grid!important;grid-template-columns:38px minmax(58px,76px) 38px!important;gap:6px!important;align-items:center!important;justify-content:end!important;direction:ltr!important}.hall-payment-popup .hall-pay-qty-stepper button{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border-radius:12px!important;font-size:20px!important;font-weight:1000!important;line-height:1!important;display:grid!important;place-items:center!important}.hall-payment-popup .hall-pay-qty-stepper input{text-align:center!important;min-width:58px!important;height:38px!important;padding:6px!important}.hall-payment-popup .hall-pay-item{grid-template-columns:auto minmax(0,1fr) max-content!important;align-items:center!important}

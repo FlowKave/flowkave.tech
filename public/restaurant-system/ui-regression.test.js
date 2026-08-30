@@ -50,10 +50,10 @@ mustContain(app, "if (!canManageHallTableLayout()) return; hallTableConfigOpen =
 assert(!app.includes("<button type=\"button\" class=\"hall-table-trigger hall-table-layout-trigger\" data-open-hall-table-config>${tableIconMarkup}<b>چیدمان میزهای سالن</b></button></div>"), 'Unconditional table-layout button must not come back.');
 
 // Cache bust should change with this UI behavior so browser smoke checks are not stale.
-mustContain(html, 'styles.css?v=cashier-paid-held-close-popup-200');
-mustContain(html, 'core.js?v=cashier-paid-held-close-popup-200');
-mustContain(html, 'app.js?v=cashier-paid-held-close-popup-200');
-mustContain(html, 'core.js?v=cashier-paid-held-close-popup-200');
+mustContain(html, 'styles.css?v=cashier-split-stepper-partial-201');
+mustContain(html, 'core.js?v=cashier-split-stepper-partial-201');
+mustContain(html, 'app.js?v=cashier-split-stepper-partial-201');
+mustContain(html, 'core.js?v=cashier-split-stepper-partial-201');
 const salesSource = app.slice(app.indexOf('function renderSales(customer)'), app.indexOf('function renderKitchenTicket'));
 assert(!salesSource.includes('renderKitchenOrderQueue(customer)'), 'باکس صف سفارش آشپزخانه نباید در صفحه صندوق/فروش سالن رندر شود.');
 mustContain(app, 'function cashierWorkdayOrderGroups(customer)', 'وضعیت سفارشات و پرداخت شده باید از helper روز کاری فعلی تغذیه شوند.');
@@ -141,7 +141,7 @@ mustContain(app, 'const statsMarkup = isCashier ? \'\' : `<section class="grid s
 mustContain(app, 'data-open-cashier-register', 'وقتی صندوق بسته است دکمه بازکردن صندوق باید نمایش داده شود.');
 mustContain(app, 'data-request-close-cashier-register', 'وقتی صندوق باز است همان دکمه باید به بستن صندوق تبدیل شود.');
 mustContain(app, '${renderCashierRegisterToggle(customer)}${renderCashierOrdersButton()}${renderPosChargeSettings(customer)}', 'دکمه باز/بستن صندوق باید سمت راست/قبل از مالیات بر ارزش افزوده قرار بگیرد.');
-mustContain(app, 'cashier-paid-held-close-popup-200', 'لینک‌های QR/رسید باید token جدید باز/بستن صندوق shared را داشته باشند.');
+mustContain(app, 'cashier-split-stepper-partial-201', 'لینک‌های QR/رسید باید token جدید باز/بستن صندوق shared را داشته باشند.');
 mustContain(app, "confirm('آیا از بازکردن صندوق اطمینان دارید؟')", 'بازکردن صندوق باید قبل از انجام از کاربر تأیید بگیرد.');
 mustContain(app, "confirm('آیا از بستن صندوق اطمینان دارید؟')", 'بستن صندوق باید قبل از پاپ‌آپ نهایی از کاربر تأیید بگیرد.');
 mustContain(app, 'function hasUnsettledHallOrders(customer)', 'قبل از بستن صندوق باید سفارش‌ها و میزهای تسویه‌نشده بررسی شوند.');
@@ -226,7 +226,7 @@ mustContain(app, "form.dataset.freeTableAfterPaymentChoice !== 'no'", 'انتخ�
 mustContain(coreSource, 'order.tableHeldAfterPayment = input.freeTableAfterPayment === false', 'اگر در ثبت پرداخت انتخاب شد میز آزاد نشود، سفارش paid باید میز را درگیر نگه دارد.');
 assert(!app.includes('پرداخت این فیش ثبت شده، اما میز هنوز آزاد نشده و در لیست میزهای درگیر با رنگ سبز می‌ماند.'), 'پیام توضیحی میز سبز داخل popup پرداخت نباید نمایش داده شود؛ خود رنگ سبز کافی است.');
 mustContain(app, "const stillPayable = order && order.hallSale === true && order.posStatus !== 'paid';", 'وقتی پرداخت با میز درگیر ثبت شد، popup پرداخت نباید برای paid-held باز/خالی بماند.');
-mustContain(app, "if (paidOrder?.posStatus === 'paid') hallPaymentPopupOrderId = '';", 'بعد از هر پرداخت کامل، چه میز آزاد چه میز درگیر، popup پرداخت باید بسته شود.');
+mustContain(app, "if (paidOrder?.posStatus === 'paid' || paidOrder?.posStatus === 'partially-paid') hallPaymentPopupOrderId = '';", 'بعد از پرداخت کامل یا جزئی، popup پرداخت باید بسته شود و فقط برای پرداخت کامل انتخاب آزاد/درگیر بیاید.');
 assert(!app.includes("const openOrderHeader = order.posStatus === 'paid' && order.tableHeldAfterPayment === true ?"), 'حالت paid-held نباید header خالی و box خالی داخل popup پرداخت بسازد.');
 mustContain(coreSource, "'paid-held': 'پرداخت‌شده؛ میز نگه داشته شده'", 'میز پرداخت‌شده‌ای که آزاد نشده باید وضعیت paid-held داشته باشد.');
 mustContain(app, 'data-release-hall-table', 'میز پرداخت‌شده نگه‌داشته‌شده باید با یک کلیک قابل آزاد کردن باشد.');
@@ -293,7 +293,7 @@ assert(!app.includes('markPublicQrOrdered'), 'بعد از سفارش QR نبای
 assert(!app.includes('از همین موبایل برای این میز قبلاً سفارش ثبت شده است'), 'پیام سفارش قبلی همین موبایل نباید به مشتری نمایش داده شود.');
 assert(!app.includes('سفارش دوم از QR مجاز نیست'), 'QR نباید سفارش دوم را فقط به دلیل تاریخچه موبایل ممنوع کند.');
 mustContain(app, 'تا وقتی میز در صندوق سفارش باز یا در حال ثبت نداشته باشد، مشتری می‌تواند با همین QR سفارش جدید ثبت کند.', 'پیام QR باید توضیح دهد فقط وضعیت فعلی میز مهم است.');
-mustContain(app, 'cashier-paid-held-close-popup-200', 'لینک‌های QR و صندوق باید token جدید نسخه جاری را داشته باشند.');
+mustContain(app, 'cashier-split-stepper-partial-201', 'لینک‌های QR و صندوق باید token جدید نسخه جاری را داشته باشند.');
 mustContain(app, 'function renderPublicQrReceipt(order, table)', 'بعد از ثبت سفارش QR مشتری باید رسید موبایلی با جزئیات فیش ببیند.');
 mustContain(app, 'function publicReceiptLink(customerId, orderId, tableId = \'\')', 'رسید QR باید لینک مستقل داشته باشد تا با refresh از بین نرود.');
 mustContain(app, 'function renderPublicReceipt(customerId)', 'رسید QR باید route مستقل داشته باشد و از state آنلاین order را دوباره بخواند.');
@@ -378,7 +378,7 @@ mustContain(app, 'function renderHallPaymentOverlay(customer)', 'کلیک روی
 mustContain(app, "hallPaymentPopupOrderId = activeOrder?.id || '';", 'کلیک روی میز دارای سفارش باز باید همان فیش را داخل popup پرداخت باز کند.');
 assert(app.indexOf('</main>') < app.indexOf('${floatingHallPaymentOverlay}') && app.indexOf('${floatingHallPaymentOverlay}') < app.indexOf('<div id="calculatorModalRoot"></div>'), 'popup پرداخت باید داخل app-shell ولی بیرون main content رندر شود تا تم حفظ شود و زیر لاین فروش سالن نرود.');
 assert(!app.includes('${tableOverlays}${renderHallPaymentOverlay(customer)}'), 'popup پرداخت نباید داخل renderHallSales/content باقی بماند.');
-mustContain(app, "if (paidOrder?.posStatus === 'paid') hallPaymentPopupOrderId = '';", 'بعد از پرداخت کامل، چه میز آزاد چه میز درگیر، popup پرداخت باید بسته شود و باکس خالی paid-held باز نماند.');
+mustContain(app, "if (paidOrder?.posStatus === 'paid' || paidOrder?.posStatus === 'partially-paid') hallPaymentPopupOrderId = '';", 'بعد از پرداخت کامل یا جزئی، popup پرداخت باید بسته شود و باکس خالی paid-held باز نماند.');
 mustContain(styles, 'Hall payment popup: move split bill/payment/held-table release out of the page', 'popup پرداخت میز باید CSS اسکرول‌دار مستقل داشته باشد.');
 mustContain(styles, '.hall-payment-popup-scroll{max-height:', 'محتوای تقسیم فیش/حق سرویس/اقلام/روش پرداخت باید داخل popup اسکرول عمودی داشته باشد.');
 mustContain(styles, 'width:min(920px,96vw)', 'عرض popup پرداخت باید بیشتر باشد تا کنترل‌های حق سرویس در یک خط جا شوند.');
@@ -450,6 +450,15 @@ mustContain(app, 'const remainingSubtotal = remaining.reduce', 'جمع آیتم�
 mustContain(app, 'data-hall-unit-price', 'برای آپدیت مبلغ جمع آیتم‌های انتخاب‌شده باید قیمت واحد هر آیتم حفظ شود.');
 mustContain(app, "const itemsSubtotalEl = hallPaymentFormLive.querySelector('[data-hall-items-subtotal]');", 'با انتخاب آیتم‌ها، مبلغ جمع آیتم‌ها باید در همان لاین آپدیت شود.');
 mustContain(app, 'itemsSubtotalEl.textContent = money(selectedSubtotal);', 'مبلغ سمت چپ لاین باید فقط جمع آیتم‌های انتخاب‌شده را نشان دهد.');
+mustContain(app, 'function hallPaymentSelectedAllRemaining(form)', 'قبل از نمایش پاپ‌آپ آزاد/درگیر باید تشخیص داده شود که همه باقی‌مانده فیش انتخاب شده یا پرداخت جزئی است.');
+mustContain(app, "if (!hallPaymentSelectedAllRemaining(form)) { submitPartialHallPaymentNow(form); return; }", 'پرداخت جزئی نباید پاپ‌آپ میز آزاد/میز درگیر باز کند.');
+mustContain(app, "if (hallPaymentSelectedAllRemaining(form)) showHallPaymentTableReleaseChoice(form);", 'بعد از انتخاب نقدی فقط پرداخت کامل باید پاپ‌آپ آزاد/درگیر را باز کند.');
+mustContain(app, 'data-hall-pay-qty-delta="-1"', 'هر آیتم پرداخت باید دکمه کم کردن تعداد داشته باشد.');
+mustContain(app, 'data-hall-pay-qty-delta="1"', 'هر آیتم پرداخت باید دکمه زیاد کردن تعداد داشته باشد.');
+mustContain(app, 'data-max-qty="${Number(line.remainingQty || 0)}"', 'دکمه مثبت تعداد پرداخت نباید از تعداد باقی‌مانده/سفارش‌شده بیشتر کند.');
+mustContain(app, 'Math.max(0, Math.min(maxQty, parseFaNumber(input.value || 0) + Number(btn.dataset.hallPayQtyDelta || 0)))', 'دکمه‌های +/- باید تعداد را بین صفر و maxQty clamp کنند.');
+mustContain(app, "if (paidOrder?.posStatus === 'paid' || paidOrder?.posStatus === 'partially-paid') hallPaymentPopupOrderId = '';", 'بعد از پرداخت جزئی هم popup پرداخت باید بسته شود چون میز هنوز آیتم پرداخت‌نشده دارد.');
+mustContain(styles, 'Hall split payment qty steppers: clamp cashier selection to remaining quantity.', 'دکمه‌های +/- تعداد پرداخت باید CSS اختصاصی داخل popup داشته باشند.');
 
 mustContain(app, "const orderNote = String(order.orderNote || '').trim();", 'پاپ‌آپ پرداخت باید یادداشت سفارش را فقط وقتی متن دارد آماده کند.');
 mustContain(app, 'data-hall-payment-order-note', 'اگر سفارش یادداشت دارد، همان باکس قبلی باید متن یادداشت را نشان دهد.');
@@ -573,7 +582,7 @@ mustContain(restaurantStateApiSource, 'const version = Date.now();', 'endpoint �
 mustContain(restaurantStateApiSource, 'existingRow?.state', 'endpoint اصلی باید قبل از upsert state فعلی سرور را بخواند و merge کند.');
 assert(!restaurantStateApiSource.includes('const requestedVersion = Number(body?.updatedAt'), 'endpoint اصلی نباید version قدیمی دستگاه را revision سرور کند.');
 mustContain(dashboardSource, '&& !staffLogin) redirect(\'/login\')', 'ورود کارکنان نباید پشت لاگین مالک/مدیر گیر کند و دوباره به /login برگردد.');
-mustContain(dashboardSource, 'cashier-paid-held-close-popup-200', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
+mustContain(dashboardSource, 'cashier-split-stepper-partial-201', 'Dashboard iframe cache-bust token must match the VAT open-order fix.');
 mustContain(loginPageSource, 'href="/app/dashboard?staffLogin=1"', 'Online login page must expose a visible ورود کارکنان link.');
 mustContain(loginPageSource, 'رمز عبور مالک / پین مدیر', 'Owner login page must also accept manager email + PIN from the same form.');
 mustContain(loginPageSource, 'انتخاب رستوران', 'If an owner/manager belongs to multiple restaurants, login must show a restaurant chooser.');
@@ -691,7 +700,7 @@ function testThemeHarmonyForCashierTablesAndPos() {
   assert(styles.includes('POS category line theme-aware final override') && styles.includes('.app-shell.theme-sunrise .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important') && styles.includes('.app-shell.theme-midnight .hall-order-category-panel .hall-category-side{background:linear-gradient(135deg,rgba(30,41,59,.96),rgba(17,24,39,.98))!important') && styles.includes('background:linear-gradient(135deg,color-mix(in srgb,var(--surface-strong,#fff) 78%,var(--primary) 18%)'), 'لاین دسته‌بندی پایین صندوق در نسخه آنلاین باید در تم‌های غیرآفتابی از پالت همان تم باشد و کرم ثابت نماند');
   assert(styles.includes('POS fixed dual-line online scoped override') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald .content[data-current-tab="sales"] #hallSaleForm .hall-category-tabs button') && styles.includes('POS fixed dual-line style') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button') && styles.includes('html body .app-shell.theme-emerald #hallSaleForm .hall-category-tabs button') && styles.includes('html body .app-shell.theme-sunrise #hallSaleForm .hall-category-tabs') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('background:linear-gradient(180deg,#fff3eb 0%,#fb8a42 42%,#c94812 100%)!important') && styles.includes('background:linear-gradient(135deg,#fff3ed,#ffe7dd)!important'), 'لاین فروش سالن/دلیوری/اسنپ‌فود و لاین دسته‌بندی صندوق باید یک استایل ثابت مستقل از تم داشته باشند: فعال قرمز، غیرفعال نارنجی، متن سفید و نوار دسته‌بندی ثابت');
   assert(styles.includes('POS channel/category active pill final restore') && styles.includes('html body .app-shell.theme-midnight .pos-channel-tabs button.active') && styles.includes('background:linear-gradient(180deg,#fff0ef 0%,#f04438 38%,#c5122f 100%)!important') && styles.includes('html body .app-shell #hallSaleForm .hall-category-tabs button:not(.active)') && styles.includes('POS category strip real-local fallback') && styles.includes('html body .app-shell.theme-midnight #hallSaleForm .hall-category-side') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('POS category strip absolute final: Kaveh screenshot fix') && styles.includes('html body .app-shell.theme-midnight .content[data-current-tab="sales"] #hallSaleForm .hall-category-side') && styles.includes('background:linear-gradient(135deg,#111827 0%,#172033 52%,#0f172a 100%)!important'), 'نوار پشت دسته‌بندی در تم شب باید با override نهایی تیره شود و کرم آفتابی نماند');
-  assert(index.includes('styles.css?v=cashier-paid-held-close-popup-200') && index.includes('core.js?v=cashier-paid-held-close-popup-200') && index.includes('app.js?v=cashier-paid-held-close-popup-200'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
+  assert(index.includes('styles.css?v=cashier-split-stepper-partial-201') && index.includes('core.js?v=cashier-split-stepper-partial-201') && index.includes('app.js?v=cashier-split-stepper-partial-201'), 'cache-bust اصلاح اعمال مالیات روی فیش باز باید روی نسخه آنلاین هم اعمال شود');
 }
 
 testThemeHarmonyForCashierTablesAndPos();

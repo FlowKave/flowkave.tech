@@ -1143,8 +1143,27 @@ function showHallOrderReceiptChoice(order) {
   modal.querySelector('[data-issue-hall-receipt]').addEventListener('click', () => { close(); showHallOrderReceiptPrintPreview(order); });
 }
 
+function hallPaymentSelectedAllRemaining(form) {
+  if (!form) return false;
+  const lineChecks = [...form.querySelectorAll('[data-hall-pay-line]')];
+  if (!lineChecks.length) return false;
+  return lineChecks.every(ch => {
+    const qtyInput = form.querySelector(`[name="qty:${CSS.escape(ch.value)}"]`);
+    const selectedQty = ch.checked ? parseFaNumber(qtyInput?.value || 0) : 0;
+    const maxQty = Number(qtyInput?.dataset.maxQty || 0);
+    return maxQty > 0 && selectedQty >= maxQty;
+  });
+}
+
+function submitPartialHallPaymentNow(form) {
+  if (!form) return;
+  form.dataset.freeTableAfterPaymentChoice = 'partial';
+  form.requestSubmit();
+}
+
 function showHallPaymentTableReleaseChoice(form) {
   if (!form) return;
+  if (!hallPaymentSelectedAllRemaining(form)) { submitPartialHallPaymentNow(form); return; }
   document.querySelector('#hallPaymentReleaseChoiceModalRoot')?.remove();
   const modal = document.createElement('div');
   modal.id = 'hallPaymentReleaseChoiceModalRoot';
@@ -1183,7 +1202,8 @@ function showHallPaymentMethodChoice(form) {
   modal.querySelector('[data-hall-payment-method-cash]').addEventListener('click', () => {
     form.dataset.paymentMethodChoice = 'نقدی';
     modal.remove();
-    showHallPaymentTableReleaseChoice(form);
+    if (hallPaymentSelectedAllRemaining(form)) showHallPaymentTableReleaseChoice(form);
+    else submitPartialHallPaymentNow(form);
   });
 }
 
@@ -1271,7 +1291,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-paid-held-close-popup-200');
+  url.searchParams.set('v', 'cashier-split-stepper-partial-201');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1319,7 +1339,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-paid-held-close-popup-200');
+  url.searchParams.set('v', 'cashier-split-stepper-partial-201');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1660,7 +1680,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-paid-held-close-popup-200" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-split-stepper-partial-201" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2275,7 +2295,7 @@ function renderHallPaymentPanel(order) {
   const remainingSubtotal = remaining.reduce((sum, line) => sum + Number(line.remainingAmount ?? (Number(line.remainingQty || 0) * Number(line.unitPrice || 0))), 0);
   const orderNote = String(order.orderNote || '').trim();
   const orderNoteBox = orderNote ? `<div class="hall-payment-preview hall-payment-order-note" data-hall-payment-order-note>${esc(orderNote)}</div>` : '';
-  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"${hallPaymentItemsDropdownOpen ? ' open' : ''}><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><input name="qty:${esc(line.lineId)}" data-number value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details>${orderNoteBox}</form>`;
+  return `<form class="panel hall-payment-panel" id="hallPaymentForm" data-order-id="${esc(order.id)}">${renderHallServiceChargeControls(order)}${renderHallDiscountControls(order)}<details class="hall-remaining-list hall-remaining-dropdown"${hallPaymentItemsDropdownOpen ? ' open' : ''}><summary class="hall-select-all"><label><input type="checkbox" data-hall-pay-all checked><span>همه آیتم ها برای تسویه کامل</span></label><b data-hall-items-subtotal>${money(remainingSubtotal)}</b></summary><div class="hall-remaining-dropdown-body">${remaining.map(line => `<label class="hall-pay-item"><input type="checkbox" name="lineId" value="${esc(line.lineId)}" data-hall-pay-line checked><span class="hall-pay-item-copy"><b class="hall-pay-item-title">${esc(line.name)}</b><small class="hall-pay-item-remaining" data-hall-unit-price="${Number(line.unitPrice || 0)}">باقی‌مانده: ${numberText(line.remainingQty,0)} از ${numberText(line.qty,0)} — قیمت واحد: ${money(line.unitPrice)}</small></span><div class="hall-pay-qty-stepper" data-hall-pay-qty-stepper><button type="button" data-hall-pay-qty-delta="-1" aria-label="کم کردن تعداد پرداخت ${esc(line.name)}">−</button><input name="qty:${esc(line.lineId)}" data-number data-hall-pay-qty data-max-qty="${Number(line.remainingQty || 0)}" value="${numberText(line.remainingQty,0)}" aria-label="تعداد پرداخت ${esc(line.name)}"><button type="button" data-hall-pay-qty-delta="1" aria-label="زیاد کردن تعداد پرداخت ${esc(line.name)}">+</button></div></label>`).join('') || '<p>همه اقلام این سفارش تسویه شده‌اند.</p>'}</div></details>${orderNoteBox}</form>`;
 }
 
 
@@ -3853,7 +3873,31 @@ function bindCommon() {
     }
     hallPaymentFormLive.querySelector('.hall-remaining-dropdown')?.addEventListener('toggle', (event) => { hallPaymentItemsDropdownOpen = event.currentTarget.open; });
     hallPaymentFormLive.querySelector('[data-hall-pay-all]')?.addEventListener('click', (event) => { event.stopPropagation(); });
-    hallPaymentFormLive.addEventListener('input', refreshHallPaymentPreview);
+    hallPaymentFormLive.querySelectorAll('[data-hall-pay-qty-delta]').forEach(btn => btn.addEventListener('click', () => {
+      const stepper = btn.closest('[data-hall-pay-qty-stepper]');
+      const input = stepper?.querySelector('[data-hall-pay-qty]');
+      if (!input) return;
+      const maxQty = Number(input.dataset.maxQty || 0);
+      const next = Math.max(0, Math.min(maxQty, parseFaNumber(input.value || 0) + Number(btn.dataset.hallPayQtyDelta || 0)));
+      input.value = numberText(next, 0);
+      const row = btn.closest('.hall-pay-item');
+      const check = row?.querySelector('[data-hall-pay-line]');
+      if (check) check.checked = next > 0;
+      updateHallPaymentSelectAllState();
+      refreshHallPaymentPreview();
+    }));
+    hallPaymentFormLive.addEventListener('input', (event) => {
+      if (event.target.matches('[data-hall-pay-qty]')) {
+        const maxQty = Number(event.target.dataset.maxQty || 0);
+        const next = Math.max(0, Math.min(maxQty, parseFaNumber(event.target.value || 0)));
+        event.target.value = event.target.value ? numberText(next, 0) : '';
+        const row = event.target.closest('.hall-pay-item');
+        const check = row?.querySelector('[data-hall-pay-line]');
+        if (check) check.checked = next > 0;
+        updateHallPaymentSelectAllState();
+      }
+      refreshHallPaymentPreview();
+    });
     hallPaymentFormLive.addEventListener('change', (event) => {
       if (event.target.matches('[data-clear-service-charge]')) {
         hallPaymentFormLive.querySelectorAll('[name="serviceMode"]').forEach(input => { input.checked = false; });
@@ -3869,7 +3913,7 @@ function bindCommon() {
         if (percent) percent.value = '';
         if (amount) amount.value = '';
       }
-      if (event.target.matches('[data-hall-pay-all]')) hallPaymentFormLive.querySelectorAll('[data-hall-pay-line]').forEach(ch => { ch.checked = event.target.checked; });
+      if (event.target.matches('[data-hall-pay-all]')) hallPaymentFormLive.querySelectorAll('[data-hall-pay-line]').forEach(ch => { ch.checked = event.target.checked; const qtyInput = hallPaymentFormLive.querySelector(`[name="qty:${CSS.escape(ch.value)}"]`); if (qtyInput) qtyInput.value = event.target.checked ? numberText(Number(qtyInput.dataset.maxQty || 0), 0) : ''; });
       updateHallPaymentSelectAllState();
       refreshHallPaymentPreview();
     });
@@ -4322,7 +4366,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.paymentMethodChoice) { showHallPaymentMethodChoice(form); return; } if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid') hallPaymentPopupOrderId = ''; delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') { delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.paymentMethodChoice) { showHallPaymentMethodChoice(form); return; } if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid' || paidOrder?.posStatus === 'partially-paid') hallPaymentPopupOrderId = ''; delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') { delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
