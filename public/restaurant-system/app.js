@@ -1271,7 +1271,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-paid-held-no-message-199');
+  url.searchParams.set('v', 'cashier-paid-held-close-popup-200');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1319,7 +1319,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-paid-held-no-message-199');
+  url.searchParams.set('v', 'cashier-paid-held-close-popup-200');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1660,7 +1660,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-paid-held-no-message-199" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-paid-held-close-popup-200" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2243,10 +2243,10 @@ function renderHallSales(customer) {
 function renderHallPaymentOverlay(customer) {
   if (!hallPaymentPopupOrderId) return '';
   const order = (state.orders || []).find(item => item.id === hallPaymentPopupOrderId && item.customerId === customer.id);
-  const stillPayableOrHeld = order && order.hallSale === true && (order.posStatus !== 'paid' || order.tableHeldAfterPayment === true);
-  if (!stillPayableOrHeld) { hallPaymentPopupOrderId = ''; return ''; }
-  const openOrderHeader = order.posStatus === 'paid' && order.tableHeldAfterPayment === true ? '' : `<div class="hall-payment-popup-title"><button type="button" class="modal-close-icon hall-payment-popup-close" data-close-hall-payment-popup aria-label="بستن">×</button><div class="hall-payment-popup-meta"><span class="hall-payment-popup-stat"><small>شماره سفارش</small><b>${receiptNumberText(order.trackingNumber || 0)}</b></span><span class="hall-payment-popup-stat"><small>مالیات</small><b>${money(order.taxTotal || 0)}</b></span><span class="hall-payment-popup-stat"><small>مبلغ کل</small><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></span><button class="primary" type="submit" form="hallPaymentForm" ${RestaurantCore.getRemainingPaymentItems(order).length ? '' : 'disabled'}>ثبت پرداخت</button><button class="secondary" type="button" data-close-hall-payment-popup>افزودن آیتم</button></div></div>`;
-  return `<div class="modal-backdrop hall-payment-popup-backdrop" data-close-hall-payment-popup><section class="hall-payment-popup" role="dialog" aria-modal="true" aria-label="تقسیم فیش و پرداخت میز">${openOrderHeader || `<button type="button" class="modal-close-icon hall-payment-popup-close" data-close-hall-payment-popup aria-label="بستن">×</button>`}<div class="hall-payment-popup-scroll" data-hall-payment-popup-scroll>${renderHallPaymentPanel(order)}</div></section></div>`;
+  const stillPayable = order && order.hallSale === true && order.posStatus !== 'paid';
+  if (!stillPayable) { hallPaymentPopupOrderId = ''; return ''; }
+  const openOrderHeader = `<div class="hall-payment-popup-title"><button type="button" class="modal-close-icon hall-payment-popup-close" data-close-hall-payment-popup aria-label="بستن">×</button><div class="hall-payment-popup-meta"><span class="hall-payment-popup-stat"><small>شماره سفارش</small><b>${receiptNumberText(order.trackingNumber || 0)}</b></span><span class="hall-payment-popup-stat"><small>مالیات</small><b>${money(order.taxTotal || 0)}</b></span><span class="hall-payment-popup-stat"><small>مبلغ کل</small><b data-hall-summary-grand>${money(orderFinalTotal(order))}</b></span><button class="primary" type="submit" form="hallPaymentForm" ${RestaurantCore.getRemainingPaymentItems(order).length ? '' : 'disabled'}>ثبت پرداخت</button><button class="secondary" type="button" data-close-hall-payment-popup>افزودن آیتم</button></div></div>`;
+  return `<div class="modal-backdrop hall-payment-popup-backdrop" data-close-hall-payment-popup><section class="hall-payment-popup" role="dialog" aria-modal="true" aria-label="تقسیم فیش و پرداخت میز">${openOrderHeader}<div class="hall-payment-popup-scroll" data-hall-payment-popup-scroll>${renderHallPaymentPanel(order)}</div></section></div>`;
 }
 
 function renderHallServiceChargeControls(order) {
@@ -4322,7 +4322,7 @@ function bindCommon() {
   };
   for (const [id, fn] of Object.entries(handlers)) {
     const form = document.querySelector('#' + id);
-    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.paymentMethodChoice) { showHallPaymentMethodChoice(form); return; } if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true) hallPaymentPopupOrderId = ''; delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') { delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
+    if (form) form.addEventListener('submit', async (e) => { e.preventDefault(); try { if (id === 'hallPaymentForm' && !form.dataset.paymentMethodChoice) { showHallPaymentMethodChoice(form); return; } if (id === 'hallPaymentForm' && !form.dataset.freeTableAfterPaymentChoice) { showHallPaymentTableReleaseChoice(form); return; } normalizeNumberFields(form); const result = await fn(new FormData(form), form); if (id === 'hallSaleForm') { selectedHallTableId = ''; hallTablePickerOpen = false; hallTableConfigOpen = false; await persistCriticalState(); render(); showHallOrderReceiptChoice(result); } else { if (id === 'hallOrderEditForm') { await persistCriticalState(); render(); return; } if (id === 'hallPaymentForm') { const paidOrder = result?.order || null; if (paidOrder?.tableId && paidOrder.posStatus === 'paid' && paidOrder.tableHeldAfterPayment !== true && selectedHallTableId === paidOrder.tableId) selectedHallTableId = ''; if (paidOrder?.posStatus === 'paid') hallPaymentPopupOrderId = ''; delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } await persistCriticalState(); hallPaymentPopupScrollTop = document.querySelector('[data-hall-payment-popup-scroll]')?.scrollTop || hallPaymentPopupScrollTop; render(); } } catch (err) { if (id === 'hallPaymentForm') { delete form.dataset.paymentMethodChoice; delete form.dataset.freeTableAfterPaymentChoice; } alert(err.message === 'STAFF_INVITE_EMAIL_FAILED' ? 'دعوت ساخته شد اما ارسال ایمیل انجام نشد؛ لینک دعوت را از لیست کپی کنید و دستی بفرستید.' : err.message); } });
   }
   document.querySelectorAll('[data-schedule-week]').forEach(btn => btn.addEventListener('click', () => { scheduleWeekOffset += btn.dataset.scheduleWeek === 'next' ? 1 : -1; render(); }));
   document.querySelectorAll('[data-weekly-schedule-form]').forEach(form => {
