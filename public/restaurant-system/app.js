@@ -1249,7 +1249,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-note-box-195');
+  url.searchParams.set('v', 'cashier-payment-note-edit-196');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1297,7 +1297,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-note-box-195');
+  url.searchParams.set('v', 'cashier-payment-note-edit-196');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1638,7 +1638,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-note-box-195" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-note-edit-196" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2167,10 +2167,16 @@ async function closeCashierRegister(customer, shiftId, print = false) {
 }
 
 
-function renderHallOrderNotePopup() {
+function currentSelectedHallOrderNote(customer) {
+  if (!selectedHallTableId) return '';
+  const activeOrder = RestaurantCore.getActiveHallOrder ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedHallTableId) : null;
+  return activeOrder ? (activeOrder.orderNote || '') : (hallDraftForSelectedTable().orderNote || '');
+}
+
+function renderHallOrderNotePopup(customer) {
   if (!hallOrderNotePopupOpen || !selectedHallTableId) return '';
-  const draft = hallDraftForSelectedTable();
-  return `<div class="modal-backdrop hall-order-note-backdrop" data-close-hall-order-note><section class="hall-order-note-popup" role="dialog" aria-modal="true" aria-label="یادداشت سفارش"><button type="button" class="modal-close-icon" data-close-hall-order-note aria-label="بستن">×</button><div class="section-title"><h2>یادداشت سفارش</h2></div><textarea name="hallOrderNotePopupText" rows="۵" placeholder="تغییرات، حساسیت/آلرژی، توضیحات آماده‌سازی یا هر نکته دیگر">${esc(draft.orderNote || '')}</textarea><div class="hall-order-edit-actions"><button type="button" class="primary" data-save-hall-order-note>ذخیره یادداشت</button><button type="button" class="secondary" data-close-hall-order-note>انصراف</button></div></section></div>`;
+  const note = currentSelectedHallOrderNote(customer);
+  return `<div class="modal-backdrop hall-order-note-backdrop" data-close-hall-order-note><section class="hall-order-note-popup" role="dialog" aria-modal="true" aria-label="یادداشت سفارش"><button type="button" class="modal-close-icon" data-close-hall-order-note aria-label="بستن">×</button><div class="section-title"><h2>یادداشت سفارش</h2></div><textarea name="hallOrderNotePopupText" rows="۵" placeholder="تغییرات، حساسیت/آلرژی، توضیحات آماده‌سازی یا هر نکته دیگر">${esc(note)}</textarea><div class="hall-order-edit-actions"><button type="button" class="primary" data-save-hall-order-note>ذخیره یادداشت</button><button type="button" class="secondary" data-close-hall-order-note>انصراف</button></div></section></div>`;
 }
 
 function renderHallSales(customer) {
@@ -2207,7 +2213,7 @@ function renderHallSales(customer) {
   const noteButton = selectedTable ? `<button type="button" class="secondary hall-order-note-btn" data-open-hall-order-note>یادداشت سفارش</button>` : '';
   const orderActions = `<div class="hall-order-actions hall-order-title-actions">${noteButton}<button class="primary" ${canSubmitHallOrder ? '' : 'disabled'}>${hallSubmitLabel}</button>${releaseDraftButton}</div>`;
   const hallOrderTitle = selectedTable ? `<div class="hall-sale-table-title"><span>ثبت سفارش میز ${esc(selectedTable.name)}</span>${orderActions}</div>` : '';
-  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>${renderHallOrderNotePopup()}`;
+  const orderForm = `<form class="panel hall-order-panel hall-order-category-panel" id="hallSaleForm">${picker}${items.length ? `<div class="hall-order-builder"><div class="hall-category-side">${categoryTabs}</div><section class="hall-food-list">${hallOrderTitle}${itemList}</section></div>` : '<div class="hall-empty-products">برای ثبت فروش، اول حداقل یک آیتم فعال در منو لازم است.</div>'}${activeOrder && !paidHeldTable ? '<small>این میز فیش باز دارد؛ آیتم‌های جدید به همان فیش اضافه می‌شوند و در پرداخت نهایی یک‌جا دیده می‌شوند.</small>' : ''}${paidHeldTable ? '<small>این میز پرداخت شده ولی عمداً آزاد نشده؛ برای سفارش جدید اول دکمه آزاد کردن میز را بزنید.</small>' : ''}</form>${renderHallOrderNotePopup(customer)}`;
   const payment = `<div class="panel hall-payment-panel hall-payment-placeholder"><h2>تقسیم فیش و پرداخت</h2><p>برای پرداخت یا آزادسازی، روی میز دارای سفارش باز/پرداخت‌شده در لیست میزهای درگیر کلیک کنید.</p></div>`;
   return `<div class="pos-hall-workspace">${orderForm}${payment}</div>${tableOverlays}`;
 }
@@ -3488,7 +3494,25 @@ function bindCommon() {
   document.querySelectorAll('[data-cancel-hall-order-edit]').forEach(btn => btn.addEventListener('click', () => { editingHallOrderId = ''; render(); }));
   document.querySelectorAll('[data-open-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { hallOrderNotePopupOpen = true; render(); }));
   document.querySelectorAll('[data-close-hall-order-note]').forEach(btn => btn.addEventListener('click', (event) => { if (event.target !== btn && event.target.closest('.hall-order-note-popup')) return; hallOrderNotePopupOpen = false; render(); }));
-  document.querySelectorAll('[data-save-hall-order-note]').forEach(btn => btn.addEventListener('click', () => { if (!selectedHallTableId) return; hallDraftForSelectedTable().orderNote = document.querySelector('[name="hallOrderNotePopupText"]')?.value || ''; hallOrderNotePopupOpen = false; render(); }));
+  document.querySelectorAll('[data-save-hall-order-note]').forEach(btn => btn.addEventListener('click', async () => {
+    if (!selectedHallTableId) return;
+    const note = document.querySelector('[name="hallOrderNotePopupText"]')?.value || '';
+    const activeOrder = RestaurantCore.getActiveHallOrder ? RestaurantCore.getActiveHallOrder(state, customer.id, selectedHallTableId) : null;
+    if (activeOrder && activeOrder.posStatus !== 'paid') {
+      activeOrder.orderNote = note;
+      activeOrder.statusUpdatedAt = new Date().toISOString();
+      hallOrderDrafts[selectedHallTableId] = { ...(hallOrderDrafts[selectedHallTableId] || { items: {} }), orderNote: note };
+      hallOrderNotePopupOpen = false;
+      saveState();
+      try { await persistCriticalState('ذخیره یادداشت سفارش روی سرور ناموفق بود؛ دوباره تلاش کنید.'); }
+      catch (err) { alert(err.message); }
+      render();
+      return;
+    }
+    hallDraftForSelectedTable().orderNote = note;
+    hallOrderNotePopupOpen = false;
+    render();
+  }));
   const inventoryPrintButton = document.querySelector('[data-print-inventory]');
   if (inventoryPrintButton) inventoryPrintButton.addEventListener('click', showInventoryPrintPreview);
   const printableMenuButton = document.querySelector('[data-printable-menu]');
@@ -3796,7 +3820,7 @@ function bindCommon() {
       }, 0);
       itemsSubtotalEl.textContent = money(selectedSubtotal);
     }
-    try { const updatedOrder = applyHallServiceChargeFromForm(); if (updatedOrder) { const paymentScope = hallPaymentFormLive.closest('.hall-payment-popup') || hallPaymentFormLive; const serviceEl = paymentScope.querySelector('[data-hall-summary-service]'); const grandEl = paymentScope.querySelector('[data-hall-summary-grand]'); const remainingEl = paymentScope.querySelector('[data-hall-summary-remaining]'); if (serviceEl) serviceEl.textContent = money(updatedOrder.serviceChargeTotal || 0); if (grandEl) grandEl.textContent = money(updatedOrder.grandTotal || updatedOrder.total || 0); if (remainingEl) remainingEl.textContent = money(updatedOrder.remainingTotal ?? updatedOrder.total ?? 0); const serviceAmountInput = hallPaymentFormLive.querySelector('[name="serviceAmount"]'); if (serviceAmountInput && updatedOrder.serviceChargeMode === 'percent') { serviceAmountInput.value = numberText(updatedOrder.serviceChargeTotal || 0, 0); serviceAmountInput.readOnly = true; } else if (serviceAmountInput) serviceAmountInput.readOnly = false; const discountAmountInput = hallPaymentFormLive.querySelector('[name="discountAmount"]'); if (discountAmountInput && updatedOrder.discountMode === 'percent') { discountAmountInput.value = numberText(updatedOrder.discountTotal || 0, 0); discountAmountInput.readOnly = true; } else if (discountAmountInput) discountAmountInput.readOnly = false; } const preview = RestaurantCore.previewOrderPayment(state, customer.id, orderId, selected); hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = `مبلغ انتخاب‌شده: ${money(preview.finalAmount)} — جمع اقلام: ${money(preview.itemSubtotal)} — سهم تخفیف: ${money(preview.discountShare)} — سهم مالیات: ${money(preview.taxShare)} — سهم حق سرویس: ${money(preview.serviceChargeShare)}`; saveState(); } catch { hallPaymentFormLive.querySelector('[data-hall-payment-preview]').textContent = 'برای محاسبه، یک یا چند قلم با تعداد معتبر انتخاب کنید.'; }
+    try { const updatedOrder = applyHallServiceChargeFromForm(); if (updatedOrder) { const paymentScope = hallPaymentFormLive.closest('.hall-payment-popup') || hallPaymentFormLive; const serviceEl = paymentScope.querySelector('[data-hall-summary-service]'); const grandEl = paymentScope.querySelector('[data-hall-summary-grand]'); const remainingEl = paymentScope.querySelector('[data-hall-summary-remaining]'); if (serviceEl) serviceEl.textContent = money(updatedOrder.serviceChargeTotal || 0); if (grandEl) grandEl.textContent = money(updatedOrder.grandTotal || updatedOrder.total || 0); if (remainingEl) remainingEl.textContent = money(updatedOrder.remainingTotal ?? updatedOrder.total ?? 0); const serviceAmountInput = hallPaymentFormLive.querySelector('[name="serviceAmount"]'); if (serviceAmountInput && updatedOrder.serviceChargeMode === 'percent') { serviceAmountInput.value = numberText(updatedOrder.serviceChargeTotal || 0, 0); serviceAmountInput.readOnly = true; } else if (serviceAmountInput) serviceAmountInput.readOnly = false; const discountAmountInput = hallPaymentFormLive.querySelector('[name="discountAmount"]'); if (discountAmountInput && updatedOrder.discountMode === 'percent') { discountAmountInput.value = numberText(updatedOrder.discountTotal || 0, 0); discountAmountInput.readOnly = true; } else if (discountAmountInput) discountAmountInput.readOnly = false; } const previewEl = hallPaymentFormLive.querySelector('[data-hall-payment-preview]'); if (previewEl) { const preview = RestaurantCore.previewOrderPayment(state, customer.id, orderId, selected); previewEl.textContent = `مبلغ انتخاب‌شده: ${money(preview.finalAmount)} — جمع اقلام: ${money(preview.itemSubtotal)} — سهم تخفیف: ${money(preview.discountShare)} — سهم مالیات: ${money(preview.taxShare)} — سهم حق سرویس: ${money(preview.serviceChargeShare)}`; } saveState(); } catch { const previewEl = hallPaymentFormLive.querySelector('[data-hall-payment-preview]'); if (previewEl) previewEl.textContent = 'برای محاسبه، یک یا چند قلم با تعداد معتبر انتخاب کنید.'; }
   };
   if (hallPaymentFormLive) {
     const hallPaymentScroll = document.querySelector('[data-hall-payment-popup-scroll]');
