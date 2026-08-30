@@ -155,6 +155,33 @@ function testOpenHallOrderCanBeEditedAndPaidDeleteRefunds() {
 
 testOpenHallOrderCanBeEditedAndPaidDeleteRefunds();
 
+function testCashHallPaymentFreeAndHoldTableStates() {
+  const state = RestaurantCore.createInitialState();
+  const customer = RestaurantCore.createCustomer(state, { businessName:'خان بابا', ownerName:'مالک', phone:'09120000006', email:'cash-payment@test.local', password:'123456' });
+  const menu = RestaurantCore.createMenu(state, customer.id, { name:'منو' });
+  const item = RestaurantCore.createMenuItem(state, customer.id, menu.id, { name:'دوغ', price:20000 });
+  const tables = RestaurantCore.configureHallTables(state, customer.id, { count:2, startNumber:1, customNames:[] });
+  RestaurantCore.openCashierShift(state, customer.id, { openedAt:'2026-08-30T08:00:00.000Z' });
+  const freeOrder = RestaurantCore.createHallOrder(state, customer.id, tables[0].id, [{ itemId:item.id, qty:1 }]);
+  const freeRemaining = RestaurantCore.getRemainingPaymentItems(freeOrder);
+  const freeResult = RestaurantCore.recordOrderPayment(state, customer.id, freeOrder.id, freeRemaining.map(line => ({ lineId: line.lineId, qty: line.remainingQty })), { paymentMethod:'نقدی', freeTableAfterPayment:true, idempotencyKey:'cash-free-table' });
+  assert.equal(freeResult.order.posStatus, 'paid');
+  assert.equal(freeResult.order.tableHeldAfterPayment, false);
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find(table => table.id === tables[0].id).status, 'free');
+  assert(freeResult.order.payments.some(payment => payment.paymentMethod === 'نقدی'));
+
+  const heldOrder = RestaurantCore.createHallOrder(state, customer.id, tables[1].id, [{ itemId:item.id, qty:1 }]);
+  const heldRemaining = RestaurantCore.getRemainingPaymentItems(heldOrder);
+  const heldResult = RestaurantCore.recordOrderPayment(state, customer.id, heldOrder.id, heldRemaining.map(line => ({ lineId: line.lineId, qty: line.remainingQty })), { paymentMethod:'نقدی', freeTableAfterPayment:false, idempotencyKey:'cash-hold-table' });
+  assert.equal(heldResult.order.posStatus, 'paid');
+  assert.equal(heldResult.order.tableHeldAfterPayment, true);
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find(table => table.id === tables[1].id).status, 'paid-held');
+  RestaurantCore.releaseHeldHallTable(state, customer.id, tables[1].id);
+  assert.equal(RestaurantCore.getHallTables(state, customer.id).find(table => table.id === tables[1].id).status, 'free');
+}
+
+testCashHallPaymentFreeAndHoldTableStates();
+
 console.log('prototype.test.js: ok');
 function testOwnerCanUpdateProfileAndPassword() {
   const state = RestaurantCore.createInitialState();
