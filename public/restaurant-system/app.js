@@ -1271,7 +1271,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-method-layer-198');
+  url.searchParams.set('v', 'cashier-paid-held-no-message-199');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1319,7 +1319,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-payment-method-layer-198');
+  url.searchParams.set('v', 'cashier-paid-held-no-message-199');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1660,7 +1660,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-payment-method-layer-198" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-paid-held-no-message-199" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2269,7 +2269,7 @@ function renderHallDiscountControls(order) {
 
 function renderHallPaymentPanel(order) {
   if (order.posStatus === 'paid' && order.tableHeldAfterPayment === true) {
-    return `<div class="panel hall-payment-panel hall-paid-held-panel"><div class="section-title"><h2>میز ${esc(order.tableName || '')} پرداخت شده</h2><span class="badge">میز نگه داشته شده</span></div><p>پرداخت این فیش ثبت شده، اما میز هنوز آزاد نشده و در لیست میزهای درگیر با رنگ سبز می‌ماند.</p><div class="hall-payment-summary"><div><span>شماره فیش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع پرداخت</span><b>${money(orderFinalTotal(order))}</b></div><div><span>زمان پرداخت</span><b>${formatDate(order.paidAt || order.completedAt || order.statusUpdatedAt || order.createdAt)}</b></div></div><button type="button" class="primary" data-release-hall-table="${esc(order.tableId || '')}">آزاد کردن میز</button></div>`;
+    return `<div class="panel hall-payment-panel hall-paid-held-panel"><div class="section-title"><h2>میز ${esc(order.tableName || '')} پرداخت شده</h2><span class="badge">میز نگه داشته شده</span></div><div class="hall-payment-summary"><div><span>شماره فیش</span><b>${receiptNumberText(order.trackingNumber || 0)}</b></div><div><span>جمع پرداخت</span><b>${money(orderFinalTotal(order))}</b></div><div><span>زمان پرداخت</span><b>${formatDate(order.paidAt || order.completedAt || order.statusUpdatedAt || order.createdAt)}</b></div></div><button type="button" class="primary" data-release-hall-table="${esc(order.tableId || '')}">آزاد کردن میز</button></div>`;
   }
   const remaining = RestaurantCore.getRemainingPaymentItems(order);
   const remainingSubtotal = remaining.reduce((sum, line) => sum + Number(line.remainingAmount ?? (Number(line.remainingQty || 0) * Number(line.unitPrice || 0))), 0);
