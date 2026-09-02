@@ -1125,6 +1125,51 @@ function showHallOrderReceiptPrintPreview(order, options = {}) {
   if (options.autoPrint) setTimeout(() => { doPrint(); setTimeout(() => modal.remove(), 500); }, 60);
 }
 
+
+function showOrderDetailsPreview(orderId) {
+  const customer = currentCustomer();
+  if (!customer) return;
+  const order = (RestaurantCore.getCustomerOrders ? RestaurantCore.getCustomerOrders(state, customer.id) : byCustomer(state.orders)).find(o => o.id === orderId);
+  if (!order) return alert('سفارش پیدا نشد');
+  document.querySelector('#orderDetailsModalRoot')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'orderDetailsModalRoot';
+  modal.className = 'print-modal-overlay order-details-modal-overlay';
+  const finalTotal = orderFinalTotal(order);
+  const lineRows = (order.lines || []).map((line, index) => `<tr><td>${numberText(index + 1,0)}</td><td>${esc(line.name)}</td><td>${numberText(line.qty,0)}</td><td>${money(line.unitPrice || line.price || 0)}</td><td>${money(line.lineTotal || ((line.unitPrice || line.price || 0) * (line.qty || 0)))}</td><td>${esc([line.note, ...(line.modifiers || [])].filter(Boolean).join('، ') || '-')}</td></tr>`).join('');
+  const paymentRows = (order.payments || []).map((payment, index) => `<tr><td>${numberText(index + 1,0)}</td><td>${money(payment.amount || 0)}</td><td>${esc(payment.paymentMethod || 'ثبت نشده')}</td><td>${formatDate(payment.createdAt || payment.confirmedAt)}</td></tr>`).join('');
+  const metaRows = [
+    ['شماره فیش', receiptNumberText(order.trackingNumber || 0)],
+    ['وضعیت سفارش', orderStatusLabel(order.status)],
+    ['وضعیت صندوق', order.posStatus === 'paid' ? 'تسویه‌شده' : order.posStatus === 'partially-paid' ? 'پرداخت جزئی' : 'سفارش باز'],
+    ['میز', order.tableName || 'ثبت نشده'],
+    ['مهمان/تحویل', orderGuestLine(order) || 'ثبت نشده'],
+    ['زمان ثبت', formatDate(order.createdAt)],
+    ['زمان تکمیل', order.completedAt ? formatDate(order.completedAt) : 'ثبت نشده'],
+  ].map(([label, value]) => `<p><b>${esc(label)}</b><span>${esc(value)}</span></p>`).join('');
+  modal.innerHTML = `<section class="print-modal order-details-modal" role="dialog" aria-modal="true" aria-label="پیش‌نمایش جزئیات سفارش">
+    <div class="print-actions"><button type="button" class="modal-close-icon" data-close-order-details aria-label="بستن">×</button>${actionDecalButton('print', 'data-print-order-details', 'modal-print-decal', 'پرینت جزئیات سفارش')}</div>
+    <div class="recipe-print-sheet order-details-sheet">
+      <header class="recipe-print-header"><h1>پیش‌نمایش سفارش</h1><strong>شماره فیش ${receiptNumberText(order.trackingNumber || 0)}</strong></header>
+      <section class="purchase-invoice-print-summary order-details-summary">${metaRows}</section>
+      <section class="recipe-print-box"><h2>اقلام سفارش</h2><table class="purchase-invoice-print-table order-details-table"><thead><tr><th>ردیف</th><th>آیتم</th><th>تعداد</th><th>قیمت واحد</th><th>جمع</th><th>توضیحات</th></tr></thead><tbody>${lineRows || '<tr><td colspan="6">آیتمی ثبت نشده است.</td></tr>'}</tbody></table></section>
+      <section class="recipe-print-box order-details-total"><h2>جمع مالی</h2><div class="hall-payment-summary"><div><span>جمع آیتم‌ها</span><b>${money(order.subtotal || order.total || 0)}</b></div><div><span>مالیات</span><b>${money(order.taxTotal || 0)}</b></div><div><span>حق سرویس</span><b>${money(order.serviceChargeTotal || 0)}</b></div><div><span>تخفیف</span><b>${money(order.discountTotal || order.discountAmount || 0)}</b></div><div><span>جمع کل</span><b>${money(finalTotal)}</b></div><div><span>پرداخت‌شده</span><b>${money(order.paidTotal || 0)}</b></div><div><span>باقی‌مانده</span><b>${money(order.remainingTotal ?? finalTotal)}</b></div></div></section>
+      ${paymentRows ? `<section class="recipe-print-box"><h2>پرداخت‌ها</h2><table class="purchase-invoice-print-table order-details-payment-table"><thead><tr><th>ردیف</th><th>مبلغ</th><th>روش</th><th>زمان</th></tr></thead><tbody>${paymentRows}</tbody></table></section>` : ''}
+      ${order.orderNote ? `<section class="recipe-print-box"><h2>یادداشت سفارش</h2><p>${esc(order.orderNote)}</p></section>` : ''}
+      ${order.lowStockWarnings?.length ? `<section class="recipe-print-box"><h2>هشدار کمبود</h2><p>${esc(lowStockText(order.lowStockWarnings))}</p></section>` : ''}
+    </div>
+  </section>`;
+  document.body.appendChild(modal);
+  modal.querySelector('[data-close-order-details]').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (event) => { if (event.target === modal) modal.remove(); });
+  modal.querySelector('[data-print-order-details]').addEventListener('click', () => {
+    const previousTitle = document.title;
+    document.title = '';
+    window.print();
+    setTimeout(() => { document.title = previousTitle; }, 300);
+  });
+}
+
 function showHallOrderReceiptChoice(order) {
   if (!order) return;
   document.querySelector('#hallReceiptChoiceModalRoot')?.remove();
@@ -1291,7 +1336,7 @@ function publicReceiptOrderId() {
 }
 function publicReceiptLink(customerId, orderId, tableId = '') {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-split-stepper-partial-201');
+  url.searchParams.set('v', 'order-preview-details-202');
   if (publicTenantId) url.searchParams.set('publicTenant', publicTenantId);
   const query = new URLSearchParams({ order: orderId });
   if (tableId) query.set('table', tableId);
@@ -1339,7 +1384,7 @@ async function ensurePublicQrTableLock(customerId, table) {
 }
 function tablePublicMenuLink(customer, table) {
   const url = new URL(`${location.origin}${location.pathname}`);
-  url.searchParams.set('v', 'cashier-split-stepper-partial-201');
+  url.searchParams.set('v', 'order-preview-details-202');
   const tenantId = customer.portalTenantId || portalIdentity?.tenantId || '';
   if (tenantId) url.searchParams.set('publicTenant', tenantId);
   url.hash = `menu/${encodeURIComponent(customer.id)}?table=${encodeURIComponent(table.id)}`;
@@ -1680,7 +1725,7 @@ function render() {
   app.innerHTML = `
     <div class="app-shell theme-${currentTheme}">
       <header class="app-header" data-app-header>
-        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=cashier-split-stepper-partial-201" alt="ورود و خروج پرسنل"></button></div>
+        <div class="header-actions"><button class="ghost header-logout" id="logout">خروج</button>${renderRestaurantSwitcher(customer)}<button type="button" class="header-attendance-button" data-open-attendance-modal aria-label="ورود و خروج پرسنل" title="ورود و خروج پرسنل"><img src="./assets/staff-attendance-icon.png?v=order-preview-details-202" alt="ورود و خروج پرسنل"></button></div>
         <div class="header-center-group"><div class="business-date-line" data-business-date-line aria-label="روز، تاریخ و ساعت ایران">${esc(businessDateLine())}</div></div>
         ${appLogoMarkup()}
       </header>
@@ -2333,8 +2378,10 @@ function cashierWorkdayOrderGroups(customer) {
 }
 function renderCashierOrderRow(o, paid = false) {
   const amount = paid ? orderFinalTotal(o) : (o.remainingTotal ?? orderFinalTotal(o));
-  const editButton = !paid ? actionDecalButton('edit', `data-edit-sale="${esc(o.id)}"`, 'sale-row-decal', 'ویرایش سفارش') : '';
-  return `<div class="order-row order-status-row cashier-popup-order-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(amount)}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons">${editButton}${actionDecalButton('delete', `data-delete-sale="${esc(o.id)}"`, 'sale-row-decal', paid ? 'حذف و بازپرداخت سفارش پرداخت‌شده' : 'حذف کل سفارش')}</div></div>`;
+  const deleteButton = actionDecalButton('delete', `data-delete-sale="${esc(o.id)}"`, 'sale-row-decal sale-delete-decal', paid ? 'حذف و بازپرداخت سفارش پرداخت‌شده' : 'حذف کل سفارش');
+  const previewButton = actionDecalButton('details', `data-preview-sale="${esc(o.id)}"`, 'sale-row-decal order-preview-decal', 'پیش‌نمایش سفارش');
+  const editButton = !paid ? actionDecalButton('edit', `data-edit-sale="${esc(o.id)}"`, 'sale-row-decal sale-edit-decal', 'ویرایش سفارش') : '';
+  return `<div class="order-row order-status-row cashier-popup-order-row ${o.lowStockWarnings?.length ? 'danger' : ''}"><b>${money(amount)}</b><span><strong>شماره فیش ${receiptNumberText(o.trackingNumber || 0)}${o.tableName ? ` — میز ${esc(o.tableName)}` : ''}</strong>${o.lowStockWarnings?.length && !paid ? `<br><small>هشدار کمبود: ${esc(lowStockText(o.lowStockWarnings))}</small>` : ''}</span><em>${formatDate(paid ? (o.paidAt || o.completedAt || o.statusUpdatedAt || o.createdAt) : o.createdAt)}</em><div class="row-action-buttons sale-order-actions">${deleteButton}${previewButton}${editButton}</div></div>`;
 }
 function cashierOrdersTotalText(rows, paid = null) {
   const total = rows.reduce((sum, order) => {
@@ -4114,6 +4161,7 @@ function bindCommon() {
   }));
   document.querySelectorAll('[data-edit-sale]').forEach(btn => btn.addEventListener('click', () => { const order = (state.orders || []).find(item => item.id === btn.dataset.editSale && item.customerId === customer.id); if (posSalesChannel === 'hall' && order?.tableId) { cashierOrdersPopupMode = 'open'; editingHallOrderId = order.id; hallTablePickerOpen = false; hallTableConfigOpen = false; render(); return; } editingSaleOrderId = btn.dataset.editSale; render(); }));
   document.querySelectorAll('[data-cancel-sale-edit]').forEach(btn => btn.addEventListener('click', () => { editingSaleOrderId = ''; render(); }));
+  document.querySelectorAll('[data-preview-sale]').forEach(btn => btn.addEventListener('click', () => showOrderDetailsPreview(btn.dataset.previewSale)));
   document.querySelectorAll('[data-delete-sale]').forEach(btn => btn.addEventListener('click', async () => {
     if (!confirm('این فروش حذف شود؟ اثر موجودی و دفتر مالی همین فاکتور برگردانده می‌شود.')) return;
     try {
